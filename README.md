@@ -10,3 +10,6 @@
 - AS-CODE-P 架構文件維持中文 NODE 說明與 AREA_Summarize。
 
 註：部分外部瀏覽器擴充功能仍可能自行插入標記。
+
+## v2.0
+Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.json; reopened Roots restore ordering.
