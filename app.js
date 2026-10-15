@@ -2,7 +2,7 @@
 const editor=document.querySelector('#editor'),statusEl=document.querySelector('#status'),filenameEl=document.querySelector('#filename'),input=document.querySelector('#file');
 let handle=null,name='未命名.ainote',dirty=false;
 let originalMarkdown='';
-function toMarkdown(html){const c=document.createElement('div');c.innerHTML=safeHTML(html);c.querySelectorAll('.math-rendered').forEach(x=>x.replaceWith(document.createTextNode(x.dataset.latex||x.dataset.tex||'')));return window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(c.innerHTML):c.innerText;}
+function toMarkdown(html){const c=document.createElement('div');c.innerHTML=safeHTML(html);const math=[];c.querySelectorAll('.math-rendered,.math-source').forEach(el=>{if(el.closest('.math-rendered')!==el&&el.closest('.math-rendered'))return;const raw=el.dataset.latex||el.dataset.tex;if(!raw)return;const token='AINOTEMATHPLACEHOLDER'+math.length+'END';math.push(raw);el.replaceWith(document.createTextNode(token))});let md=window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(c.innerHTML):c.innerText;math.forEach((raw,i)=>{md=md.replaceAll('AINOTEMATHPLACEHOLDER'+i+'END',()=>raw)});return md;}
 function sourceMarkdown(){return originalMarkdown;}
 function setSourceMarkdown(md){originalMarkdown=String(md||'');}
 window.ainoteSource={get:sourceMarkdown,set:setSourceMarkdown,toMarkdown};
@@ -86,7 +86,7 @@ async function save(as=false){const content=JSON.stringify({format:'AInote',vers
 document.querySelector('#save')?.addEventListener('click',()=>save());document.querySelector('#saveas')?.addEventListener('click',()=>save(true));
 document.querySelector('#md').onclick=()=>{download(sourceMarkdown(),name.replace(/\.[^.]+$/,'')+'.md','text/markdown');status('已匯出原始 Markdown')};
 document.querySelector('#clear').onclick=()=>{if(typeof window.createExplorerFile==='function')window.createExplorerFile();else status('Explorer 尚未載入')};
-document.querySelector('#preview').onclick=()=>{const raw=editor.innerText;if(/(^|\n)\s*(#{1,6} |\|.+\||\$\$|<svg)/m.test(raw)){editor.innerHTML=safeHTML(parseDocument(raw))}renderLooseMath(editor);changed();status('已重新渲染')};
+document.querySelector('#preview').onclick=()=>{const raw=sourceMarkdown();if(raw){editor.innerHTML=safeHTML(parseDocument(raw))}renderLooseMath(editor);changed();status('已重新渲染')};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 
