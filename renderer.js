@@ -1,19 +1,6 @@
 'use strict';
 // Offline Markdown renderer. Keeps raw SVG blocks and images as elements.
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-function normalizeSVGMarkdown(source){
- return String(source).replace(/!\[([^\]]*)\]\(\s*(data\\?:image\/svg\+xml(?:;charset=[^;,\s)]+)?(?:;base64)?,[\s\S]*?)\s*\)/gi,(all,alt,uri)=>{
-  uri=uri.replace(/^data\\:/i,'data:').replace(/\\([(),])/g,'$1').replace(/\s+/g,'');
-  // SVG data URLs must be encoded; raw SVG markup in src is not allowed.
-  if(!/^data:image\/svg\+xml(?:;charset=[^;,]+)?(?:;base64)?,/i.test(uri))return all;
-  const comma=uri.indexOf(',');let payload=uri.slice(comma+1);
-  if(!/;base64,/i.test(uri.slice(0,comma+1))){
-   try{payload=encodeURIComponent(decodeURIComponent(payload))}catch{payload=encodeURIComponent(payload)}
-   uri=uri.slice(0,comma+1)+payload;
-  }
-  return '<img alt="'+esc(alt)+'" src="'+esc(uri)+'">';
- });
-}
 const inline=s=>{
  let placeholders=[];const hold=x=>{let i=placeholders.push(x)-1;return `@@AIRENDER${i}@@`};
  s=s.replace(/!\[([^\]]*)\]\((data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+|https?:\/\/[^\s)]+)\)/g,(_,a,u)=>hold(`<img alt="${esc(a)}" src="${esc(u)}">`));
@@ -60,13 +47,13 @@ function texToMathML(tex){
 }
 function renderMathElements(root){root.querySelectorAll('.math-source').forEach(el=>{
  const raw=el.dataset.tex||el.textContent;let display=/^(\$\$|\\\[)/.test(raw),tex=raw.replace(/^\$\$|\$\$$/g,'').replace(/^\\\[|\\\]$/g,'').replace(/^\$|\$$/g,'').replace(/^\\\(|\\\)$/g,'').trim();
- const wrap=document.createElement(display?'div':'span');wrap.className='math-rendered';wrap.dataset.latex=raw;wrap.dataset.mathMode=display?'display':'inline';
- try{if(window.katex)katex.render(tex,wrap,{displayMode:display,throwOnError:false,trust:false,output:"html"});else{wrap.dataset.mathFallback='1';wrap.innerHTML=texToMathML(tex)}}catch(e){wrap.textContent=raw}
+ const wrap=document.createElement(display?'div':'span');wrap.className='math-rendered';wrap.dataset.latex=raw;
+ try{if(window.katex)katex.render(tex,wrap,{displayMode:display,throwOnError:false,trust:false});else wrap.innerHTML=texToMathML(tex)}catch(e){wrap.textContent=raw}
  el.replaceWith(wrap);
  })}
 
 function parseDocument(source){
- source=normalizeSVGMarkdown(String(source).replace(/\r\n?/g,'\n'));
+ source=String(source).replace(/\r\n?/g,'\n');
  const tokens=[];
  // Protect display math and SVG from any other Markdown transformations.
  source=source.replace(/\$\$([\s\S]*?)\$\$/g,(all,tex)=>{

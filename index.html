@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AInote v2.5.A</title>
+<title>AInote</title>
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js">
@@ -19,25 +19,27 @@
 </head>
 <body>
 <header>
-<strong>AInote v2.5.A</strong>
+<strong>AInote</strong>
 <span id="filename">未命名</span>
 <span id="status">準備就緒</span>
 <div class="tools">
-<button id="clear">新文件</button><button id="top-open">開啟</button><button id="top-save">保存</button><button id="top-close">關閉</button>
-<div class="tool-menu"><button id="tools-toggle" aria-expanded="false">工具 ▾</button><div id="tools-menu" hidden><button id="md">匯出 MD</button><button id="preview">重新渲染公式</button><button id="download-folder">下載資料夾：瀏覽器預設</button><button id="download-folder-reset">恢復預設下載路徑</button><button id="explorer-toggle">Explorer 工具：開啟</button></div></div>
+<button id="open">開啟</button>
+<button id="save">儲存</button>
+<button id="saveas">另存</button>
+<button id="md">匯出 MD</button>
+<button id="preview">重新渲染公式</button>
+<button id="clear">新文件</button>
 <input id="file" type="file" accept=".ainote,.json,.html,.htm,.md,.markdown,.txt" hidden>
 </div>
 </header>
-<div id="workspace"><button id="explorer-edge" type="button" aria-label="展開 Explorer" title="展開 Explorer">☰</button><aside id="explorer" aria-label="Explorer"><div class="explorer-heading"><strong>EXPLORER</strong><button id="explorer-hide" title="隱藏 Explorer">×</button></div><div class="explorer-actions explorer-primary-actions"><button id="node-folder">＋資料夾</button><button id="node-file">＋文件</button><button id="node-actions">操作 ▾</button></div><div class="explorer-secondary-controls" aria-label="FOLD 管理"><button id="fold-open" hidden>開啟 FOLD</button><select id="fold-selector" aria-label="選擇 FOLD" hidden></select><button id="fold-save" hidden>保存</button><button id="fold-close" hidden>關閉</button><button id="node-functions" hidden>功能</button></div><div id="explorer-tree" role="tree"></div><p class="explorer-hint">左鍵開啟 · 右鍵操作 · 長按拖曳排序</p><input type="file" id="fold-import" accept=".zip,.ainote,.ainotefold,.json,.md" hidden></aside><div id="explorer-resizer" role="separator" aria-label="拖曳調整 Explorer 寬度" aria-orientation="vertical" tabindex="0"></div><main><div class="document-tab" id="document-tab">文件編輯區</div>
+<main>
 <article id="editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" aria-label="文件編輯區" data-placeholder="直接貼上 ChatGPT 內容或 Markdown，立即顯示排版結果…">
 </article>
-</main></div><div id="node-context" hidden></div>
+</main>
 <footer>Ctrl+V 貼上圖片 / 文字 · Ctrl+S 儲存 · 支援拖曳圖片 · 優先使用 .ainote 保存完整內容</footer>
-<script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="renderer.js">
 </script>
 <script src="app.js">
 </script>
-<script src="explorer.js"></script>
 </body>
 </html>
