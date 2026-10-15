@@ -6,26 +6,8 @@ editor.setAttribute('data-gramm','false');
 editor.setAttribute('data-gramm_editor','false');
 function status(s){statusEl.textContent=s}function setName(s){name=s;filenameEl.textContent=s}function changed(){dirty=true;status('尚未儲存')}
 const escapedNewlines=t=>!t.includes('\n')&&(t.match(/\\n/g)||[]).length>=2?t.replace(/\\r\\n|\\n|\\r/g,'\n'):t.replace(/\r\n?/g,'\n');
-// Convert external KaTeX HTML to a single recoverable TeX source before sanitizing.
-// ChatGPT clipboard may include KaTeX's visual HTML plus its accessibility MathML.
-function normalizePastedMath(html){
- const t=document.createElement('template');t.innerHTML=html;
- t.content.querySelectorAll('.katex-display, .katex').forEach(el=>{
-  if(!el.isConnected)return;
-  if(el.classList.contains('katex') && el.closest('.katex-display'))return;
-  const display=el.classList.contains('katex-display');
-  const annotation=el.querySelector('annotation[encoding="application/x-tex"]');
-  const tex=annotation?.textContent?.trim();
-  if(!tex)return;
-  const raw=display?'$$'+tex+'$$':'\\('+tex+'\\)';
-  const holder=document.createElement(display?'div':'span');
-  holder.className='math-source';holder.dataset.tex=raw;holder.textContent=raw;
-  el.replaceWith(holder);
- });
- return t.innerHTML;
-}
 function safeHTML(html){
- const t=document.createElement('template');t.innerHTML=normalizePastedMath(html);
+ const t=document.createElement('template');t.innerHTML=html;
  t.content.querySelectorAll('script,iframe,object,embed,style,link,meta,form').forEach(x=>x.remove());
  t.content.querySelectorAll('*').forEach(el=>{const svg=!!el.closest('svg');for(const a of [...el.attributes]){
   const n=a.name.toLowerCase(),v=a.value.trim();if(n.startsWith('on')||n==='style'||n==='color'||n==='bgcolor'||n==='class'&& !['math-source','math-rendered'].includes(v)||['href','src','xlink:href'].includes(n)&&!(/^(https?:\/\/|data:image\/(png|jpeg|gif|webp|svg\+xml)(?:;charset=[^;,]+)?(?:;base64)?,|#)/i.test(v)))el.removeAttribute(a.name);
@@ -55,7 +37,7 @@ function richOrMarkdown(html,text){
  const plain=escapedNewlines(text||t.content.textContent||'');
  const markdown=/(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+\.\s|\|[^\n]+\||\$\$|<svg\b|!\[|```|>\s)/m.test(plain)||/\*\*[^*]+\*\*/.test(plain);
  // Rich ChatGPT HTML is retained, but a clipboard wrapper with raw Markdown must be parsed.
- return !rich&&markdown?parseDocument(plain):normalizePastedMath(html);
+ return !rich&&markdown?parseDocument(plain):html;
 }
 const dataURL=blob=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob)});
 async function images(files){for(const f of files){if(!f||!f.type.startsWith('image/'))continue;const src=await dataURL(f);insert(`<img alt="貼上圖片" src="${src}">`)}}
@@ -99,7 +81,7 @@ async function save(as=false){const content=JSON.stringify({format:'AInote',vers
 document.querySelector('#save')?.addEventListener('click',()=>save());document.querySelector('#saveas')?.addEventListener('click',()=>save(true));
 document.querySelector('#md').onclick=()=>{const clone=editor.cloneNode(true);clone.querySelectorAll('.math-rendered').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.latex||'')));const md=window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(clone.innerHTML):clone.innerHTML;download(md,name.replace(/\.[^.]+$/,'')+'.md','text/markdown');status(window.TurndownService?'已匯出 Markdown':'已匯出含 HTML 的 Markdown（未載入轉換套件）')};
 document.querySelector('#clear').onclick=()=>{if(typeof window.createExplorerFile==='function')window.createExplorerFile();else status('Explorer 尚未載入')};
-document.querySelector('#preview').onclick=()=>{refreshMathNow();status('已檢查未渲染公式（不修改既有公式）')};
+document.querySelector('#preview').onclick=()=>{const raw=editor.innerText;if(/(^|\n)\s*(#{1,6} |\|.+\||\$\$|<svg)/m.test(raw)){editor.innerHTML=safeHTML(parseDocument(raw))}renderLooseMath(editor);changed();status('已重新渲染')};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 

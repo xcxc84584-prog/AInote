@@ -73,10 +73,6 @@ function parseDocument(source){
   const id=tokens.push(`<div class="math-source" data-tex="${esc(all)}">${esc(tex)}</div>`)-1;
   return `\n\nAIPROTECTED${id}END\n\n`;
  });
- source=source.replace(/\\\[([\s\S]*?)\\\]/g,(all,tex)=>{
-  const id=tokens.push(`<div class="math-source" data-tex="${esc(all)}">${esc(tex)}</div>`)-1;
-  return `\n\nAIPROTECTED${id}END\n\n`;
- });
  source=source.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi,all=>{
   const id=tokens.push(`<div class="svg-block">${all}</div>`)-1;
   return `\n\nAIPROTECTED${id}END\n\n`;
