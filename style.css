@@ -135,3 +135,11 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #editor[contenteditable="false"]{min-height:100%;outline:none;pointer-events:none}
 #editor .math-rendered math{display:inline-block;max-width:100%;overflow-x:auto}
 @media(max-width:700px){#editor .katex-display{overflow-x:auto!important;max-width:100%;touch-action:pan-x}#editor .math-rendered{overflow-x:auto;-webkit-overflow-scrolling:touch}}
+
+/* v2.4: mobile KaTeX should show its visual HTML once, not both HTML and MathML. */
+#editor .katex .katex-mathml{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(1px,1px,1px,1px)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important;padding:0!important;margin:0!important;}
+#editor .katex .katex-html{display:inline-block;}
+#editor .katex-display>.katex{display:block;white-space:nowrap;}
+#workspace main.no-document .document-tab,#workspace main.no-document #editor{display:none!important;}
+#workspace main.no-document{background:#0d1728;}
+@media(max-width:700px){#editor .katex-display{overflow-x:auto;overflow-y:hidden;}#editor .katex{max-width:none;}#explorer .inline-rename input{font-size:16px;}}

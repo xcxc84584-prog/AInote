@@ -120,3 +120,7 @@ const originalRefreshMathNow=refreshMathNow;
 window.addEventListener('load',()=>{upgradeFallbackMath();scheduleMathRender()});
 [300,1200,3000].forEach(delay=>setTimeout(()=>{upgradeFallbackMath();scheduleMathRender()},delay));
 editor.addEventListener('paste',()=>setTimeout(upgradeFallbackMath,180));
+
+// v2.4: If KaTeX CSS is delayed on mobile, the local rules hide duplicate MathML.
+// Recheck once after a tab resumes, without parsing already rendered nodes twice.
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){upgradeFallbackMath();scheduleMathRender()}});

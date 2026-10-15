@@ -34,3 +34,9 @@ Explorer 左右分欄、可拖曳分隔線調整寬度、隱藏時左側 ☰ 展
 - 手機端數學公式：延遲載入 KaTeX 時，重新渲染 MathML fallback。
 - Explorer FILE 右鍵／手機長按：新增保存文件、刪除文件。
 - 無 FILE 或未選取 FILE 時，右側編輯器清空且停用編輯。
+
+
+## v2.4 修正
+- 手機端 KaTeX HTML / MathML 重複顯示防護。
+- 新文件操作會強制展開 Explorer，並聚焦行內命名輸入框。
+- 沒有目前開啟的 FILE 時，隱藏文件頁籤與編輯器（Explorer 仍可操作）。
