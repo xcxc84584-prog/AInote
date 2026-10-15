@@ -115,3 +115,11 @@ footer{flex:0 0 auto}
  .workspace #explorer.collapsed{position:relative;transform:none;width:0!important;max-width:0!important}
  .workspace main{width:0;min-width:0;flex:1 1 auto;padding-top:12px}
 }
+
+/* v2.1: Explorer control is aligned with the editor paper on all viewports */
+#explorer-toggle{position:static!important;inset:auto!important;flex:0 0 auto;box-shadow:none;margin:0!important;white-space:nowrap;min-height:36px}
+.workspace{padding-top:0!important}
+.workspace main{display:flex;flex-direction:column;align-items:stretch;min-width:0}
+.editor-topbar{width:100%;max-width:900px;margin:0 auto;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0 8px;flex-shrink:0}
+.editor-topbar #mode-indicator{margin:0!important;max-width:none;text-align:right;min-width:0}
+@media(max-width:700px){.editor-topbar{width:100%;padding:6px 8px 8px;box-sizing:border-box}#explorer-toggle{font-size:12px;padding:7px 9px;max-width:45vw}.workspace main{padding-top:0!important}}

@@ -11,5 +11,5 @@
 
 註：部分外部瀏覽器擴充功能仍可能自行插入標記。
 
-## v2.0
+## v2.1
 Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.json; reopened Roots restore ordering.
