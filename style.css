@@ -150,3 +150,6 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #editor .math-rendered[data-math-mode="display"]{display:block;overflow-x:auto;text-align:center;}
 #tools-menu{max-width:min(90vw,320px)}
 #tools-menu button{white-space:normal;overflow-wrap:anywhere}
+/* v2.5.A header file controls */
+#top-open,#top-save,#top-close{white-space:nowrap}
+@media(max-width:650px){header .tools{gap:3px}#top-open,#top-save,#top-close{padding:6px 7px;font-size:12px}}

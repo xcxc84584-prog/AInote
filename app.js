@@ -1,6 +1,11 @@
 'use strict';
 const editor=document.querySelector('#editor'),statusEl=document.querySelector('#status'),filenameEl=document.querySelector('#filename'),input=document.querySelector('#file');
 let handle=null,name='未命名.ainote',dirty=false;
+let originalMarkdown='';
+function toMarkdown(html){const c=document.createElement('div');c.innerHTML=safeHTML(html);c.querySelectorAll('.math-rendered').forEach(x=>x.replaceWith(document.createTextNode(x.dataset.latex||x.dataset.tex||'')));return window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(c.innerHTML):c.innerText;}
+function sourceMarkdown(){return originalMarkdown;}
+function setSourceMarkdown(md){originalMarkdown=String(md||'');}
+window.ainoteSource={get:sourceMarkdown,set:setSourceMarkdown,toMarkdown};
 editor.spellcheck=false;
 editor.setAttribute('data-gramm','false');
 editor.setAttribute('data-gramm_editor','false');
@@ -41,9 +46,9 @@ function richOrMarkdown(html,text){
 }
 const dataURL=blob=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob)});
 async function images(files){for(const f of files){if(!f||!f.type.startsWith('image/'))continue;const src=await dataURL(f);insert(`<img alt="貼上圖片" src="${src}">`)}}
-editor.addEventListener('paste',async e=>{const d=e.clipboardData;if(!d)return;e.preventDefault();const fs=[...d.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile());if(fs.length){await images(fs);return}const html=d.getData('text/html'),plain=escapedNewlines(d.getData('text/plain'));insert(/!\[[^\]]*\]\(data\\?:image\/svg\+xml/i.test(plain)?parseDocument(plain):(html?richOrMarkdown(html,plain):parseDocument(plain)))});
-editor.addEventListener('dragover',e=>e.preventDefault());editor.addEventListener('drop',async e=>{if(e.dataTransfer.files.length){e.preventDefault();await images([...e.dataTransfer.files])}});editor.addEventListener('input',()=>{changed();scheduleMathRender()});
-async function openFile(f){const t=await f.text();let html;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');html=d.html}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))html=new DOMParser().parseFromString(t,'text/html').body.innerHTML;else html=parseDocument(escapedNewlines(t));editor.innerHTML=safeHTML(html);renderLooseMath(editor);scheduleMathRender();setName(f.name);dirty=false;status('已開啟')}
+editor.addEventListener('paste',async e=>{const d=e.clipboardData;if(!d)return;e.preventDefault();const fs=[...d.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile());if(fs.length){await images(fs);return}const html=d.getData('text/html'),plain=escapedNewlines(d.getData('text/plain'));insert(/!\[[^\]]*\]\(data\\?:image\/svg\+xml/i.test(plain)?parseDocument(plain):(html?richOrMarkdown(html,plain):parseDocument(plain)));setSourceMarkdown(toMarkdown(editor.innerHTML))});
+editor.addEventListener('dragover',e=>e.preventDefault());editor.addEventListener('drop',async e=>{if(e.dataTransfer.files.length){e.preventDefault();await images([...e.dataTransfer.files])}});editor.addEventListener('input',()=>{setSourceMarkdown(toMarkdown(editor.innerHTML));changed();scheduleMathRender()});
+async function openFile(f){const t=await f.text();let html;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');html=d.md!=null?parseDocument(d.md):d.html;setSourceMarkdown(d.md!=null?d.md:toMarkdown(html||''))}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))html=new DOMParser().parseFromString(t,'text/html').body.innerHTML;else {setSourceMarkdown(escapedNewlines(t));html=parseDocument(sourceMarkdown())}editor.innerHTML=safeHTML(html);renderLooseMath(editor);scheduleMathRender();setName(f.name);dirty=false;status('已開啟')}
 input.onchange=async()=>{if(input.files[0]){handle=null;await openFile(input.files[0])}input.value=''};
 document.querySelector('#open')?.addEventListener('click',async()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;if(window.showOpenFilePicker){try{const [h]=await showOpenFilePicker();handle=h;await openFile(await h.getFile());return}catch(e){if(e.name==='AbortError')return}}input.click()});
 // Downloads: folder access is supported only where the browser exposes File System Access API.
@@ -77,9 +82,9 @@ function updateFolderLabel(){const el=document.querySelector('#download-folder')
 document.querySelector('#download-folder')?.addEventListener('click',selectDownloadFolder);
 document.querySelector('#download-folder-reset')?.addEventListener('click',()=>{downloadFolder=null;localStorage.removeItem(DOWNLOAD_FOLDER_KEY);updateFolderLabel();status('已改回瀏覽器預設下載路徑')});
 updateFolderLabel();
-async function save(as=false){const content=JSON.stringify({format:'AInote',version:2,html:safeHTML(editor.innerHTML),updated:new Date().toISOString()},null,2);try{if(window.showSaveFilePicker){if(!handle||as)handle=await showSaveFilePicker({suggestedName:name.endsWith('.ainote')?name:'AInote.ainote',types:[{description:'AInote',accept:{'application/json':['.ainote']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存');dirty=false;return}download(content,name.endsWith('.ainote')?name:'AInote.ainote','application/json');dirty=false;status('已下載檔案')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
+async function save(as=false){const content=JSON.stringify({format:'AInote',version:2,md:sourceMarkdown(),updated:new Date().toISOString()},null,2);try{if(window.showSaveFilePicker){if(!handle||as)handle=await showSaveFilePicker({suggestedName:name.endsWith('.ainote')?name:'AInote.ainote',types:[{description:'AInote',accept:{'application/json':['.ainote']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存');dirty=false;return}download(content,name.endsWith('.ainote')?name:'AInote.ainote','application/json');dirty=false;status('已下載檔案')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
 document.querySelector('#save')?.addEventListener('click',()=>save());document.querySelector('#saveas')?.addEventListener('click',()=>save(true));
-document.querySelector('#md').onclick=()=>{const clone=editor.cloneNode(true);clone.querySelectorAll('.math-rendered').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.latex||'')));const md=window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(clone.innerHTML):clone.innerHTML;download(md,name.replace(/\.[^.]+$/,'')+'.md','text/markdown');status(window.TurndownService?'已匯出 Markdown':'已匯出含 HTML 的 Markdown（未載入轉換套件）')};
+document.querySelector('#md').onclick=()=>{download(sourceMarkdown(),name.replace(/\.[^.]+$/,'')+'.md','text/markdown');status('已匯出原始 Markdown')};
 document.querySelector('#clear').onclick=()=>{if(typeof window.createExplorerFile==='function')window.createExplorerFile();else status('Explorer 尚未載入')};
 document.querySelector('#preview').onclick=()=>{const raw=editor.innerText;if(/(^|\n)\s*(#{1,6} |\|.+\||\$\$|<svg)/m.test(raw)){editor.innerHTML=safeHTML(parseDocument(raw))}renderLooseMath(editor);changed();status('已重新渲染')};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}});
@@ -154,3 +159,8 @@ editor.addEventListener('paste',()=>setTimeout(upgradeFallbackMath,180));
 // v2.4: If KaTeX CSS is delayed on mobile, the local rules hide duplicate MathML.
 // Recheck once after a tab resumes, without parsing already rendered nodes twice.
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){upgradeFallbackMath();scheduleMathRender()}});
+
+// Top-right FOLD controls.
+document.querySelector('#top-open').onclick=()=>document.querySelector('#fold-open').click();
+document.querySelector('#top-save').onclick=()=>document.querySelector('#fold-save').click();
+document.querySelector('#top-close').onclick=()=>document.querySelector('#fold-close').click();
