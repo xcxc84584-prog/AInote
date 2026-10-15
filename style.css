@@ -100,3 +100,9 @@ body{margin:0;background:#0d1728;color:#f3f6ff}header{box-sizing:border-box;back
 
 /* v1.8: independent Explorer/editor scrolling and workspace selection */
 html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}header{flex:0 0 auto}#workspace{flex:1 1 auto;min-height:0;height:auto;overflow:hidden}#explorer{height:100%;max-height:none;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-gutter:stable}#workspace main{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}#workspace main #editor{min-height:calc(100% - 39px)}footer{flex:0 0 auto}#fold-selector{min-width:90px;max-width:170px;background:#263b57;color:white;border:1px solid #4b607c;border-radius:4px;padding:5px;font-size:12px}#explorer-tree{overflow:visible}
+
+/* v1.9: clearly distinguish selected FOLD from active FILE */
+#explorer .tree-row.fold-selected{background:#315581!important;box-shadow:inset 3px 0 #8ab8ff;color:#fff}
+#explorer .tree-row.fold-selected:hover{background:#3a6497!important}
+#explorer .tree-row{touch-action:pan-y;-webkit-touch-callout:none}
+#node-context{max-height:min(75dvh,460px);overflow-y:auto;touch-action:pan-y}
