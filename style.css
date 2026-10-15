@@ -1,0 +1,92 @@
+*{box-sizing:border-box}
+body{margin:0;background:#101216;color:#e7eaf0;font:15px/1.7 system-ui,'Microsoft JhengHei',sans-serif}
+header{display:flex;align-items:center;gap:13px;flex-wrap:wrap;background:#191c23;padding:12px 22px;border-bottom:1px solid #343a46;position:sticky;top:0;z-index:5}
+header strong{font-size:20px;color:#a5c8ff}#filename{color:#bbc3d0}#status{font-size:12px;color:#82d6aa;margin-right:auto}
+.tools{display:flex;flex-wrap:wrap;gap:7px}
+button{background:#282d37;color:#e9edf6;border:1px solid #414958;border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{background:#38465c}
+main{padding:30px 14px 70px}
+#editor{background:#22252d;color:#f0f2f6;max-width:900px;min-height:calc(100vh - 195px);margin:auto;padding:56px 68px;outline:none;border:1px solid #363b46;border-radius:10px;box-shadow:0 10px 45px #0005;overflow-wrap:anywhere}
+#editor:empty:before{content:attr(data-placeholder);color:#9099a9}
+#editor h1,#editor h2,#editor h3{line-height:1.35;color:#f7f8fc}
+#editor h1,#editor h2{border-bottom:1px solid #414651;padding-bottom:.3em}
+#editor a{color:#8dbaff}
+#editor img,#editor svg{max-width:100%;height:auto}
+#editor table{border-collapse:collapse;display:block;max-width:100%;overflow:auto}
+#editor td,#editor th{border:1px solid #505868;padding:8px 12px}
+#editor th{background:#343a46}
+#editor pre{white-space:pre-wrap;background:#151820;padding:15px;overflow:auto;border-radius:7px}
+#editor code{background:#343a46;padding:2px 5px;border-radius:4px}
+#editor pre code{background:none;padding:0}
+#editor blockquote{border-left:3px solid #7c99c8;padding-left:16px;color:#b6bfd0}
+#editor hr{border:0;border-top:1px solid #505868}
+#editor .math-rendered{max-width:100%;overflow-x:auto}
+#editor .math-error{color:#ff9999}
+footer{text-align:center;font-size:12px;color:#9ba4b3;padding:12px}
+@media(max-width:700px){header{padding:10px}#editor{padding:26px 19px}main{padding:10px 6px 55px}}
+
+/* Pure white text and transparent selection: no white text backing. */
+#editor, #editor * { color:#ffffff; }
+#editor ::selection {background:rgba(96,145,225,.34);color:#fff}
+#editor ::-moz-selection {background:rgba(96,145,225,.34);color:#fff}
+#editor span[style*="background"],#editor font[style*="background"]{background:transparent!important}
+#editor .katex,#editor .katex *{color:#fff!important}
+#editor .math-rendered{white-space:normal}
+#editor p{margin:.7em 0}
+#editor .katex-display{overflow-x:auto;overflow-y:hidden}
+
+/* v1.3: pasted inline typography must never override dark-mode foreground. */
+#editor :is(p,div,span,strong,em,b,i,u,s,del,small,mark,font,h1,h2,h3,h4,h5,h6,
+ li,ul,ol,blockquote,table,thead,tbody,tr,td,th,pre,code,a,label) {
+ color:#fff !important;
+ text-shadow:none !important;
+ -webkit-text-fill-color:#fff !important;
+}
+#editor :is(p,div,span,strong,em,b,i,u,s,del,small,mark,font,h1,h2,h3,h4,h5,h6,
+ li,ul,ol,blockquote,table,thead,tbody,tr,td,th,a,label) {
+ background-color:transparent !important;
+ background-image:none !important;
+}
+#editor a {text-decoration-color:#fff!important}
+#editor :is(p,div,span,strong,em,b,i,u,s,del,small,mark,font,h1,h2,h3,h4,h5,h6,
+ li,ul,ol,blockquote,table,thead,tbody,tr,td,th,pre,code,a,label)::selection {
+ background:rgba(80,130,215,.45)!important;color:#fff!important;
+}
+#editor svg, #editor svg * { -webkit-text-fill-color:unset!important; }
+#editor svg text, #editor svg tspan { -webkit-text-fill-color:initial!important; }
+/* v1.4: actual rendered elements, not source text */
+#editor {color:#fff!important}
+#editor p,#editor h1,#editor h2,#editor h3,#editor h4,#editor h5,#editor h6,#editor li,#editor td,#editor th {color:#fff!important;-webkit-text-fill-color:#fff!important}
+#editor svg *,#editor math *{-webkit-text-fill-color:unset!important}
+#editor math{color:#fff;font-size:1.2em}
+#editor .math-rendered{display:inline-block;color:#fff;max-width:100%;overflow-x:auto}
+#editor div.math-rendered{display:block;text-align:center;margin:16px 0}
+#editor .svg-block{overflow:auto;max-width:100%;margin:16px 0}
+#editor img{display:inline-block;max-width:100%;height:auto}
+#editor table{display:table;width:100%;border-collapse:collapse;margin:16px 0}
+#editor td,#editor th{border:1px solid #555c6b;background:#272d37!important;color:#fff!important}
+
+#editor {white-space:normal; color:#fff!important;}
+#editor :is(h1,h2,h3,h4,h5,h6,p,li,td,th,blockquote,code,strong,em,del){color:#fff!important;}
+#editor .svg-block svg{max-width:100%;height:auto;}
+#editor .math-rendered{display:inline-block;vertical-align:middle;}
+#editor div.math-rendered{display:block;text-align:center;margin:1.2em 0;}
+#editor table{width:max-content;min-width:60%;max-width:100%;border-collapse:collapse;}
+#editor th,#editor td{border:1px solid #697386;padding:8px 12px;}
+
+/* v1.5.2: no blue underline from links, spelling or grammar extensions */
+#editor, #editor * { text-decoration-line: none !important; text-decoration-style: none !important; }
+#editor a, #editor a:visited, #editor a:hover, #editor a:focus {
+  color: #fff !important; -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important; border-bottom: none !important;
+}
+#editor :is(h1,h2,h3,h4,h5,h6) a { text-decoration: none !important; }
+#editor :is(pre,code) {
+  font-family: Consolas, 'Cascadia Code', 'Courier New', monospace !important;
+  font-variant-ligatures: none; tab-size: 4;
+  text-decoration: none !important;
+}
+#editor pre { white-space: pre; overflow-x: auto; line-height: 1.55; }
+#editor pre code { white-space: inherit; word-break: normal; overflow-wrap: normal; }
+#editor code:not(pre code) { white-space: pre-wrap; }
+#editor [data-gramm], #editor [data-gramm_editor] { text-decoration: none !important; }

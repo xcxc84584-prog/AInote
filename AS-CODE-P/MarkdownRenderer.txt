@@ -1,0 +1,7 @@
+/*
+AREA:MarkdownRenderer
+EXTERNAL.CLIPBOARD ---> (NormalizeText) ---> (ParseMarkdown) ---> (BuildHTML)
+*/
+// NormalizeText：將貼上內容的換行格式統一，辨識文字中的跳脫換行。
+// ParseMarkdown：辨識 Markdown 標題、清單、表格、圖片、程式碼及 SVG 區塊。
+// BuildHTML：將解析結果轉成實際 HTML 元素，交給編輯器顯示。

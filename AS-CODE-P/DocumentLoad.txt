@@ -1,0 +1,7 @@
+/*
+AREA:DocumentLoad
+EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
+*/
+// Input：接收此 AREA 的結構化輸入資料。
+// Process：讀取本地文件並還原其內容。
+// Output：輸出此 AREA 的處理結果與錯誤狀態。

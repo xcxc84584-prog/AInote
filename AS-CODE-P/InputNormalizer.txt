@@ -1,0 +1,7 @@
+/*
+AREA:InputNormalizer
+EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
+*/
+// Input：接收此 AREA 的結構化輸入資料。
+// Process：統一換行字元，辨識 Markdown 與 HTML 的剪貼簿格式。
+// Output：輸出此 AREA 的處理結果與錯誤狀態。

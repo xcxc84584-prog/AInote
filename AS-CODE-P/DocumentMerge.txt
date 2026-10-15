@@ -1,0 +1,7 @@
+/*
+AREA:DocumentMerge
+EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
+*/
+// Input：接收此 AREA 的結構化輸入資料。
+// Process：依照原始內容順序合併各種文件節點。
+// Output：輸出此 AREA 的處理結果與錯誤狀態。

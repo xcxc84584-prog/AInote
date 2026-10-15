@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AInote</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js">
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js">
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js">
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js">
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/turndown@7.2.0/dist/turndown.js">
+</script>
+</head>
+<body>
+<header>
+<strong>AInote</strong>
+<span id="filename">未命名</span>
+<span id="status">準備就緒</span>
+<div class="tools">
+<button id="open">開啟</button>
+<button id="save">儲存</button>
+<button id="saveas">另存</button>
+<button id="md">匯出 MD</button>
+<button id="preview">重新渲染公式</button>
+<button id="clear">新文件</button>
+<input id="file" type="file" accept=".ainote,.json,.html,.htm,.md,.markdown,.txt" hidden>
+</div>
+</header>
+<main>
+<article id="editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" aria-label="文件編輯區" data-placeholder="直接貼上 ChatGPT 內容或 Markdown，立即顯示排版結果…">
+</article>
+</main>
+<footer>Ctrl+V 貼上圖片 / 文字 · Ctrl+S 儲存 · 支援拖曳圖片 · 優先使用 .ainote 保存完整內容</footer>
+<script src="renderer.js">
+</script>
+<script src="app.js">
+</script>
+</body>
+</html>

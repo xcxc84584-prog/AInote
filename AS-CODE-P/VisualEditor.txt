@@ -1,0 +1,7 @@
+/*
+AREA:VisualEditor
+EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
+*/
+// Input：接收此 AREA 的結構化輸入資料。
+// Process：提供深色可視化編輯器並維護文件編輯狀態。
+// Output：輸出此 AREA 的處理結果與錯誤狀態。
