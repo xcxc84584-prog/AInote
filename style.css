@@ -130,3 +130,8 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #editor .katex-display>.katex {max-width:none;}
 #editor img[src^="data:image/svg"] {max-width:100%;height:auto;}
 @media(max-width:600px){#editor .katex {font-size:1em;}#editor .math-rendered {touch-action:pan-x;} }
+
+/* v2.3: blank editor when no FILE is active; mobile math fallback */
+#editor[contenteditable="false"]{min-height:100%;outline:none;pointer-events:none}
+#editor .math-rendered math{display:inline-block;max-width:100%;overflow-x:auto}
+@media(max-width:700px){#editor .katex-display{overflow-x:auto!important;max-width:100%;touch-action:pan-x}#editor .math-rendered{overflow-x:auto;-webkit-overflow-scrolling:touch}}

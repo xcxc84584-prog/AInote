@@ -92,6 +92,7 @@ function refreshMathNow(){
   // Do not re-render existing .math-rendered nodes, which would duplicate text.
   if(hasPendingMath())renderLooseMath(editor);
   renderSplitDisplayMath();
+  if(typeof upgradeFallbackMath==='function')upgradeFallbackMath();
  }finally{mathRefreshBusy=false}
 }
 function scheduleMathRender(){
@@ -105,3 +106,17 @@ mathObserver.observe(editor,{childList:true,subtree:true,characterData:true});
 editor.addEventListener('compositionend',scheduleMathRender);
 // Allow CDN scripts to finish loading before retrying the offline fallback output.
 window.addEventListener('load',scheduleMathRender);
+
+// v2.3: rehydrate MathML fallback when KaTeX becomes available on mobile.
+function upgradeFallbackMath(){
+ if(!window.katex)return;
+ editor.querySelectorAll('.math-rendered[data-math-fallback="1"]').forEach(el=>{
+  const raw=el.dataset.latex||'',tex=raw.replace(/^\$\$|\$\$$/g,'').replace(/^\\\[|\\\]$/g,'').replace(/^\$|\$$/g,'').replace(/^\\\(|\\\)$/g,'').trim();
+  try{katex.render(tex,el,{displayMode:el.dataset.mathMode==='display',throwOnError:false,trust:false});delete el.dataset.mathFallback}catch{}
+ });
+}
+const originalRefreshMathNow=refreshMathNow;
+// A small bounded retry also covers slow mobile CDN loading.
+window.addEventListener('load',()=>{upgradeFallbackMath();scheduleMathRender()});
+[300,1200,3000].forEach(delay=>setTimeout(()=>{upgradeFallbackMath();scheduleMathRender()},delay));
+editor.addEventListener('paste',()=>setTimeout(upgradeFallbackMath,180));

@@ -28,3 +28,9 @@ Explorer 左右分欄、可拖曳分隔線調整寬度、隱藏時左側 ☰ 展
 - SVG Markdown data URI（含 percent-encoded、base64 與 `data\:image/svg+xml`）解析增強。
 - 行動端公式水平捲動、縮放排版改善。
 - ZIP 功能使用 JSZip CDN，首次使用需要網路。
+
+
+## v2.3 更新
+- 手機端數學公式：延遲載入 KaTeX 時，重新渲染 MathML fallback。
+- Explorer FILE 右鍵／手機長按：新增保存文件、刪除文件。
+- 無 FILE 或未選取 FILE 時，右側編輯器清空且停用編輯。
