@@ -123,3 +123,36 @@ footer{flex:0 0 auto}
 .editor-topbar{width:100%;max-width:900px;margin:0 auto;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0 8px;flex-shrink:0}
 .editor-topbar #mode-indicator{margin:0!important;max-width:none;text-align:right;min-width:0}
 @media(max-width:700px){.editor-topbar{width:100%;padding:6px 8px 8px;box-sizing:border-box}#explorer-toggle{font-size:12px;padding:7px 9px;max-width:45vw}.workspace main{padding-top:0!important}}
+
+/* v2.2 adaptive document height, sider drag, settings and mode actions */
+#editor{min-height:0!important;height:auto!important;align-self:stretch;flex-shrink:0;margin-bottom:32px;}
+#editor:empty{min-height:240px!important}
+#source-editor{flex-shrink:0}
+.workspace #explorer{position:relative;min-width:0;max-width:calc(100vw - 180px);padding-right:17px}
+.workspace #explorer.collapsed{min-width:0!important;max-width:0!important;overflow:hidden!important}
+#sider-resizer{position:absolute;right:0;top:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;background:transparent;z-index:3}
+#sider-resizer:hover,#sider-resizer:active{background:#6485b788}
+body.resizing-sider{cursor:col-resize;user-select:none}
+.root-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.root-toolbar button{white-space:nowrap}
+#sider-close{color:#ffc7c7;border-color:#804d57}
+#sider-edge{flex:0 0 auto;min-width:38px;min-height:36px}
+#source-toggle.commit-mode{background:#167e46;color:#fff;border-color:#2fb96b;font-weight:700}
+#source-toggle.edit-mode{background:#a62d38;color:#fff;border-color:#eb6874;font-weight:700}
+.settings-wrap{position:relative}
+#settings-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:180px;background:#252b36;border:1px solid #4c5669;border-radius:8px;padding:6px;z-index:50;box-shadow:0 8px 25px #0009}
+#settings-menu[hidden]{display:none!important}
+#settings-menu button{display:block;width:100%;text-align:left;white-space:nowrap}
+@media(max-width:700px){.workspace #explorer{max-width:calc(100vw - 85px)}#editor{margin-bottom:24px}}
+
+/* v2.2.1: Settings popup is portaled to body to avoid header overflow clipping. */
+#settings-menu{position:fixed!important;right:auto!important;top:0;left:0;z-index:10000!important;max-width:calc(100vw - 16px);box-sizing:border-box}
+
+/* v2.2.2: document-less explorer state and unsaved badge */
+.workspace main.no-document #editor,.workspace main.no-document #source-editor,.workspace main.no-document #source-toggle,.workspace main.no-document #unsaved-notice{display:none!important}
+#empty-document-notice{display:none;align-self:stretch;margin:auto;padding:24px;text-align:center;color:#b9c4d4;font-size:17px;line-height:1.8}
+.workspace main.no-document #empty-document-notice{display:block}
+#unsaved-notice{margin-left:auto;color:#ffc36b;font-size:13px;font-weight:600;white-space:nowrap}
+#unsaved-notice[hidden]{display:none!important}
+
+#empty-document-notice{white-space:pre-line;text-align:center;line-height:1.9}

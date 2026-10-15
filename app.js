@@ -9,7 +9,7 @@ function updateRawFromVisual(){if(!renderingDocument){rawMarkdown=markdownFromEd
 editor.spellcheck=false;
 editor.setAttribute('data-gramm','false');
 editor.setAttribute('data-gramm_editor','false');
-function status(s){statusEl.textContent=s}function setName(s){name=s;filenameEl.textContent=s}function changed(){dirty=true;status('尚未儲存')}
+function status(s){statusEl.textContent=s}function setName(s){name=s;filenameEl.textContent=s}function changed(){dirty=true;status('尚未儲存');window.BVRefreshUnsaved?.()}
 const escapedNewlines=t=>!t.includes('\n')&&(t.match(/\\n/g)||[]).length>=2?t.replace(/\\r\\n|\\n|\\r/g,'\n'):t.replace(/\r\n?/g,'\n');
 function safeHTML(html){
  const t=document.createElement('template');t.innerHTML=html;
@@ -77,15 +77,15 @@ const dataURL=blob=>new Promise((resolve,reject)=>{const r=new FileReader();r.on
 async function images(files){for(const f of files){if(!f||!f.type.startsWith('image/'))continue;const src=await dataURL(f);insert(`<img alt="貼上圖片" src="${src}">`)}}
 editor.addEventListener('paste',async e=>{const d=e.clipboardData;if(!d)return;e.preventDefault();const fs=[...d.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile());if(fs.length){await images(fs);return}const html=d.getData('text/html'),plain=escapedNewlines(d.getData('text/plain'));insert(html?richOrMarkdown(html,plain):parseDocument(plain));rawMarkdown=markdownFromEditor()});
 editor.addEventListener('dragover',e=>e.preventDefault());editor.addEventListener('drop',async e=>{if(e.dataTransfer.files.length){e.preventDefault();await images([...e.dataTransfer.files])}});editor.addEventListener('input',()=>{updateRawFromVisual();scheduleMathRender()});
-async function openFile(f){const t=await f.text();let md=t;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');md=typeof d.markdown==='string'?d.markdown:htmlToMarkdown(d.html||'');}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))md=htmlToMarkdown(new DOMParser().parseFromString(t,'text/html').body.innerHTML);rawMarkdown=md;renderRaw();setName(f.name.replace(/\.(ainote|json|html?)$/i,'.md'));dirty=false;status('已從 Markdown 原始碼開啟')}
+async function openFile(f){const t=await f.text();let md=t;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');md=typeof d.markdown==='string'?d.markdown:htmlToMarkdown(d.html||'');}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))md=htmlToMarkdown(new DOMParser().parseFromString(t,'text/html').body.innerHTML);rawMarkdown=md;renderRaw();setName(f.name.replace(/\.(ainote|json|html?)$/i,'.md'));dirty=false;window.BVSetDocumentVisible?.(true);window.BVRefreshUnsaved?.();status('已從 Markdown 原始碼開啟')}
 function htmlToMarkdown(html){return window.TurndownService?new TurndownService({headingStyle:'atx',codeBlockStyle:'fenced'}).turndown(normalizeCopiedMath(html)):html;}
 input.onchange=async()=>{if(input.files[0]){handle=null;await openFile(input.files[0])}input.value=''};
 document.querySelector('#open').onclick=async()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;if(window.showOpenFilePicker){try{const [h]=await showOpenFilePicker({types:[{description:'Markdown',accept:{'text/markdown':['.md','.markdown','.txt']}}],excludeAcceptAllOption:false});handle=h;await openFile(await h.getFile());return}catch(e){if(e.name==='AbortError')return}}input.click()};
 function download(data,n,mime){const u=URL.createObjectURL(new Blob([data],{type:mime}));const a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000)}
-async function save(as=false){const content=rawMarkdown;try{if(window.showSaveFilePicker){if(!handle||as||!/\.(md|markdown|txt)$/i.test(handle.name))handle=await showSaveFilePicker({suggestedName:name.replace(/\.[^.]+$/,'')+'.md',types:[{description:'Markdown 原始碼',accept:{'text/markdown':['.md']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存原始 Markdown');dirty=false;return}download(content,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');dirty=false;status('已下載原始 Markdown')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
+async function save(as=false){const content=rawMarkdown;try{if(window.showSaveFilePicker){if(!handle||as||!/\.(md|markdown|txt)$/i.test(handle.name))handle=await showSaveFilePicker({suggestedName:name.replace(/\.[^.]+$/,'')+'.md',types:[{description:'Markdown 原始碼',accept:{'text/markdown':['.md']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存原始 Markdown');dirty=false;window.BVRefreshUnsaved?.();return}download(content,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');dirty=false;window.BVRefreshUnsaved?.();status('已下載原始 Markdown')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
 document.querySelector('#save').onclick=()=>save();document.querySelector('#saveas').onclick=()=>save(true);
 document.querySelector('#md').onclick=()=>{download(rawMarkdown,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');status('已匯出原始 Markdown')};
-document.querySelector('#clear').onclick=()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;rawMarkdown='';renderRaw();handle=null;setName('未命名.md');dirty=false;status('新文件')};
+document.querySelector('#clear').onclick=()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;rawMarkdown='';renderRaw();handle=null;setName('未命名.md');dirty=false;window.BVSetDocumentVisible?.(true);window.BVRefreshUnsaved?.();status('新文件')};
 const sourceButton=document.createElement('button');sourceButton.textContent='MD 原始碼';sourceButton.id='source-toggle';document.querySelector('.tools').prepend(sourceButton);
 const sourceArea=document.createElement('textarea');sourceArea.id='source-editor';sourceArea.spellcheck=false;sourceArea.style.cssText='display:none;width:100%;height:75vh;box-sizing:border-box;background:#1e222a;color:white;border:1px solid #566071;padding:20px;font:15px/1.65 monospace;resize:vertical';editor.insertAdjacentElement('afterend',sourceArea);
 sourceButton.onclick=()=>{const active=sourceArea.style.display!=='none';if(active){rawMarkdown=sourceArea.value;renderRaw();sourceArea.style.display='none';editor.style.display='';sourceButton.textContent='MD 原始碼';}else{sourceArea.value=rawMarkdown;sourceArea.style.display='block';editor.style.display='none';sourceButton.textContent='返回預覽';}};
@@ -144,3 +144,25 @@ mathObserver.observe(editor,{childList:true,subtree:true,characterData:true});
 editor.addEventListener('compositionend',scheduleMathRender);
 // Allow CDN scripts to finish loading before retrying the offline fallback output.
 window.addEventListener('load',scheduleMathRender);
+
+// v2.2.1: Portal settings popup outside the scroll-clipped header.
+(()=>{
+ const b=document.querySelector('#settings-toggle'),m=document.querySelector('#settings-menu');
+ if(!b||!m)return;
+ document.body.appendChild(m);
+ function position(){
+  const r=b.getBoundingClientRect();
+  const w=m.offsetWidth||190,h=m.offsetHeight||130,pad=8;
+  const left=Math.max(pad,Math.min(window.innerWidth-w-pad,r.right-w));
+  const below=r.bottom+6;
+  const top=below+h+pad<=window.innerHeight?below:Math.max(pad,r.top-h-6);
+  m.style.left=left+'px';m.style.top=top+'px';
+ }
+ function close(){m.hidden=true;b.setAttribute('aria-expanded','false')}
+ b.addEventListener('click',e=>{e.stopPropagation();if(!m.hidden){close();return;}m.hidden=false;b.setAttribute('aria-expanded','true');position()});
+ document.addEventListener('pointerdown',e=>{if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))close()});
+ m.addEventListener('click',e=>{if(e.target.closest('button'))close()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+ window.addEventListener('resize',()=>{if(!m.hidden)position()});
+ window.addEventListener('scroll',()=>{if(!m.hidden)position()},true);
+})();

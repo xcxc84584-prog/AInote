@@ -11,5 +11,19 @@
 
 註：部分外部瀏覽器擴充功能仍可能自行插入標記。
 
-## v2.1
+## v2.2
 Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.json; reopened Roots restore ordering.
+
+
+## v2.2.1
+修復設定下拉選單被 header 的 overflow-y:auto 裁切，改用 body portal + fixed 定位，支援螢幕邊界與 Escape 關閉。
+
+
+## v2.2.2
+- Explorer 未開啟文件時顯示空狀態提示，隱藏編輯紙張。
+- Commit 寫入目前選取的本地文件，寫入成功後切換至瀏覽模式；若為獨立文件，使用原本儲存流程。
+- 未儲存變更在編輯區右上角顯示 `[!] 文件未保存`，保存後消失。
+
+## v2.2.3
+- 空白編輯區提示改為兩行，新增完整 Markdown 格式提醒。
+- Explorer 無節點時點擊 +Fold，改為觸發原「設定 → 開啟舊文件」的文件選擇流程，不建立資料夾。
