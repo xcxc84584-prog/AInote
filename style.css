@@ -114,3 +114,13 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #explorer .inline-rename{display:flex;align-items:center;gap:4px;padding:3px 7px 5px 16px;background:#17253b}
 #explorer .inline-rename input{min-width:0;flex:1;background:#0e192b;border:1px solid #8ab8ff;border-radius:3px;color:white;padding:5px}
 #explorer .inline-rename button{background:#2b405e;border:1px solid #627b9d;color:white;border-radius:3px;padding:4px 7px}
+
+/* v2.1: VS Code-like compact Explorer, exactly three visible action buttons */
+#explorer .explorer-primary-actions{display:flex;flex-wrap:nowrap;gap:4px;padding:7px 6px 8px;align-items:center}
+#explorer .explorer-primary-actions button{flex:0 0 auto;padding:6px 7px;font-size:12px}
+#explorer .explorer-secondary-controls{display:none!important}
+#explorer .explorer-heading{padding:10px 8px 4px}
+#explorer .explorer-hint{display:none}
+#explorer-tree{padding-top:0}
+#explorer .tree-row{min-height:29px}
+#node-context .menu-separator{font-size:11px;color:#a8b9d5;border-top:1px solid #48546a;padding:8px 9px 4px;margin-top:5px}
