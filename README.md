@@ -1,12 +1,7 @@
-# AInote v1.5.2
+# AInote v1.6 — GitHub Pages
 
-以 v1.5.1 為基礎。
+純前端網站，將所有檔案放在 GitHub Repository 根目錄，Settings → Pages → Deploy from a branch → main / (root)。
 
-- 移除編輯區連結、標題和程式碼的藍色底線。
-- 停用瀏覽器拼字檢查，降低輸入時的拼字／文法標記。
-- 程式碼區塊保留原始換行和縮排，使用等寬字型與橫向捲動。
-- index.html 以分行格式保存，方便編輯。
-- 保留原有 Markdown、SVG、圖片、表格、公式自動重新渲染及本地儲存。
-- AS-CODE-P 架構文件維持中文 NODE 說明與 AREA_Summarize。
+Explorer 支援本地自動保存、FOLD 匯入匯出、樹狀結構、右鍵選單、拖曳排序。FOLD 保存是下載 .ainotefold；不會直接寫入 GitHub Repository。
 
-註：部分外部瀏覽器擴充功能仍可能自行插入標記。
+注意：瀏覽器 localStorage 有容量限制；大型圖片文件請定期匯出 FOLD。不同裝置不會自動同步。拖曳排序主要適用桌面瀏覽器。

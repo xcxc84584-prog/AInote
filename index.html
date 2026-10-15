@@ -26,20 +26,20 @@
 <button id="open">開啟</button>
 <button id="save">儲存</button>
 <button id="saveas">另存</button>
-<button id="md">匯出 MD</button>
-<button id="preview">重新渲染公式</button>
 <button id="clear">新文件</button>
+<div class="tool-menu"><button id="tools-toggle" aria-expanded="false">工具 ▾</button><div id="tools-menu" hidden><button id="md">匯出 MD</button><button id="preview">重新渲染公式</button><button id="explorer-toggle">Explorer 工具：開啟</button></div></div>
 <input id="file" type="file" accept=".ainote,.json,.html,.htm,.md,.markdown,.txt" hidden>
 </div>
 </header>
-<main>
+<div id="workspace"><aside id="explorer" aria-label="Explorer"><div class="explorer-heading"><strong>EXPLORER</strong><button id="explorer-hide" title="隱藏 Explorer">×</button></div><div class="explorer-actions"><button id="fold-open">開啟 FOLD</button><button id="fold-save">保存</button><button id="fold-close">關閉</button></div><div class="explorer-actions"><button id="node-folder">+ FOLD</button><button id="node-file">+ FILE</button><button id="node-refresh">重新整理</button></div><div id="explorer-tree" role="tree"></div><p class="explorer-hint">左鍵開啟 · 右鍵操作 · 長按拖曳排序</p><input type="file" id="fold-import" accept=".json,.ainotefold" hidden></aside><main>
 <article id="editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" aria-label="文件編輯區" data-placeholder="直接貼上 ChatGPT 內容或 Markdown，立即顯示排版結果…">
 </article>
-</main>
+</main></div><div id="node-context" hidden></div>
 <footer>Ctrl+V 貼上圖片 / 文字 · Ctrl+S 儲存 · 支援拖曳圖片 · 優先使用 .ainote 保存完整內容</footer>
 <script src="renderer.js">
 </script>
 <script src="app.js">
 </script>
+<script src="explorer.js"></script>
 </body>
 </html>
