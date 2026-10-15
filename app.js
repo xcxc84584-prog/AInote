@@ -46,7 +46,37 @@ editor.addEventListener('dragover',e=>e.preventDefault());editor.addEventListene
 async function openFile(f){const t=await f.text();let html;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');html=d.html}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))html=new DOMParser().parseFromString(t,'text/html').body.innerHTML;else html=parseDocument(escapedNewlines(t));editor.innerHTML=safeHTML(html);renderLooseMath(editor);scheduleMathRender();setName(f.name);dirty=false;status('已開啟')}
 input.onchange=async()=>{if(input.files[0]){handle=null;await openFile(input.files[0])}input.value=''};
 document.querySelector('#open')?.addEventListener('click',async()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;if(window.showOpenFilePicker){try{const [h]=await showOpenFilePicker();handle=h;await openFile(await h.getFile());return}catch(e){if(e.name==='AbortError')return}}input.click()});
-function download(data,n,mime){const u=URL.createObjectURL(new Blob([data],{type:mime}));const a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000)}
+// Downloads: folder access is supported only where the browser exposes File System Access API.
+let downloadFolder=null;
+const DOWNLOAD_FOLDER_KEY='ainote-download-folder-label';
+function browserDownload(blob,n){const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=n;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),10000)}
+async function saveDownloadBlob(blob,n){
+ if(downloadFolder){try{
+  const permission=await downloadFolder.queryPermission({mode:'readwrite'});
+  if(permission==='granted'){
+   const file=await downloadFolder.getFileHandle(n,{create:true});const writable=await file.createWritable();await writable.write(blob);await writable.close();status('已保存到指定資料夾：'+n);return true;
+  }
+  status('資料夾授權已失效，改用瀏覽器下載');
+ }catch(e){console.warn('Folder write failed',e);status('資料夾保存失敗，改用瀏覽器下載')}}
+ browserDownload(blob,n);return false;
+}
+window.saveDownloadBlob=saveDownloadBlob;
+function download(data,n,mime){return saveDownloadBlob(new Blob([data],{type:mime}),n)}
+async function selectDownloadFolder(){
+ if(typeof window.showDirectoryPicker!=='function'){
+  alert('此瀏覽器不支援網站直接選擇下載資料夾。請使用瀏覽器的下載設定選擇路徑；網站仍可正常下載 ZIP、MD 和文件。');return;
+ }
+ try{
+  const folder=await window.showDirectoryPicker({id:'ainote-download',mode:'readwrite'});
+  downloadFolder=folder;
+  localStorage.setItem(DOWNLOAD_FOLDER_KEY,folder.name);
+  updateFolderLabel();status('下載資料夾：'+folder.name);
+ }catch(e){if(e.name!=='AbortError')alert('無法開啟資料夾：'+e.message)}
+}
+function updateFolderLabel(){const el=document.querySelector('#download-folder');if(el)el.textContent='下載資料夾：'+(downloadFolder?.name||'瀏覽器預設')}
+document.querySelector('#download-folder')?.addEventListener('click',selectDownloadFolder);
+document.querySelector('#download-folder-reset')?.addEventListener('click',()=>{downloadFolder=null;localStorage.removeItem(DOWNLOAD_FOLDER_KEY);updateFolderLabel();status('已改回瀏覽器預設下載路徑')});
+updateFolderLabel();
 async function save(as=false){const content=JSON.stringify({format:'AInote',version:2,html:safeHTML(editor.innerHTML),updated:new Date().toISOString()},null,2);try{if(window.showSaveFilePicker){if(!handle||as)handle=await showSaveFilePicker({suggestedName:name.endsWith('.ainote')?name:'AInote.ainote',types:[{description:'AInote',accept:{'application/json':['.ainote']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存');dirty=false;return}download(content,name.endsWith('.ainote')?name:'AInote.ainote','application/json');dirty=false;status('已下載檔案')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
 document.querySelector('#save')?.addEventListener('click',()=>save());document.querySelector('#saveas')?.addEventListener('click',()=>save(true));
 document.querySelector('#md').onclick=()=>{const clone=editor.cloneNode(true);clone.querySelectorAll('.math-rendered').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.latex||'')));const md=window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(clone.innerHTML):clone.innerHTML;download(md,name.replace(/\.[^.]+$/,'')+'.md','text/markdown');status(window.TurndownService?'已匯出 Markdown':'已匯出含 HTML 的 Markdown（未載入轉換套件）')};
@@ -112,7 +142,7 @@ function upgradeFallbackMath(){
  if(!window.katex)return;
  editor.querySelectorAll('.math-rendered[data-math-fallback="1"]').forEach(el=>{
   const raw=el.dataset.latex||'',tex=raw.replace(/^\$\$|\$\$$/g,'').replace(/^\\\[|\\\]$/g,'').replace(/^\$|\$$/g,'').replace(/^\\\(|\\\)$/g,'').trim();
-  try{katex.render(tex,el,{displayMode:el.dataset.mathMode==='display',throwOnError:false,trust:false});delete el.dataset.mathFallback}catch{}
+  try{katex.render(tex,el,{displayMode:el.dataset.mathMode==='display',throwOnError:false,trust:false,output:"html"});delete el.dataset.mathFallback}catch{}
  });
 }
 const originalRefreshMathNow=refreshMathNow;

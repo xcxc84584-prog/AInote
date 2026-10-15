@@ -40,3 +40,9 @@ Explorer 左右分欄、可拖曳分隔線調整寬度、隱藏時左側 ☰ 展
 - 手機端 KaTeX HTML / MathML 重複顯示防護。
 - 新文件操作會強制展開 Explorer，並聚焦行內命名輸入框。
 - 沒有目前開啟的 FILE 時，隱藏文件頁籤與編輯器（Explorer 仍可操作）。
+
+
+## v2.5
+- KaTeX 只產生視覺 HTML，避免 Android 上 MathML/HTML 重複顯示。
+- 工具 > 下載資料夾：支援 File System Access API 的桌面 Chrome 可選資料夾；手機等不支援的瀏覽器仍使用預設下載。
+- 由於瀏覽器安全限制，重新開啟網站後必須再次授權資料夾；無法任意設定本地絕對路徑。

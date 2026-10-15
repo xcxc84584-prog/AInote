@@ -143,3 +143,10 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #workspace main.no-document .document-tab,#workspace main.no-document #editor{display:none!important;}
 #workspace main.no-document{background:#0d1728;}
 @media(max-width:700px){#editor .katex-display{overflow-x:auto;overflow-y:hidden;}#editor .katex{max-width:none;}#explorer .inline-rename input{font-size:16px;}}
+
+/* v2.5: KaTeX renders visual HTML only to avoid Android showing the MathML duplicate. */
+#editor .katex-mathml{display:none!important}
+#editor .math-rendered{display:inline-block;vertical-align:middle;max-width:100%;}
+#editor .math-rendered[data-math-mode="display"]{display:block;overflow-x:auto;text-align:center;}
+#tools-menu{max-width:min(90vw,320px)}
+#tools-menu button{white-space:normal;overflow-wrap:anywhere}

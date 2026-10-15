@@ -68,8 +68,8 @@ async function exportFold(){
  const write=(ids,path)=>ids.forEach(x=>{const n=nodes[x];if(!n)return;let base=n.name.replace(/[\\/:*?"<>|]/g,'_');if(n.type==='fold')write(n.children||[],path+base+'/');else{let file=path+base;if(used.has(file))file=path+x+'_'+base;used.add(file);zip.file(file,JSON.stringify({format:'AInote',version:2,html:n.html||''},null,2))}});
  write(roots,'files/');
  const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
- const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=safeName+'.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
- status('FOLD 已下載：'+safeName+'.zip');
+ await window.saveDownloadBlob(blob,safeName+'.zip');
+ status('FOLD 已保存／下載：'+safeName+'.zip');
 }
 $('#fold-save').onclick=exportFold;$('#fold-open').onclick=()=>$('#fold-import').click();$('#fold-import').onchange=async e=>{const f=e.target.files?.[0];if(!f)return;try{let d;if(/\.zip$/i.test(f.name)){
  if(!window.JSZip)throw Error('ZIP 元件尚未載入');

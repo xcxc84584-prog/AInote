@@ -61,7 +61,7 @@ function texToMathML(tex){
 function renderMathElements(root){root.querySelectorAll('.math-source').forEach(el=>{
  const raw=el.dataset.tex||el.textContent;let display=/^(\$\$|\\\[)/.test(raw),tex=raw.replace(/^\$\$|\$\$$/g,'').replace(/^\\\[|\\\]$/g,'').replace(/^\$|\$$/g,'').replace(/^\\\(|\\\)$/g,'').trim();
  const wrap=document.createElement(display?'div':'span');wrap.className='math-rendered';wrap.dataset.latex=raw;wrap.dataset.mathMode=display?'display':'inline';
- try{if(window.katex)katex.render(tex,wrap,{displayMode:display,throwOnError:false,trust:false});else{wrap.dataset.mathFallback='1';wrap.innerHTML=texToMathML(tex)}}catch(e){wrap.textContent=raw}
+ try{if(window.katex)katex.render(tex,wrap,{displayMode:display,throwOnError:false,trust:false,output:"html"});else{wrap.dataset.mathFallback='1';wrap.innerHTML=texToMathML(tex)}}catch(e){wrap.textContent=raw}
  el.replaceWith(wrap);
  })}
 
