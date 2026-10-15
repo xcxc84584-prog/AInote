@@ -150,3 +150,8 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #editor .math-rendered[data-math-mode="display"]{display:block;overflow-x:auto;text-align:center;}
 #tools-menu{max-width:min(90vw,320px)}
 #tools-menu button{white-space:normal;overflow-wrap:anywhere}
+
+/* v2.6: math is rendered exactly once; never expose accessibility MathML as visible text. */
+#editor .katex-mathml, #editor .katex annotation {display:none!important;}
+#editor .math-rendered .katex-html {display:inline-block;}
+#editor .math-rendered[data-math-mode="display"] {display:block;overflow-x:auto;overscroll-behavior-x:contain;}
