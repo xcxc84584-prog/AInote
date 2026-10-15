@@ -1,6 +1,11 @@
 'use strict';
 const editor=document.querySelector('#editor'),statusEl=document.querySelector('#status'),filenameEl=document.querySelector('#filename'),input=document.querySelector('#file');
-let handle=null,name='未命名.ainote',dirty=false;
+let handle=null,name='未命名.md',dirty=false;
+let rawMarkdown='';let renderingDocument=false;
+function markdownFromEditor(){const clone=editor.cloneNode(true);clone.querySelectorAll('.math-rendered').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.latex||el.dataset.tex||'')));clone.querySelectorAll('.math-source').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.tex||'')));return window.TurndownService?new TurndownService({headingStyle:'atx',codeBlockStyle:'fenced'}).turndown(clone.innerHTML):clone.innerHTML;}
+function renderRaw(){renderingDocument=true;editor.innerHTML=safeHTML(parseDocument(rawMarkdown));renderLooseMath(editor);scheduleMathRender();renderingDocument=false;}
+function updateRawFromVisual(){if(!renderingDocument){rawMarkdown=markdownFromEditor();changed();}}
+
 editor.spellcheck=false;
 editor.setAttribute('data-gramm','false');
 editor.setAttribute('data-gramm_editor','false');
@@ -30,28 +35,62 @@ function renderLooseMath(root){
  }
  renderMathElements(root);
 }
-function insert(html){editor.focus();const t=document.createElement('template');t.innerHTML=safeHTML(html);renderLooseMath(t.content);const sel=getSelection();if(sel?.rangeCount&&editor.contains(sel.anchorNode)){const r=sel.getRangeAt(0);r.deleteContents();const last=t.content.lastChild;r.insertNode(t.content);if(last){r.setStartAfter(last);r.collapse(true);sel.removeAllRanges();sel.addRange(r)}}else editor.append(t.content);changed();scheduleMathRender()}
+function insert(html){editor.focus();const t=document.createElement('template');t.innerHTML=safeHTML(normalizeCopiedMath(html));renderLooseMath(t.content);const sel=getSelection();if(sel?.rangeCount&&editor.contains(sel.anchorNode)){const r=sel.getRangeAt(0);r.deleteContents();const last=t.content.lastChild;r.insertNode(t.content);if(last){r.setStartAfter(last);r.collapse(true);sel.removeAllRanges();sel.addRange(r)}}else editor.append(t.content);updateRawFromVisual();scheduleMathRender()}
+// Convert copied KaTeX output into ONE canonical LaTeX node before sanitizing.
+// KaTeX HTML includes both accessible MathML and visual HTML: retaining both
+// without its CSS causes duplicated formulas and stray plain text.
+function normalizeCopiedMath(html){
+ const t=document.createElement('template');t.innerHTML=html;
+ for(const el of [...t.content.querySelectorAll('.katex-display, .katex')]){
+  if(!el.isConnected)continue;
+  if(el.classList.contains('katex')&&el.closest('.katex-display'))continue;
+  const annotation=el.querySelector('annotation[encoding="application/x-tex"]');
+  if(!annotation)continue;
+  const tex=annotation.textContent||'';
+  const display=el.classList.contains('katex-display');
+  const holder=document.createElement(display?'div':'span');
+  holder.className='math-source';
+  holder.dataset.tex=display?'$$'+tex+'$$':'\\('+tex+'\\)';
+  holder.textContent=holder.dataset.tex;
+  // Some clipboard providers append a second plain-text equation after KaTeX.
+  // Remove only an immediately adjacent exact duplicate, never unrelated prose.
+  const key=x=>String(x).replace(/\s+/g,'').replace(/\\(?:left|right)/g,'');
+  let next=el.nextSibling;
+  while(next && next.nodeType===3 && !next.textContent.trim())next=next.nextSibling;
+  if(next && next.nodeType===1 && /^(?:SPAN|P|DIV)$/.test(next.nodeName) && !next.querySelector('img,svg,math,.katex')){
+   const candidate=next.textContent.trim();
+   if(candidate && (key(candidate)===key(tex) || key(candidate)===key('$$'+tex+'$$') || key(candidate)===key('\\('+tex+'\\)')))next.remove();
+  }
+  el.replaceWith(holder);
+ }
+ return t.innerHTML;
+}
 function richOrMarkdown(html,text){
  const t=document.createElement('template');t.innerHTML=html;
  const rich=!!t.content.querySelector('table,svg,img,math,.katex,pre,h1,h2,h3,h4,h5,h6,blockquote,ul,ol');
  const plain=escapedNewlines(text||t.content.textContent||'');
  const markdown=/(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+\.\s|\|[^\n]+\||\$\$|<svg\b|!\[|```|>\s)/m.test(plain)||/\*\*[^*]+\*\*/.test(plain);
  // Rich ChatGPT HTML is retained, but a clipboard wrapper with raw Markdown must be parsed.
- return !rich&&markdown?parseDocument(plain):html;
+ return !rich&&markdown?parseDocument(plain):normalizeCopiedMath(html);
 }
 const dataURL=blob=>new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(blob)});
 async function images(files){for(const f of files){if(!f||!f.type.startsWith('image/'))continue;const src=await dataURL(f);insert(`<img alt="貼上圖片" src="${src}">`)}}
-editor.addEventListener('paste',async e=>{const d=e.clipboardData;if(!d)return;e.preventDefault();const fs=[...d.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile());if(fs.length){await images(fs);return}const html=d.getData('text/html'),plain=escapedNewlines(d.getData('text/plain'));insert(html?richOrMarkdown(html,plain):parseDocument(plain))});
-editor.addEventListener('dragover',e=>e.preventDefault());editor.addEventListener('drop',async e=>{if(e.dataTransfer.files.length){e.preventDefault();await images([...e.dataTransfer.files])}});editor.addEventListener('input',()=>{changed();scheduleMathRender()});
-async function openFile(f){const t=await f.text();let html;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');html=d.html}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))html=new DOMParser().parseFromString(t,'text/html').body.innerHTML;else html=parseDocument(escapedNewlines(t));editor.innerHTML=safeHTML(html);renderLooseMath(editor);scheduleMathRender();setName(f.name);dirty=false;status('已開啟')}
+editor.addEventListener('paste',async e=>{const d=e.clipboardData;if(!d)return;e.preventDefault();const fs=[...d.items].filter(x=>x.kind==='file'&&x.type.startsWith('image/')).map(x=>x.getAsFile());if(fs.length){await images(fs);return}const html=d.getData('text/html'),plain=escapedNewlines(d.getData('text/plain'));insert(html?richOrMarkdown(html,plain):parseDocument(plain));rawMarkdown=markdownFromEditor()});
+editor.addEventListener('dragover',e=>e.preventDefault());editor.addEventListener('drop',async e=>{if(e.dataTransfer.files.length){e.preventDefault();await images([...e.dataTransfer.files])}});editor.addEventListener('input',()=>{updateRawFromVisual();scheduleMathRender()});
+async function openFile(f){const t=await f.text();let md=t;if(/\.ainote$|\.json$/i.test(f.name)){try{const d=JSON.parse(t);if(d.format!=='AInote')throw Error('不支援格式');md=typeof d.markdown==='string'?d.markdown:htmlToMarkdown(d.html||'');}catch(e){alert('檔案錯誤：'+e.message);return}}else if(/\.html?$/i.test(f.name))md=htmlToMarkdown(new DOMParser().parseFromString(t,'text/html').body.innerHTML);rawMarkdown=md;renderRaw();setName(f.name.replace(/\.(ainote|json|html?)$/i,'.md'));dirty=false;status('已從 Markdown 原始碼開啟')}
+function htmlToMarkdown(html){return window.TurndownService?new TurndownService({headingStyle:'atx',codeBlockStyle:'fenced'}).turndown(normalizeCopiedMath(html)):html;}
 input.onchange=async()=>{if(input.files[0]){handle=null;await openFile(input.files[0])}input.value=''};
-document.querySelector('#open').onclick=async()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;if(window.showOpenFilePicker){try{const [h]=await showOpenFilePicker();handle=h;await openFile(await h.getFile());return}catch(e){if(e.name==='AbortError')return}}input.click()};
+document.querySelector('#open').onclick=async()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;if(window.showOpenFilePicker){try{const [h]=await showOpenFilePicker({types:[{description:'Markdown',accept:{'text/markdown':['.md','.markdown','.txt']}}],excludeAcceptAllOption:false});handle=h;await openFile(await h.getFile());return}catch(e){if(e.name==='AbortError')return}}input.click()};
 function download(data,n,mime){const u=URL.createObjectURL(new Blob([data],{type:mime}));const a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000)}
-async function save(as=false){const content=JSON.stringify({format:'AInote',version:2,html:safeHTML(editor.innerHTML),updated:new Date().toISOString()},null,2);try{if(window.showSaveFilePicker){if(!handle||as)handle=await showSaveFilePicker({suggestedName:name.endsWith('.ainote')?name:'AInote.ainote',types:[{description:'AInote',accept:{'application/json':['.ainote']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存');dirty=false;return}download(content,name.endsWith('.ainote')?name:'AInote.ainote','application/json');dirty=false;status('已下載檔案')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
+async function save(as=false){const content=rawMarkdown;try{if(window.showSaveFilePicker){if(!handle||as||!/\.(md|markdown|txt)$/i.test(handle.name))handle=await showSaveFilePicker({suggestedName:name.replace(/\.[^.]+$/,'')+'.md',types:[{description:'Markdown 原始碼',accept:{'text/markdown':['.md']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存原始 Markdown');dirty=false;return}download(content,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');dirty=false;status('已下載原始 Markdown')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
 document.querySelector('#save').onclick=()=>save();document.querySelector('#saveas').onclick=()=>save(true);
-document.querySelector('#md').onclick=()=>{const clone=editor.cloneNode(true);clone.querySelectorAll('.math-rendered').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.latex||'')));const md=window.TurndownService?new TurndownService({headingStyle:'atx'}).turndown(clone.innerHTML):clone.innerHTML;download(md,name.replace(/\.[^.]+$/,'')+'.md','text/markdown');status(window.TurndownService?'已匯出 Markdown':'已匯出含 HTML 的 Markdown（未載入轉換套件）')};
-document.querySelector('#clear').onclick=()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;editor.innerHTML='';handle=null;setName('未命名.ainote');dirty=false;status('新文件')};
-document.querySelector('#preview').onclick=()=>{const raw=editor.innerText;if(/(^|\n)\s*(#{1,6} |\|.+\||\$\$|<svg)/m.test(raw)){editor.innerHTML=safeHTML(parseDocument(raw))}renderLooseMath(editor);changed();status('已重新渲染')};
+document.querySelector('#md').onclick=()=>{download(rawMarkdown,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');status('已匯出原始 Markdown')};
+document.querySelector('#clear').onclick=()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;rawMarkdown='';renderRaw();handle=null;setName('未命名.md');dirty=false;status('新文件')};
+const sourceButton=document.createElement('button');sourceButton.textContent='MD 原始碼';sourceButton.id='source-toggle';document.querySelector('.tools').prepend(sourceButton);
+const sourceArea=document.createElement('textarea');sourceArea.id='source-editor';sourceArea.spellcheck=false;sourceArea.style.cssText='display:none;width:100%;height:75vh;box-sizing:border-box;background:#1e222a;color:white;border:1px solid #566071;padding:20px;font:15px/1.65 monospace;resize:vertical';editor.insertAdjacentElement('afterend',sourceArea);
+sourceButton.onclick=()=>{const active=sourceArea.style.display!=='none';if(active){rawMarkdown=sourceArea.value;renderRaw();sourceArea.style.display='none';editor.style.display='';sourceButton.textContent='MD 原始碼';}else{sourceArea.value=rawMarkdown;sourceArea.style.display='block';editor.style.display='none';sourceButton.textContent='返回預覽';}};
+sourceArea.addEventListener('input',()=>{rawMarkdown=sourceArea.value;changed()});
+document.querySelector('#preview').onclick=()=>{refreshMathNow();status('已檢查並渲染未處理的公式')};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
 
