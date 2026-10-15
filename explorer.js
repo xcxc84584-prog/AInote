@@ -29,4 +29,32 @@ editor.addEventListener('input',()=>{clearTimeout(saveTimer);saveTimer=setTimeou
 $('#clear').addEventListener('click',()=>{setTimeout(()=>{if(!dirty&&name==='未命名.ainote'){active=null;model.active=null;persist();draw()}},0)});
 $('#save').addEventListener('click',()=>setTimeout(snapshot,100));$('#saveas').addEventListener('click',()=>setTimeout(snapshot,100));
 panel.hidden=localStorage.getItem(VIS)==='0';updateToggle();if(active){const n=model.nodes[active];editor.innerHTML=safeHTML(n.html||'');setName(n.name);dirty=false;renderLooseMath(editor);scheduleMathRender()}draw();persist();
+
+// v1.7: pointer resizing and edge swipe navigation (mobile + desktop).
+const resizeBar=document.querySelector('#explorer-resizer');
+const edgeButton=document.querySelector('#explorer-edge');
+const docTab=document.querySelector('#document-tab');
+const WIDTH_KEY='ainote-explorer-width-v1.7';
+function setExplorerVisible(visible){panel.hidden=!visible;localStorage.setItem(VIS,visible?'1':'0');updateToggle();edgeButton.hidden=visible;resizeBar.hidden=!visible;}
+function syncExplorerControls(){edgeButton.hidden=!panel.hidden;resizeBar.hidden=panel.hidden;docTab.textContent= document.querySelector('#filename')?.textContent||'文件編輯區';}
+const priorToggle=$('#explorer-toggle').onclick;
+$('#explorer-toggle').onclick=()=>{priorToggle();syncExplorerControls()};
+const priorHide=$('#explorer-hide').onclick;
+$('#explorer-hide').onclick=()=>{priorHide();syncExplorerControls()};
+const priorClose=$('#fold-close').onclick;
+$('#fold-close').onclick=()=>{priorClose();syncExplorerControls()};
+edgeButton.onclick=()=>setExplorerVisible(true);
+const savedWidth=Number(localStorage.getItem(WIDTH_KEY));
+if(savedWidth>=180&&savedWidth<=650)document.documentElement.style.setProperty('--explorer-width',savedWidth+'px');
+let resizing=false;
+resizeBar.addEventListener('pointerdown',e=>{if(panel.hidden)return;resizing=true;resizeBar.setPointerCapture(e.pointerId);resizeBar.classList.add('resizing');document.body.classList.add('explorer-resizing');e.preventDefault()});
+resizeBar.addEventListener('pointermove',e=>{if(!resizing)return;const width=Math.max(180,Math.min(650,e.clientX-panel.getBoundingClientRect().left));document.documentElement.style.setProperty('--explorer-width',width+'px')});
+function stopResize(){if(!resizing)return;resizing=false;resizeBar.classList.remove('resizing');document.body.classList.remove('explorer-resizing');localStorage.setItem(WIDTH_KEY,String(Math.round(panel.getBoundingClientRect().width)))}
+resizeBar.addEventListener('pointerup',stopResize);resizeBar.addEventListener('pointercancel',stopResize);
+resizeBar.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight'].includes(e.key))return;e.preventDefault();const width=Math.max(180,Math.min(650,panel.getBoundingClientRect().width+(e.key==='ArrowRight'?20:-20)));document.documentElement.style.setProperty('--explorer-width',width+'px');localStorage.setItem(WIDTH_KEY,String(width))});
+let swipe=null;
+document.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;const t=e.touches[0],inside=panel.contains(e.target);if((panel.hidden&&t.clientX<=32)||(!panel.hidden&&inside&&!e.target.closest('.tree-row,button,input'))){swipe={x:t.clientX,y:t.clientY,inside,at:Date.now()}}else swipe=null},{passive:true});
+document.addEventListener('touchend',e=>{if(!swipe||!e.changedTouches.length)return;const t=e.changedTouches[0],dx=t.clientX-swipe.x,dy=t.clientY-swipe.y;if(Math.abs(dx)>75&&Math.abs(dx)>Math.abs(dy)*1.6&&Date.now()-swipe.at<1000){if(panel.hidden&&dx>0)setExplorerVisible(true);else if(!panel.hidden&&dx<0)setExplorerVisible(false)}swipe=null},{passive:true});
+new MutationObserver(()=>{docTab.textContent=document.querySelector('#filename')?.textContent||'文件編輯區'}).observe(document.querySelector('#filename'),{childList:true,characterData:true,subtree:true});
+syncExplorerControls();
 })();
