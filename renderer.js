@@ -52,8 +52,33 @@ function renderMathElements(root){root.querySelectorAll('.math-source').forEach(
  el.replaceWith(wrap);
  })}
 
+// Decode SVG data URIs without changing the stored Markdown source.
+function svgDataImages(source){
+ const saved=[];
+ const output=source.replace(/!\[([^\]\n]*)\]\(\s*(data:image\/svg\+xml(?:;charset=[^;,\s)]+)?(?:;base64)?,[^\s)]*)\s*\)/gi,(whole,alt,url)=>{
+  try{
+   const comma=url.indexOf(',');const header=url.slice(0,comma);const payload=url.slice(comma+1);
+   let xml;
+   if(/;base64/i.test(header)){
+    const binary=atob(payload);const bytes=Uint8Array.from(binary,c=>c.charCodeAt(0));xml=new TextDecoder('utf-8',{fatal:true}).decode(bytes);
+   }else xml=decodeURIComponent(payload);
+   const doc=new DOMParser().parseFromString(xml,'image/svg+xml');
+   if(doc.querySelector('parsererror')||doc.documentElement.localName!=='svg')return whole;
+   const svg=doc.documentElement;
+   svg.querySelectorAll('script,foreignObject,iframe,object,embed,style').forEach(el=>el.remove());
+   svg.querySelectorAll('*').forEach(el=>{for(const a of [...el.attributes]){
+    if(/^on/i.test(a.name)||a.name==='style'||(/^(?:href|xlink:href)$/i.test(a.name)&&!/^#/.test(a.value)))el.removeAttribute(a.name);
+   }});
+   const markup=new XMLSerializer().serializeToString(svg);
+   const id=saved.push('<div class="svg-block" role="img" aria-label="'+esc(alt)+'">'+markup+'</div>')-1;
+   return '\n\nAIPROTECTEDSVG'+id+'END\n\n';
+  }catch(e){return whole}
+ });
+ return {output,saved};
+}
 function parseDocument(source){
  source=String(source).replace(/\r\n?/g,'\n');
+ const svgImages=svgDataImages(source);source=svgImages.output;
  const tokens=[];
  // Protect display math and SVG from any other Markdown transformations.
  source=source.replace(/\$\$([\s\S]*?)\$\$/g,(all,tex)=>{
@@ -65,6 +90,7 @@ function parseDocument(source){
   return `\n\nAIPROTECTED${id}END\n\n`;
  });
  let html=window.marked?marked.parse(source,{gfm:true,breaks:false}):markdownToHTML(source);
+ html=html.replace(/(?:<p>\s*)?AIPROTECTEDSVG(\d+)END(?:\s*<\/p>)?/g,(_,n)=>svgImages.saved[+n]);
  html=html.replace(/(?:<p>\s*)?AIPROTECTED(\d+)END(?:\s*<\/p>)?/g,(_,n)=>tokens[+n]);
  return html;
 }
