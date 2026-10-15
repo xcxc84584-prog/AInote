@@ -23,19 +23,17 @@
 <span id="filename">未命名</span>
 <span id="status">準備就緒</span>
 <div class="tools">
-<button id="open">開啟</button>
-<button id="save">儲存</button>
-<button id="saveas">另存</button>
 <button id="clear">新文件</button>
 <div class="tool-menu"><button id="tools-toggle" aria-expanded="false">工具 ▾</button><div id="tools-menu" hidden><button id="md">匯出 MD</button><button id="preview">重新渲染公式</button><button id="explorer-toggle">Explorer 工具：開啟</button></div></div>
 <input id="file" type="file" accept=".ainote,.json,.html,.htm,.md,.markdown,.txt" hidden>
 </div>
 </header>
-<div id="workspace"><button id="explorer-edge" type="button" aria-label="展開 Explorer" title="展開 Explorer">☰</button><aside id="explorer" aria-label="Explorer"><div class="explorer-heading"><strong>EXPLORER</strong><button id="explorer-hide" title="隱藏 Explorer">×</button></div><div class="explorer-actions explorer-primary-actions"><button id="node-folder">＋資料夾</button><button id="node-file">＋文件</button><button id="node-actions">操作 ▾</button></div><div class="explorer-secondary-controls" aria-label="FOLD 管理"><button id="fold-open" hidden>開啟 FOLD</button><select id="fold-selector" aria-label="選擇 FOLD" hidden></select><button id="fold-save" hidden>保存</button><button id="fold-close" hidden>關閉</button><button id="node-functions" hidden>功能</button></div><div id="explorer-tree" role="tree"></div><p class="explorer-hint">左鍵開啟 · 右鍵操作 · 長按拖曳排序</p><input type="file" id="fold-import" accept=".json,.ainotefold" hidden></aside><div id="explorer-resizer" role="separator" aria-label="拖曳調整 Explorer 寬度" aria-orientation="vertical" tabindex="0"></div><main><div class="document-tab" id="document-tab">文件編輯區</div>
+<div id="workspace"><button id="explorer-edge" type="button" aria-label="展開 Explorer" title="展開 Explorer">☰</button><aside id="explorer" aria-label="Explorer"><div class="explorer-heading"><strong>EXPLORER</strong><button id="explorer-hide" title="隱藏 Explorer">×</button></div><div class="explorer-actions explorer-primary-actions"><button id="node-folder">＋資料夾</button><button id="node-file">＋文件</button><button id="node-actions">操作 ▾</button></div><div class="explorer-secondary-controls" aria-label="FOLD 管理"><button id="fold-open" hidden>開啟 FOLD</button><select id="fold-selector" aria-label="選擇 FOLD" hidden></select><button id="fold-save" hidden>保存</button><button id="fold-close" hidden>關閉</button><button id="node-functions" hidden>功能</button></div><div id="explorer-tree" role="tree"></div><p class="explorer-hint">左鍵開啟 · 右鍵操作 · 長按拖曳排序</p><input type="file" id="fold-import" accept=".zip,.ainotefold,.json" hidden></aside><div id="explorer-resizer" role="separator" aria-label="拖曳調整 Explorer 寬度" aria-orientation="vertical" tabindex="0"></div><main><div class="document-tab" id="document-tab">文件編輯區</div>
 <article id="editor" contenteditable="true" spellcheck="false" autocorrect="off" autocapitalize="off" data-gramm="false" data-gramm_editor="false" aria-label="文件編輯區" data-placeholder="直接貼上 ChatGPT 內容或 Markdown，立即顯示排版結果…">
 </article>
 </main></div><div id="node-context" hidden></div>
 <footer>Ctrl+V 貼上圖片 / 文字 · Ctrl+S 儲存 · 支援拖曳圖片 · 優先使用 .ainote 保存完整內容</footer>
+<script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="renderer.js">
 </script>
 <script src="app.js">

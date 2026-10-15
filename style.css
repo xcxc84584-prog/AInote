@@ -124,3 +124,9 @@ html,body{height:100%;overflow:hidden}body{display:flex;flex-direction:column}he
 #explorer-tree{padding-top:0}
 #explorer .tree-row{min-height:29px}
 #node-context .menu-separator{font-size:11px;color:#a8b9d5;border-top:1px solid #48546a;padding:8px 9px 4px;margin-top:5px}
+
+/* v2.2: Keep long math readable on narrow mobile screens. */
+#editor .math-rendered, #editor .katex-display {max-width:100%;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;}
+#editor .katex-display>.katex {max-width:none;}
+#editor img[src^="data:image/svg"] {max-width:100%;height:auto;}
+@media(max-width:600px){#editor .katex {font-size:1em;}#editor .math-rendered {touch-action:pan-x;} }

@@ -20,3 +20,11 @@ Explorer 左右分欄、可拖曳分隔線調整寬度、隱藏時左側 ☰ 展
 
 ## v2.0 Explorer
 工具列僅保留＋資料夾、＋文件、操作、功能。右鍵及手機長按開啟操作；功能選單包含保存、刪除、關閉。節點選取高亮，重新命名為行內編輯。
+
+
+## v2.2 更新
+- 右上角僅保留「新文件、工具」；新文件在 Explorer 中建立並立即進入行內命名。
+- FOLD 匯出為 ZIP，內含 `ainote-fold.json` 及 `files/`；可重新匯入同格式 ZIP。
+- SVG Markdown data URI（含 percent-encoded、base64 與 `data\:image/svg+xml`）解析增強。
+- 行動端公式水平捲動、縮放排版改善。
+- ZIP 功能使用 JSZip CDN，首次使用需要網路。
