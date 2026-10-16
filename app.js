@@ -181,6 +181,8 @@ window.addEventListener('load',scheduleMathRender);
  document.addEventListener('pointerdown',e=>{if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))close()});
  m.addEventListener('click',e=>{if(e.target.closest('button'))close()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+ const explorerToggle=document.querySelector('#settings-explorer');
+ if(explorerToggle)explorerToggle.addEventListener('click',()=>{window.BVToggleExplorer?.()});
  window.addEventListener('resize',()=>{if(!m.hidden)position()});
  window.addEventListener('scroll',()=>{if(!m.hidden)position()},true);
 })();

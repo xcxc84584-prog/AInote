@@ -11,7 +11,9 @@ const collapsed=new Set();
 const edge=document.querySelector('#sider-edge');
 const closeSider=document.querySelector('#sider-close');
 function setSider(open){aside.classList.toggle('collapsed',!open);document.querySelector('.workspace').classList.toggle('explorer-hidden',!open);edge.setAttribute('aria-expanded',String(open));edge.title=open?'Explorer 已開啟':'開啟 Explorer';}
-edge.onclick=()=>setSider(aside.classList.contains('collapsed'));
+window.BVToggleExplorer=()=>setSider(aside.classList.contains('collapsed'));
+window.BVSetExplorerOpen=setSider;
+edge.onclick=window.BVToggleExplorer;
 closeSider.onclick=()=>setSider(false);
 // Resizable sider using pointer events, preserving independent scroll containers.
 const grip=document.querySelector('#sider-resizer');
@@ -65,7 +67,7 @@ window.BVCreateNewDocument=async()=>{
   }
   const file=await folder.getFileHandle('新文件.md',{create:true});
   const writer=await file.createWritable();await writer.write('');await writer.close();
-  root=folder;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();orderDirty=false;
+  root=folder;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();orderDirty=false;
   rootLabel.textContent=folder.name;
   const x={id:++sequence,name:'新文件.md',handle:file,parent:null,kind:'file',order:1,buffer:null};
   items.push(x);
@@ -101,10 +103,50 @@ row.addEventListener('touchcancel',()=>{clearTimeout(pressTimer);pressTimer=null
 row.addEventListener('click',e=>{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false}},true);
 row.ondragstart=e=>{e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'};row.ondragover=e=>{e.preventDefault()};row.ondrop=async e=>{e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving)await move(moving,x,e.shiftKey)};
 tree.append(row);if(x.kind==='directory'&&!collapsed.has(x.id))draw(x,level+1)})};draw(null,0)}
-async function choose(x){if(x.kind==='directory'){selected=x.id;display();return}const wasViewing=sourceArea.style.display==='none';if(dirty&&current()&&current().kind==='file'){current().buffer=wasViewing?rawMarkdown:sourceArea.value;}selected=x.id;try{const f=await x.handle.getFile();rawMarkdown=x.buffer??await f.text();setName(x.name);handle=x.handle;dirty=x.buffer!==null;setDocumentVisible(true);switchMode(wasViewing?'view':'edit',true);toast('已開啟 '+path(x));display()}catch(e){alert('開啟失敗：'+e.message)}}
+// v2.2.12: Remember the reading position independently for each Explorer file.
+// The workspace main element is the actual scroll container (not window).
+const readingPositions=new Map();
+let readingRestoreToken=0;
+let readingRestoring=false;
+function readingKey(x){return x?path(x):null}
+function rememberReadingPosition(){
+ const x=current();
+ if(x?.kind==='file' && sourceArea.style.display==='none')
+  readingPositions.set(readingKey(x),main.scrollTop);
+}
+function restoreReadingPosition(x){
+ const token=++readingRestoreToken;
+ readingRestoring=true;
+ const target=readingPositions.get(readingKey(x))??0;
+ // Wait until the newly selected document has been rendered and laid out.
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  if(token!==readingRestoreToken || selected!==x.id || sourceArea.style.display!=='none')return;
+  main.scrollTop=target;
+  requestAnimationFrame(()=>{if(token===readingRestoreToken)readingRestoring=false});
+ }));
+}
+main.addEventListener('scroll',()=>{
+ // Do not overwrite a stored position while the document is being replaced.
+ if(readingRestoring)return;
+ rememberReadingPosition();
+},{passive:true});
+async function choose(x){
+ if(x.kind==='directory'){selected=x.id;display();return}
+ const wasViewing=sourceArea.style.display==='none';
+ rememberReadingPosition();
+ if(dirty&&current()&&current().kind==='file')current().buffer=wasViewing?rawMarkdown:sourceArea.value;
+ selected=x.id;
+ try{
+  const f=await x.handle.getFile();rawMarkdown=x.buffer??await f.text();setName(x.name);handle=x.handle;
+  dirty=x.buffer!==null;setDocumentVisible(true);switchMode(wasViewing?'view':'edit',true);
+  if(wasViewing)restoreReadingPosition(x);
+  else {readingRestoring=false;main.scrollTop=0;}
+  toast('已開啟 '+path(x));display();
+ }catch(e){alert('開啟失敗：'+e.message)}
+}
 async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
-async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();for(const node of items)if(node.kind==='directory')collapsed.add(node.id);orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
-async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
+async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();for(const node of items)if(node.kind==='directory')collapsed.add(node.id);orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
+async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
 function dirOf(p){return p?p.handle:root}
 async function create(kind){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=current()?.kind==='directory'?current():current()?.parent||null;const nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file'&&!/\.[^./\\]+$/.test(nm))nm+='.md';if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
 function inlineName(title,value){return new Promise(resolve=>{const box=document.querySelector('#inline-name');box.replaceChildren();const lab=document.createElement('label');lab.textContent=title;const inp=document.createElement('input');inp.value=value;const ok=document.createElement('button');ok.textContent='確認';const cancel=document.createElement('button');cancel.textContent='取消';box.append(lab,inp,ok,cancel);box.hidden=false;inp.focus();inp.select();const done=v=>{box.hidden=true;resolve(v)};ok.onclick=()=>done(inp.value.trim());cancel.onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value.trim());if(e.key==='Escape')done(null)}})}
@@ -230,7 +272,7 @@ function menu(x,left,top){
  positionMenu(m,left,top);
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu')&&!e.target.closest('#explorer-operate'))document.querySelector('#context-menu').hidden=true});
-document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root||items.length===0){document.querySelector('#open').click();return;}create('directory')};document.querySelector('#add-file').onclick=()=>create('file');
+document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root||items.length===0){window.BVCreateNewDocument();return;}create('directory')};document.querySelector('#add-file').onclick=()=>create('file');
 // Ctrl+S saves the complete open Root when present.
 document.addEventListener('keydown',e=>{if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}},true);
 })();

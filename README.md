@@ -1,3 +1,9 @@
+## BV-Note v2.2.12 更新
+
+- 設定選單新增「EXPLORER（開關）」：切換左側 Explorer 開啟與關閉。
+- Explorer 尚無任何節點（無 Root 或空 Root）時，點擊 +Fold 與「新文件」共用相同建立流程：選擇存儲路徑、建立「新檔案」Root 與「新文件.md」、載入 Explorer。
+- 已有節點時 +Fold 保留原有建立資料夾行為。
+
 ## v2.2.10
 - 瀏覽模式下點選 Explorer File 即切換顯示該檔案的 Markdown 渲染內容，維持瀏覽模式。
 - 修正模式切換時舊編輯框內容覆蓋新載入 Markdown 的問題。
@@ -57,3 +63,8 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 
 ## v2.2.9
 - 開啟既有 Root 時，Explorer 中所有 Fold 預設為收合狀態，點擊 Fold 才展開；不影響檔案讀取與儲存。
+
+
+## v2.2.12
+- Explorer 瀏覽模式切換文件時，記住每份文件的捲動位置，切回時恢復。
+- 重新選取 Root 或關閉 Root 時清除舊位置記錄。
