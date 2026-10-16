@@ -80,3 +80,10 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 - 移除編輯區與瀏覽區的右鍵／長按文字工具觸發。
 - 在「設定」中新增「文本工具」，框選文字後由此開啟目錄化與標註。
 - 保留空白標註內容。
+
+
+## v2.3.2
+- 目錄與標註寫入 Root 內 `.bv-note-records.json`，每個 File 獨立保存；原始 Markdown 不變。
+- Explorer 只顯示資料夾、`.md`、`.txt`；其他檔案仍留在磁碟。
+- 請使用支援 File System Access API 的瀏覽器並授予讀寫權限。
+- 跨裝置需一併複製 Root 中的 `.bv-note-records.json`。
