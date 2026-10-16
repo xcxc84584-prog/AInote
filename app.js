@@ -188,3 +188,5 @@ window.addEventListener('load',scheduleMathRender);
 })();
 
 window.BVGetRawMarkdown=()=>sourceArea.style.display!=='none'?sourceArea.value:rawMarkdown;
+
+window.BVSetRawMarkdown=(text)=>{rawMarkdown=text;renderRaw();dirty=true;window.BVRefreshUnsaved?.();window.BVRefreshFileRecords?.();};
