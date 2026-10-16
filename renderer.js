@@ -81,9 +81,15 @@ function parseDocument(source){
  const svgImages=svgDataImages(source);source=svgImages.output;
  const tokens=[];
  // Protect display math and SVG from any other Markdown transformations.
- source=source.replace(/\$\$([\s\S]*?)\$\$/g,(all,tex)=>{
-  const id=tokens.push(`<div class="math-source" data-tex="${esc(all)}">${esc(tex)}</div>`)-1;
-  return `\n\nAIPROTECTED${id}END\n\n`;
+ // Protect both TeX display delimiters before marked processes backslash escapes.
+ // Also protect inline \( ... \) delimiters, which marked otherwise unescapes.
+ source=source.replace(/\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g,all=>{
+  const display=all.startsWith('$$')||all.startsWith('\\[');
+  const open=all.startsWith('$$')?2:2;
+  const tex=all.slice(open,-2).trim();
+  const tag=display?'div':'span';
+  const id=tokens.push(`<${tag} class="math-source" data-tex="${esc(all)}">${esc(tex)}</${tag}>`)-1;
+  return display?`\n\nAIPROTECTED${id}END\n\n`:`AIPROTECTED${id}END`;
  });
  source=source.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi,all=>{
   const id=tokens.push(`<div class="svg-block">${all}</div>`)-1;

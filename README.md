@@ -111,5 +111,5 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 - 請一併備份 `.bv-note-node-ids.json` 與 `.bv-note-records.json`，否則跨裝置搬移可能無法還原目錄與標註關聯。
 
 
-## v2.4.1
+## v2.4.2
 Root 可點選以建立子 Fold；支援編輯會話恢復、外部檔案清單定期刷新、瀏覽插圖自動保存、目錄面板直接目錄化，移除標註操作。
