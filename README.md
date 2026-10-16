@@ -34,5 +34,5 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 - 修正無 Root 的「新文件」儲存：解除舊 Explorer 選取關係，Commit 與儲存均使用 Save File Picker；取消儲存時不切換瀏覽模式。
 - Explorer 已選取文件時，工具列儲存及 Commit 會直接寫入對應檔案。
 
-## v2.2.5 新文件流程
+## v2.2.6 新文件流程
 「新文件」會先選取本地父資料夾，再建立 Root 資料夾「新檔案」及子文件「新文件.md」，寫入磁碟並載入 Explorer。若名稱已存在，使用「新檔案 (2)」等名稱避免覆寫。需要支援 File System Access API 的瀏覽器（HTTPS 或 localhost）；取消選擇不會改變現有文件。

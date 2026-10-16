@@ -82,6 +82,22 @@ function siblings(p){return items.filter(x=>x.parent===p).sort((a,b)=>a.order-b.
 async function scan(dir,parent){for await(const [n,h] of dir.entries()){if(parent===null&&n===ORDER_FILE)continue;const x={id:++sequence,name:n,handle:h,parent,kind:h.kind,order:sequence,buffer:null};items.push(x);if(h.kind==='directory')await scan(h,x)}}
 function display(){tree.replaceChildren();if(!root)return;const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
 const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);row.onclick=()=>{if(x.kind==='directory'){selected=x.id;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)};row.oncontextmenu=e=>{e.preventDefault();selected=x.id;display();menu(x,e.clientX,e.clientY)};
+// Long-press on mobile opens the same menu as desktop right-click.
+let pressTimer=null,startX=0,startY=0,suppressClick=false;
+row.addEventListener('touchstart',e=>{
+ if(e.touches.length!==1)return;
+ startX=e.touches[0].clientX;startY=e.touches[0].clientY;
+ clearTimeout(pressTimer);
+ pressTimer=setTimeout(()=>{
+  pressTimer=null;suppressClick=true;selected=x.id;display();menu(x,startX,startY);
+ },550);
+},{passive:true});
+row.addEventListener('touchmove',e=>{
+ if(!e.touches.length||Math.abs(e.touches[0].clientX-startX)>12||Math.abs(e.touches[0].clientY-startY)>12){clearTimeout(pressTimer);pressTimer=null}
+},{passive:true});
+row.addEventListener('touchend',()=>{clearTimeout(pressTimer);pressTimer=null},{passive:true});
+row.addEventListener('touchcancel',()=>{clearTimeout(pressTimer);pressTimer=null},{passive:true});
+row.addEventListener('click',e=>{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false}},true);
 row.ondragstart=e=>{e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'};row.ondragover=e=>{e.preventDefault()};row.ondrop=async e=>{e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving)await move(moving,x,e.shiftKey)};
 tree.append(row);if(x.kind==='directory'&&!collapsed.has(x.id))draw(x,level+1)})};draw(null,0)}
 async function choose(x){if(x.kind==='directory'){selected=x.id;display();return}if(dirty&&current()){current().buffer=rawMarkdown;}selected=x.id;try{const f=await x.handle.getFile();rawMarkdown=x.buffer??await f.text();setName(x.name);handle=x.handle;dirty=false;setDocumentVisible(true);switchMode(sourceArea.style.display==='none'?'view':'edit');toast('已開啟 '+path(x));display()}catch(e){alert('開啟失敗：'+e.message)}}
@@ -91,12 +107,116 @@ async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有
 function dirOf(p){return p?p.handle:root}
 async function create(kind){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=current()?.kind==='directory'?current():current()?.parent||null;const nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file'&&!/\.[^./\\]+$/.test(nm))nm+='.md';if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
 function inlineName(title,value){return new Promise(resolve=>{const box=document.querySelector('#inline-name');box.replaceChildren();const lab=document.createElement('label');lab.textContent=title;const inp=document.createElement('input');inp.value=value;const ok=document.createElement('button');ok.textContent='確認';const cancel=document.createElement('button');cancel.textContent='取消';box.append(lab,inp,ok,cancel);box.hidden=false;inp.focus();inp.select();const done=v=>{box.hidden=true;resolve(v)};ok.onclick=()=>done(inp.value.trim());cancel.onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value.trim());if(e.key==='Escape')done(null)}})}
-async function copyNode(x,target,name){if(x.kind==='file'){const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();await w.write(x.buffer??await(await x.handle.getFile()).arrayBuffer());await w.close();return h}const h=await target.getDirectoryHandle(name,{create:true});for(const c of siblings(x))await copyNode(c,h,c.name);return h}
-async function removeNode(x){await dirOf(x.parent).removeEntry(x.name,{recursive:true});const descendant=y=>y===x||y.parent&&descendant(y.parent);items=items.filter(y=>!descendant(y));if(selected&&!items.some(y=>y.id===selected)){selected=null;rawMarkdown='';setName('未命名.md');setDocumentVisible(false);switchMode('edit')}orderDirty=true;display()}
-async function rename(x){const n=await inlineName('重新命名',x.name);if(!n||n===x.name)return;try{if(n.includes('/')||n.includes('\\'))throw Error('名稱無效');const h=await copyNode(x,dirOf(x.parent),n);await dirOf(x.parent).removeEntry(x.name,{recursive:true});x.name=n;x.handle=h;items=items.filter(y=>y===x||!isChild(y,x));if(x.kind==='directory'){items=items.filter(y=>y!==x);await scan(h,x.parent)}if(selected===x.id)setName(n);orderDirty=true;display()}catch(e){alert('重新命名失敗：'+e.message)}}
+async function copyNode(x,target,name){
+ if(x.kind==='file'){
+  const h=await target.getFileHandle(name,{create:true});
+  const w=await h.createWritable();
+  try{await w.write(x.buffer??await(await x.handle.getFile()).arrayBuffer());await w.close()}catch(e){try{await w.abort()}catch{}throw e}
+  return h;
+ }
+ const h=await target.getDirectoryHandle(name,{create:true});
+ for(const c of siblings(x))await copyNode(c,h,c.name);
+ return h;
+}
 function isChild(y,x){for(let p=y.parent;p;p=p.parent)if(p===x)return true;return false}
-async function move(x,target,after){if(x===target||isChild(target,x))return;const p=target.kind==='directory'&&!after?target:target.parent;if(x.parent===p){const arr=siblings(p).filter(y=>y!==x);arr.splice(Math.max(0,arr.indexOf(target)+(after?1:0)),0,x);arr.forEach((y,i)=>y.order=i+1);orderDirty=true;display();return}try{const h=await copyNode(x,dirOf(p),x.name);await dirOf(x.parent).removeEntry(x.name,{recursive:true});x.parent=p;x.handle=h;if(x.kind==='directory'){items=items.filter(y=>y===x||!isChild(y,x));await scan(h,x)}orderDirty=true;display()}catch(e){alert('移動失敗：'+e.message)}}
-function menu(x,left,top){const m=document.querySelector('#context-menu');m.replaceChildren();for(const [label,fn] of [['重新命名',()=>rename(x)],['刪除文件',()=>{if(confirm('確定刪除 '+x.name+'？'))removeNode(x)}]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;fn()};m.append(b)}m.style.left=Math.min(left,innerWidth-175)+'px';m.style.top=Math.min(top,innerHeight-100)+'px';m.hidden=false}
+// A directory copy creates fresh FileSystemHandles for all descendants.
+// Rebind them before deleting the source; otherwise future operations use stale handles.
+async function rebindDescendants(dirNode){
+ for(const child of siblings(dirNode)){
+  child.handle=child.kind==='directory'
+   ?await dirNode.handle.getDirectoryHandle(child.name)
+   :await dirNode.handle.getFileHandle(child.name);
+  if(child.kind==='directory')await rebindDescendants(child);
+ }
+}
+async function removeNode(x){
+ await dirOf(x.parent).removeEntry(x.name,{recursive:true});
+ items=items.filter(y=>y!==x&&!isChild(y,x));
+ if(selected&&!items.some(y=>y.id===selected)){
+  selected=null;handle=null;rawMarkdown='';setName('未命名.md');setDocumentVisible(false);switchMode('edit');
+ }
+ orderDirty=true;display();
+}
+async function rename(x){
+ const n=await inlineName('重新命名',x.name);
+ if(!n||n===x.name)return;
+ try{
+  if(/[\\/]/.test(n)||n==='.'||n==='..')throw Error('名稱無效');
+  const parent=dirOf(x.parent);
+  // Reject collisions instead of overwriting an existing file/folder.
+  for await(const [existing] of parent.entries())if(existing===n)throw Error('目標名稱已存在');
+  const oldName=x.name;
+  const h=await copyNode(x,parent,n);
+  await parent.removeEntry(oldName,{recursive:true});
+  x.name=n;x.handle=h;
+  if(x.kind==='directory')await rebindDescendants(x);
+  if(selected===x.id){setName(n);if(x.kind==='file')handle=h}
+  orderDirty=true;display();
+ }catch(e){alert('重新命名失敗：'+e.message)}
+}
+async function move(x,target,after=false){
+ if(!x||!target||x===target||isChild(target,x))return;
+ const p=target.kind==='directory'&&!after?target:target.parent;
+ if(x.parent===p){
+  // Moving onto its own parent is a no-op, not a reordering operation.
+  if(target===p)return;
+  const arr=siblings(p).filter(y=>y!==x);
+  const at=arr.indexOf(target);
+  arr.splice(at<0?arr.length:at+(after?1:0),0,x);
+  arr.forEach((y,i)=>y.order=i+1);
+  orderDirty=true;display();return;
+ }
+ try{
+  const dest=dirOf(p);
+  for await(const [existing] of dest.entries())if(existing===x.name)throw Error('目標位置已有同名項目：'+x.name);
+  const source=dirOf(x.parent);
+  const h=await copyNode(x,dest,x.name);
+  await source.removeEntry(x.name,{recursive:true});
+  x.parent=p;x.handle=h;
+  if(x.kind==='directory')await rebindDescendants(x);
+  if(selected===x.id&&x.kind==='file')handle=h;
+  orderDirty=true;display();toast('已移動 '+x.name);
+ }catch(e){alert('移動失敗：'+e.message)}
+}
+async function moveWithPicker(x){
+ const candidates=[{name:'Root / '+root.name,node:null},...items.filter(y=>y.kind==='directory'&&y!==x&&!isChild(y,x)).map(y=>({name:path(y),node:y}))].filter(y=>y.node!==x.parent);
+ if(!candidates.length)return alert('沒有其他可移動的位置');
+ const options=candidates.map((c,i)=>`${i+1}. ${c.name}`).join('\n');
+ const input=prompt('移動「'+x.name+'」至哪個資料夾？輸入編號：\n'+options);
+ if(input===null)return;
+ const index=Number(input)-1;
+ if(!Number.isInteger(index)||index<0||index>=candidates.length)return alert('編號無效');
+ const dest=candidates[index].node;
+ if(dest===null){
+  // Use a sibling root node to route the existing move logic.
+  const peer=siblings(null).find(y=>y!==x);
+  if(peer)await move(x,peer,true);
+  else if(x.parent!==null){
+   // Explicit move-to-root without requiring an existing sibling.
+   try{
+    for await(const [name] of root.entries())if(name===x.name)throw Error('Root 已有同名項目');
+    const oldParent=dirOf(x.parent);const h=await copyNode(x,root,x.name);
+    await oldParent.removeEntry(x.name,{recursive:true});x.parent=null;x.handle=h;
+    if(x.kind==='directory')await rebindDescendants(x);
+    if(selected===x.id&&x.kind==='file')handle=h;
+    orderDirty=true;display();toast('已移動至 Root');
+   }catch(e){alert('移動失敗：'+e.message)}
+  }
+ }else await move(x,dest,false);
+}
+function menu(x,left,top){
+ const m=document.querySelector('#context-menu');m.replaceChildren();
+ for(const [label,fn] of [
+  ['重新命名',()=>rename(x)],
+  ['移動至…',()=>moveWithPicker(x)],
+  [x.kind==='directory'?'刪除資料夾':'刪除文件',()=>{if(confirm('確定刪除 '+x.name+'？'))removeNode(x)}]
+ ]){
+  const b=document.createElement('button');b.textContent=label;
+  b.onclick=()=>{m.hidden=true;fn()};m.append(b);
+ }
+ m.style.left=Math.max(8,Math.min(left,innerWidth-180))+'px';
+ m.style.top=Math.max(8,Math.min(top,innerHeight-145))+'px';m.hidden=false;
+}
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu'))document.querySelector('#context-menu').hidden=true});
 document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root||items.length===0){document.querySelector('#open').click();return;}create('directory')};document.querySelector('#add-file').onclick=()=>create('file');
 // Ctrl+S saves the complete open Root when present.

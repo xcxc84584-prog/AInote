@@ -172,3 +172,8 @@ body.resizing-sider{cursor:col-resize;user-select:none}
  .workspace main #editor pre{white-space:pre-wrap;overflow-wrap:anywhere}
  .workspace main{min-width:0;width:100%}
 }
+
+/* Mobile Explorer long-press context menu */
+.tree-node{ -webkit-touch-callout:none; }
+#context-menu{z-index:99999;max-height:70dvh;overflow-y:auto;box-shadow:0 10px 28px #0008}
+#context-menu button{min-height:42px;touch-action:manipulation}
