@@ -5,45 +5,53 @@ let root=null,selected=null,items=[],sequence=0,orderDirty=false;
 let batchMode=false;const checkedIds=new Set();let clipboard=null;
 const ORDER_FILE=".bv-note-explorer-order.json";
 const RECORD_FILE=".bv-note-records.json";
-let recordDB={version:1,files:{}};
-let recordWrite=Promise.resolve();
-async function flushRecordDB(){if(!root)return;const target=root;const payload=JSON.stringify(recordDB,null,2);recordWrite=recordWrite.catch(()=>{}).then(async()=>{const h=await target.getFileHandle(RECORD_FILE,{create:true});const w=await h.createWritable();await w.write(payload);await w.close()});return recordWrite;}
-// v2.3.9: canonical record keys are relative to Root, never prefixed by Root name.
-function canonicalRecordKey(key){if(!key)return '';const prefix=root?.name+'/';if(prefix&&key.startsWith(prefix))return key.slice(prefix.length);const exact=items.filter(x=>x.kind==='file').map(x=>path(x));const hit=exact.find(p=>key===p||key.endsWith('/'+p));return hit||key;}
-function normalizeRecordDB(){
- const source=recordDB.files||{},out={};let changed=false;
- // Prefer the newest canonical entry; preserve populated legacy entries over empty placeholders.
- for(const [key,value] of Object.entries(source)){
-  const rel=canonicalRecordKey(key);if(rel!==key)changed=true;
-  const count=v=>(v?.toc?.length||0)+(v?.notes?.length||0);
-  if(!out[rel]||count(value)>count(out[rel]))out[rel]=value;
- }
- recordDB.files=out;return changed;
+// Stable UUIDs are random identifiers (not content hashes); persisted in Root metadata.
+const ID_FILE='.bv-note-node-ids.json';
+let nodeDB={version:1,rootId:null,nodes:{}};
+let recordDB={version:2,files:{}};
+let recordWrite=Promise.resolve(),nodeWrite=Promise.resolve();
+const uuid=()=>crypto.randomUUID();
+async function writeJSON(target,name,data){const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close()}
+async function flushRecordDB(){if(!root)return;const target=root,payload=structuredClone(recordDB);recordWrite=recordWrite.catch(()=>{}).then(()=>writeJSON(target,RECORD_FILE,payload));return recordWrite;}
+async function flushNodeDB(){if(!root)return;const target=root,payload=structuredClone(nodeDB);nodeWrite=nodeWrite.catch(()=>{}).then(()=>writeJSON(target,ID_FILE,payload));return nodeWrite;}
+function canonicalRecordKey(key){if(!key)return '';const prefix=root?.name+'/';if(prefix&&key.startsWith(prefix))return key.slice(prefix.length);const exact=items.filter(x=>x.kind==='file').map(x=>path(x));return exact.find(p=>key===p||key.endsWith('/'+p))||key;}
+async function loadNodeDB(){
+ nodeDB={version:1,rootId:null,nodes:{}};
+ try{const data=JSON.parse(await(await root.getFileHandle(ID_FILE)).getFile().then(f=>f.text()));if(data?.nodes&&typeof data.nodes==='object')nodeDB=data}catch(e){if(e.name!=='NotFoundError')console.warn('ID load failed',e)}
+ let changed=false;
+ if(!nodeDB.rootId){nodeDB.rootId=uuid();changed=true}
+ const existing=new Set();const used=new Set([nodeDB.rootId]);
+ for(const x of items){const key=path(x);existing.add(key);let id=nodeDB.nodes[key];if(!id||used.has(id)){id=uuid();changed=true}used.add(id);x.uuid=id;if(nodeDB.nodes[key]!==id){nodeDB.nodes[key]=id;changed=true}}
+ for(const key of Object.keys(nodeDB.nodes))if(!existing.has(key)){delete nodeDB.nodes[key];changed=true}
+ if(changed)await flushNodeDB();
 }
-async function loadRecordDB(){recordDB={version:1,files:{}};try{const h=await root.getFileHandle(RECORD_FILE);const data=JSON.parse(await(await h.getFile()).text());if(data&&data.version===1&&data.files&&typeof data.files==='object')recordDB=data;}catch(e){if(e.name!=='NotFoundError')console.warn('Record load failed',e)}if(normalizeRecordDB())await flushRecordDB();}
-window.BVGetFileRecords=key=>recordDB.files[canonicalRecordKey(key)]||null;
-window.BVPutFileRecords=(key,value)=>{if(!root||!key)return Promise.resolve();recordDB.files[canonicalRecordKey(key)]=value;return flushRecordDB().catch(e=>{console.error('Record save failed',e);status('目錄/標註儲存失敗：'+e.message);throw e})};
-
-// Metadata follows the logical document path when a file or enclosing folder changes name/location.
-function captureRecordPaths(node){return [node,...items.filter(y=>isChild(y,node))].filter(y=>y.kind==='file').map(y=>({node:y,old:path(y)}));}
+async function loadRecordDB(){
+ recordDB={version:2,files:{}};
+ try{const data=JSON.parse(await(await root.getFileHandle(RECORD_FILE)).getFile().then(f=>f.text()));if(data?.files&&typeof data.files==='object')recordDB=data}catch(e){if(e.name!=='NotFoundError')console.warn('Record load failed',e)}
+ let changed=recordDB.version!==2;const result={};const score=v=>(v?.toc?.length||0)+(v?.notes?.length||0);
+ for(const [key,value] of Object.entries(recordDB.files)){
+  const node=items.find(x=>x.kind==='file'&&(key===x.uuid||canonicalRecordKey(key)===path(x)));
+  const id=node?.uuid||key;
+  if(id!==key)changed=true;
+  if(!result[id]||score(value)>score(result[id]))result[id]=value;
+ }
+ recordDB={version:2,files:result};if(changed)await flushRecordDB();
+}
+function resolveRecordId(key){return items.find(x=>x.kind==='file'&&(x.uuid===key||path(x)===canonicalRecordKey(key)))?.uuid||key}
+window.BVGetFileRecords=key=>recordDB.files[resolveRecordId(key)]||null;
+window.BVPutFileRecords=(key,value)=>{if(!root||!key)return Promise.resolve();recordDB.files[resolveRecordId(key)]=value;return flushRecordDB().catch(e=>{status('目錄/標註儲存失敗：'+e.message);throw e})};
+window.BVGetCurrentFileId=()=>current()?.uuid||null;
+function captureRecordPaths(node){return [node,...items.filter(y=>isChild(y,node))].map(y=>({node:y,old:path(y)}));}
 async function relocateRecords(snapshot,copy=false){
  if(!root||!snapshot?.length)return;
- const changes=[];
- for(const entry of snapshot){const from=entry.old,to=path(entry.node);if(from===to&&!copy)continue;
-  const oldKey=from,newKey=to;
-  const value=recordDB.files[oldKey];if(value){recordDB.files[newKey]=structuredClone(value);if(!copy)delete recordDB.files[oldKey];changes.push([oldKey,newKey,value]);}
-  if(!copy&&readingPositions.has(from)){readingPositions.set(to,readingPositions.get(from));readingPositions.delete(from);}
+ for(const entry of snapshot){const x=entry.node,from=entry.old,to=path(x);if(copy){const previous=x.uuid;x.uuid=uuid();if(x.kind==='file'&&recordDB.files[previous])recordDB.files[x.uuid]=structuredClone(recordDB.files[previous]);}else if(readingPositions.has(from)){readingPositions.set(to,readingPositions.get(from));readingPositions.delete(from)}
+  delete nodeDB.nodes[from];nodeDB.nodes[to]=x.uuid;
  }
- if(!changes.length)return;
- await flushRecordDB();
- for(const [oldKey,newKey,value] of changes){
-  try{localStorage.setItem('bv-note-annotations:'+newKey,JSON.stringify(value));if(!copy)localStorage.removeItem('bv-note-annotations:'+oldKey)}catch{}
- }
- const selectedFile=current();if(selectedFile?.kind==='file'&&changes.some(([,key])=>key===path(selectedFile)))window.BVActivateFileRecords?.(path(selectedFile));
+ await flushNodeDB();await flushRecordDB();
 }
 function normalizeOrders(){const parents=[null,...items.filter(x=>x.kind==='directory')];for(const p of parents)siblings(p).forEach((x,i)=>x.order=i+1)}
-async function loadOrders(){try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(data.version!==1||!Array.isArray(data.paths))return;const ranks=new Map(data.paths.map((p,i)=>[p,i]));for(const x of items)x.order=ranks.has(path(x))?ranks.get(path(x)):100000+x.order;normalizeOrders()}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}}
-async function saveOrders(){normalizeOrders();const data={version:1,paths:[]};const walk=p=>{for(const x of siblings(p)){data.paths.push(path(x));if(x.kind==='directory')walk(x)}};walk(null);const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;}
+async function loadOrders(){try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(!Array.isArray(data.ids)&&!Array.isArray(data.paths))return;const ranks=new Map((data.ids||data.paths).map((p,i)=>[p,i]));for(const x of items)x.order=ranks.has(x.uuid)?ranks.get(x.uuid):ranks.has(path(x))?ranks.get(path(x)):100000+x.order;normalizeOrders()}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}}
+async function saveOrders(){normalizeOrders();const data={version:2,ids:[]};const walk=p=>{for(const x of siblings(p)){data.ids.push(x.uuid);if(x.kind==='directory')walk(x)}};walk(null);const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;}
 const collapsed=new Set();let rootCollapsed=false;
 const edge=document.querySelector('#sider-edge');
 const closeSider=document.querySelector('#sider-close');
@@ -106,7 +114,7 @@ window.BVCreateNewDocument=async()=>{
   const writer=await file.createWritable();await writer.write('');await writer.close();
   root=folder;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();orderDirty=false;
   rootLabel.textContent=folder.name;
-  const x={id:++sequence,name:'新文件.md',handle:file,parent:null,kind:'file',order:1,buffer:null};
+  const x={id:++sequence,uuid:uuid(),name:'新文件.md',handle:file,parent:null,kind:'file',order:1,buffer:null};nodeDB={version:1,rootId:uuid(),nodes:{'新文件.md':x.uuid}};await flushNodeDB();
   items.push(x);
   handle=null;rawMarkdown='';dirty=false;
   await choose(x);
@@ -127,7 +135,7 @@ async function renameRoot(){
  if(!name||name===oldName)return;
  if(/[\\/]/.test(name)||name==='.'||name==='..')return alert('名稱無效');
  try{
-  await saveAll();await window.BVFlushFileRecords?.();normalizeRecordDB();await flushRecordDB();
+  await saveAll();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();
   if(typeof oldRoot.move==='function'){
    await oldRoot.move(name);
    rootLabel.textContent=root.name;display();toast('Root 已重新命名為 '+root.name);return;
@@ -154,7 +162,7 @@ async function renameRoot(){
 }
 async function openRootFromHandle(d){
  root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;
- items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();await loadRecordDB();
+ items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadNodeDB();await loadOrders();await loadRecordDB();
  for(const node of items)if(node.kind==='directory')collapsed.add(node.id);
  orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();
 }
@@ -231,10 +239,10 @@ async function choose(x){
   dirty=x.buffer!==null;setDocumentVisible(true);switchMode(wasViewing?'view':'edit',true);
   if(wasViewing)restoreReadingPosition(x);
   else {readingRestoring=false;main.scrollTop=0;}
-  toast('已開啟 '+path(x));display();window.BVActivateFileRecords?.(path(x));
+  toast('已開啟 '+path(x));display();window.BVActivateFileRecords?.(x.uuid);
  }catch(e){alert('開啟失敗：'+e.message)}
 }
-async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
+async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
 async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await openRootFromHandle(d);toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
 async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
 function dirOf(p){return p?p.handle:root}
@@ -242,7 +250,7 @@ function normalizeNewFileName(name){
  const trimmed=name.trim();
  return /\.[^./\\]+$/.test(trimmed)?trimmed:trimmed+'.md';
 }
-async function create(kind,forceRoot=false){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=forceRoot?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
+async function create(kind,forceRoot=false){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});nodeDB={version:1,rootId:uuid(),nodes:{}};await flushNodeDB();rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=forceRoot?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,uuid:uuid(),name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);nodeDB.nodes[path(x)]=x.uuid;await flushNodeDB();orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
 function inlineName(title,value){return new Promise(resolve=>{const box=document.querySelector('#inline-name');box.replaceChildren();const lab=document.createElement('label');lab.textContent=title;const inp=document.createElement('input');inp.value=value;const ok=document.createElement('button');ok.textContent='確認';const cancel=document.createElement('button');cancel.textContent='取消';box.append(lab,inp,ok,cancel);box.hidden=false;inp.focus();inp.select();const done=v=>{box.hidden=true;resolve(v)};ok.onclick=()=>done(inp.value.trim());cancel.onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value.trim());if(e.key==='Escape')done(null)}})}
 async function copyNode(x,target,name){
  if(x.kind==='file'){
@@ -270,7 +278,10 @@ async function removeNode(x){
  // Remove the actual entry from its parent, never by interpreting a file as a folder.
  const parent=dirOf(x.parent);
  if(!parent)throw Error('找不到資料夾的父層');
+ const removed=[x,...items.filter(y=>isChild(y,x))];
  await parent.removeEntry(x.name,{recursive:x.kind==='directory'});
+ for(const node of removed){delete nodeDB.nodes[path(node)];delete recordDB.files[node.uuid]}
+ await flushNodeDB();await flushRecordDB();
  items=items.filter(y=>y!==x&&!isChild(y,x));
  for(const id of [...checkedIds])if(!items.some(y=>y.id===id))checkedIds.delete(id);
  if(selected&&!items.some(y=>y.id===selected)){
@@ -354,7 +365,7 @@ function targets(){const ids=batchMode&&checkedIds.size?[...checkedIds]:selected
 function resetBatch(){batchMode=false;checkedIds.clear();display()}
 async function deleteTargets(){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');if(!confirm('確定刪除 '+nodes.length+' 個項目及其子項目？此操作無法復原。'))return;let errors=[];for(const x of nodes){try{await removeNode(x)}catch(e){errors.push(x.name+'：'+e.message)}}if(errors.length)alert('部分刪除失敗：\n'+errors.join('\n'));else toast('已刪除 '+nodes.length+' 個項目');resetBatch()}
 function clipTargets(cut){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');clipboard={nodes:nodes.map(x=>({node:x,name:x.name,kind:x.kind})),cut};toast((cut?'已剪下 ':'已複製 ')+nodes.length+' 個項目，請選擇目的資料夾後貼上')}
-async function pasteTargets(){if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')}
+async function pasteTargets(){if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,uuid:uuid(),name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};nodeDB.nodes[path(newNode)]=newNode.uuid;items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,uuid:uuid(),name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};nodeDB.nodes[path(copy)]=copy.uuid;if(child.kind==='file'&&recordDB.files[child.uuid])recordDB.files[copy.uuid]=structuredClone(recordDB.files[child.uuid]);items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);else if(recordDB.files[x.uuid])recordDB.files[newNode.uuid]=structuredClone(recordDB.files[x.uuid]);await flushNodeDB();await flushRecordDB();done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')}
 function operateMenu(left,top){const m=document.querySelector('#context-menu');m.replaceChildren();for(const [label,fn] of [['批量選取'+(batchMode?'（結束）':''),()=>{batchMode=!batchMode;checkedIds.clear();display()}],['刪除',deleteTargets],['剪下',()=>clipTargets(true)],['複製',()=>clipTargets(false)],['貼上',pasteTargets]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().then(fn).catch(e=>alert('操作失敗：'+e.message))};m.append(b)}positionMenu(m,left,top)}
 function positionMenu(m,left,top){m.style.left=Math.max(8,Math.min(left,innerWidth-190))+'px';m.style.top=Math.max(8,Math.min(top,innerHeight-245))+'px';m.hidden=false}
 function menu(x,left,top){

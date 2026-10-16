@@ -60,12 +60,12 @@ async function insertSelectedImage(file){
   const raw=window.BVGetRawMarkdown?.()||'';
   const pos=Math.min(raw.length,Math.max(0,imageInsertionPosition??raw.length));
   const md=imageMarkdown(file,data);
-  const next=raw.slice(0,pos)+(pos&&raw[pos-1]!=='\n'?'\n':'')+md+'\n'+raw.slice(pos);
+  const prefix=pos&&raw[pos-1]!=='\n'?'\n':'';const next=raw.slice(0,pos)+prefix+md+'\n'+raw.slice(pos);
   source.value=next;
   source.dispatchEvent(new Event('input',{bubbles:true}));
   if(source.style.display==='none'){
    window.BVSetRawMarkdown?.(next);
-  }else{source.focus();source.setSelectionRange(pos+md.length+1,pos+md.length+1);}
+  }else{source.focus();source.setSelectionRange(pos+prefix.length+md.length+1,pos+prefix.length+md.length+1);}
   document.querySelector('#status').textContent='圖片已插入，請 Commit 儲存文件';
  }catch(e){alert('插入圖片失敗：'+e.message)}
 }
@@ -80,7 +80,12 @@ textTools?.addEventListener('click',()=>{
   button('標註',()=>{const saved={...lastSelection};showPopup(selectionAnchor(),'新增標註','',[['保存',value=>{records.notes.push({id:crypto.randomUUID(),text:saved.text,offset:saved.offset,comment:value});saveRecords();decorate()}]])});
  }
  button('插入圖片',()=>{
-  imageInsertionPosition=source.style.display!=='none'?source.selectionStart:(selected?.offset>=0?selected.offset:(window.BVGetRawMarkdown?.()||'').length);
+  if(source.style.display!=='none')imageInsertionPosition=source.selectionStart;
+  else{
+   const raw=window.BVGetRawMarkdown?.()||'';
+   if(selected?.offset>=0){const end=selected.offset+selected.text.length;const nextLine=raw.indexOf('\n',end);imageInsertionPosition=nextLine<0?raw.length:nextLine+1;}
+   else imageInsertionPosition=raw.length;
+  }
   imagePicker?.click();
  });
  const r=textTools.getBoundingClientRect();menu.hidden=false;menu.style.left=Math.max(8,Math.min(r.left,innerWidth-190))+'px';menu.style.top=Math.max(8,Math.min(r.bottom+8,innerHeight-150))+'px';

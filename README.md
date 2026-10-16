@@ -82,20 +82,30 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 - 保留空白標註內容。
 
 
-## v2.3.9
+## v2.4.0
 - 目錄與標註寫入 Root 內 `.bv-note-records.json`，每個 File 獨立保存；原始 Markdown 不變。
 - Explorer 只顯示資料夾、`.md`、`.txt`；其他檔案仍留在磁碟。
 - 請使用支援 File System Access API 的瀏覽器並授予讀寫權限。
 - 跨裝置需一併複製 Root 中的 `.bv-note-records.json`。
 
-## v2.3.9
+## v2.4.0
 - 目錄與標註每次操作完成後自動保存中繼資料及當前文件。
 - 設定 → 文本工具 → 插入圖片，選擇本地圖片後以 data URL 嵌入 Markdown。
 - 已開啟空 Root 時，+Fold 直接建立資料夾。
 
-### v2.3.9
+### v2.4.0
 - 新增 File 時，若名稱未含副檔名，預設補上 `.md`（例如 `筆記` → `筆記.md`）；已輸入 `.txt` 或 `.md` 則保留。
 
 
-## v2.3.9
+## v2.4.0
 - Root 右鍵／長按新增「重新命名 Root」。選取 Root 的上一層資料夾授權後，完整複製所有檔案（包含隱藏中繼資料），遷移目錄與標註鍵值，刪除舊 Root。
+
+
+## v2.4.0：圖片貼上與 UUID 節點識別
+- 編輯模式的 Markdown 輸入框支援 Ctrl+V 貼上剪貼簿圖片，以 Data URL Markdown 插入游標處。
+- 文本工具插入圖片：編輯模式使用游標位置；瀏覽模式使用框選文字所在行的下一行。
+- Root 新增 `.bv-note-node-ids.json` 保存 Root、Fold、File 的 UUID。UUID 是隨機唯一識別碼，**不是文件內容的雜湊值**。
+- `.bv-note-records.json` v2 以 File UUID 儲存目錄與標註，並在載入時將舊版路徑索引遷移至 UUID。
+- Explorer 排序以 UUID 儲存，兼容舊版路徑排序資料。
+- 使用 Explorer 重新命名、移動時保留 UUID；複製建立新的 UUID。
+- 請一併備份 `.bv-note-node-ids.json` 與 `.bv-note-records.json`，否則跨裝置搬移可能無法還原目錄與標註關聯。

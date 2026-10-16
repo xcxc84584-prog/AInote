@@ -108,6 +108,20 @@ const sourceButton=document.createElement('button');sourceButton.textContent='MD
 const sourceArea=document.createElement('textarea');sourceArea.id='source-editor';sourceArea.spellcheck=false;sourceArea.style.cssText='display:none;width:100%;height:75vh;box-sizing:border-box;background:#1e222a;color:white;border:1px solid #566071;padding:20px;font:15px/1.65 monospace;resize:vertical';editor.insertAdjacentElement('afterend',sourceArea);
 sourceButton.onclick=()=>{const active=sourceArea.style.display!=='none';if(active){rawMarkdown=sourceArea.value;renderRaw();sourceArea.style.display='none';editor.style.display='';sourceButton.textContent='MD 原始碼';}else{sourceArea.value=rawMarkdown;sourceArea.style.display='block';editor.style.display='none';sourceButton.textContent='返回預覽';}};
 sourceArea.addEventListener('input',()=>{rawMarkdown=sourceArea.value;changed()});
+// Paste clipboard images as Markdown at the textarea caret (also supports Ctrl+V).
+sourceArea.addEventListener('paste',async e=>{
+ const images=[...(e.clipboardData?.items||[])].filter(item=>item.kind==='file'&&item.type.startsWith('image/')).map(item=>item.getAsFile()).filter(Boolean);
+ if(!images.length)return;
+ e.preventDefault();
+ const start=sourceArea.selectionStart,end=sourceArea.selectionEnd;
+ const snippets=[];
+ for(const file of images){const data=await dataURL(file);snippets.push(`![貼上圖片](${data})`)}
+ const text=snippets.join('\n');
+ sourceArea.setRangeText(text,start,end,'end');
+ sourceArea.dispatchEvent(new Event('input',{bubbles:true}));
+ status('已貼上圖片，請 Commit 儲存文件');
+});
+
 document.querySelector('#preview').onclick=()=>{refreshMathNow();status('已檢查並渲染未處理的公式')};
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save()}});
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
