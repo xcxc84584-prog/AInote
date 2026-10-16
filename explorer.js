@@ -12,10 +12,27 @@ async function loadRecordDB(){recordDB={version:1,files:{}};try{const h=await ro
 window.BVGetFileRecords=key=>recordDB.files[key]||null;
 window.BVPutFileRecords=(key,value)=>{if(!root||!key)return Promise.resolve();recordDB.files[key]=value;return flushRecordDB().catch(e=>{console.error('Record save failed',e);status('目錄/標註儲存失敗：'+e.message);throw e})};
 
+// Metadata follows the logical document path when a file or enclosing folder changes name/location.
+function captureRecordPaths(node){return [node,...items.filter(y=>isChild(y,node))].filter(y=>y.kind==='file').map(y=>({node:y,old:path(y)}));}
+async function relocateRecords(snapshot,copy=false){
+ if(!root||!snapshot?.length)return;
+ const changes=[];
+ for(const entry of snapshot){const from=entry.old,to=path(entry.node);if(from===to&&!copy)continue;
+  const oldKey=root.name+'/'+from,newKey=root.name+'/'+to;
+  const value=recordDB.files[oldKey];if(value){recordDB.files[newKey]=structuredClone(value);if(!copy)delete recordDB.files[oldKey];changes.push([oldKey,newKey,value]);}
+  if(!copy&&readingPositions.has(from)){readingPositions.set(to,readingPositions.get(from));readingPositions.delete(from);}
+ }
+ if(!changes.length)return;
+ await flushRecordDB();
+ for(const [oldKey,newKey,value] of changes){
+  try{localStorage.setItem('bv-note-annotations:'+newKey,JSON.stringify(value));if(!copy)localStorage.removeItem('bv-note-annotations:'+oldKey)}catch{}
+ }
+ const selectedFile=current();if(selectedFile?.kind==='file'&&changes.some(([,key])=>key===root.name+'/'+path(selectedFile)))window.BVActivateFileRecords?.(root.name+'/'+path(selectedFile));
+}
 function normalizeOrders(){const parents=[null,...items.filter(x=>x.kind==='directory')];for(const p of parents)siblings(p).forEach((x,i)=>x.order=i+1)}
 async function loadOrders(){try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(data.version!==1||!Array.isArray(data.paths))return;const ranks=new Map(data.paths.map((p,i)=>[p,i]));for(const x of items)x.order=ranks.has(path(x))?ranks.get(path(x)):100000+x.order;normalizeOrders()}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}}
 async function saveOrders(){normalizeOrders();const data={version:1,paths:[]};const walk=p=>{for(const x of siblings(p)){data.paths.push(path(x));if(x.kind==='directory')walk(x)}};walk(null);const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;}
-const collapsed=new Set();
+const collapsed=new Set();let rootCollapsed=false;
 const edge=document.querySelector('#sider-edge');
 const closeSider=document.querySelector('#sider-close');
 function setSider(open){aside.classList.toggle('collapsed',!open);document.querySelector('.workspace').classList.toggle('explorer-hidden',!open);edge.setAttribute('aria-expanded',String(open));edge.title=open?'Explorer 已開啟':'開啟 Explorer';}
@@ -75,7 +92,7 @@ window.BVCreateNewDocument=async()=>{
   }
   const file=await folder.getFileHandle('新文件.md',{create:true});
   const writer=await file.createWritable();await writer.write('');await writer.close();
-  root=folder;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();orderDirty=false;
+  root=folder;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();orderDirty=false;
   rootLabel.textContent=folder.name;
   const x={id:++sequence,name:'新文件.md',handle:file,parent:null,kind:'file',order:1,buffer:null};
   items.push(x);
@@ -91,7 +108,51 @@ function current(){return items.find(x=>x.id===selected)}
 function path(x){let parts=[x.name],p=x.parent;while(p){parts.unshift(p.name);p=p.parent;}return parts.join('/');}
 function siblings(p){return items.filter(x=>x.parent===p).sort((a,b)=>a.order-b.order)}
 async function scan(dir,parent){for await(const [n,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt)$/i.test(n))continue;const x={id:++sequence,name:n,handle:h,parent,kind:h.kind,order:sequence,buffer:null};items.push(x);if(h.kind==='directory')await scan(h,x)}}
-function display(){tree.replaceChildren();if(!root)return;const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
+async function renameRoot(){
+ if(!root)return;
+ const oldRoot=root,oldName=oldRoot.name;
+ const name=await inlineName('重新命名 Root',oldName);
+ if(!name||name===oldName)return;
+ if(/[\\/]/.test(name)||name==='.'||name==='..')return alert('名稱無效');
+ // Never open a directory picker as a side effect of Rename.
+ // Native move/rename is available only in browsers that implement it for directories.
+ if(typeof oldRoot.move!=='function'){
+  alert('此瀏覽器不支援直接重新命名 Root 資料夾。為避免誤觸本地資料夾選擇器或複製刪除造成資料遺失，本操作已取消。可先在檔案總管重新命名 Root，再於 BV-Note 重新開啟。');
+  return;
+ }
+ try{
+  await saveAll();
+  await window.BVFlushFileRecords?.();
+  await oldRoot.move(name);
+  const oldPrefix=oldName+'/',newPrefix=name+'/';
+  const migrated={version:recordDB.version||1,files:{}};
+  for(const [key,value] of Object.entries(recordDB.files))migrated.files[key.startsWith(oldPrefix)?newPrefix+key.slice(oldPrefix.length):key]=value;
+  recordDB=migrated;
+  await flushRecordDB();
+  for(const node of items.filter(x=>x.kind==='file')){
+   const oldKey=oldPrefix+path(node),newKey=newPrefix+path(node);
+   try{const cached=localStorage.getItem('bv-note-annotations:'+oldKey);if(cached!==null){localStorage.setItem('bv-note-annotations:'+newKey,cached);localStorage.removeItem('bv-note-annotations:'+oldKey)}}catch{}
+  }
+  const x=current();if(x?.kind==='file')window.BVActivateFileRecords?.(newPrefix+path(x));
+  rootLabel.textContent=name;display();toast('Root 已重新命名為 '+name);
+ }catch(e){alert('Root 重新命名失敗：'+e.message)}
+}
+
+function rootMenu(left,top){
+ const m=document.querySelector('#context-menu');m.replaceChildren();
+ for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
+  const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().then(fn).catch(e=>alert(e.message))};m.append(b);
+ }positionMenu(m,left,top);
+}
+function display(){tree.replaceChildren();if(!root)return;
+ const rootRow=document.createElement('div');rootRow.className='tree-node root-tree-node';rootRow.style.paddingLeft='10px';
+ const rootTitle=document.createElement('span');rootTitle.className='node-label';rootTitle.textContent=(rootCollapsed?'▸ ':'▾ ')+ '▣ '+root.name;rootRow.append(rootTitle);
+ rootRow.onclick=()=>{rootCollapsed=!rootCollapsed;display()};
+ rootRow.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();rootMenu(e.clientX,e.clientY)};
+ let timer;rootRow.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;const x=e.touches[0].clientX,y=e.touches[0].clientY;timer=setTimeout(()=>rootMenu(x,y),550)},{passive:true});
+ for(const ev of ['touchend','touchcancel','touchmove'])rootRow.addEventListener(ev,()=>clearTimeout(timer),{passive:true});
+ tree.append(rootRow);
+ const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
 const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);if(batchMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.name);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()};row.append(cb)}row.onclick=()=>{if(x.kind==='directory'){selected=x.id;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)};row.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)};
 // Long-press on mobile opens the same menu as desktop right-click.
 let pressTimer=null,startX=0,startY=0,suppressClick=false;
@@ -110,7 +171,7 @@ row.addEventListener('touchend',()=>{clearTimeout(pressTimer);pressTimer=null},{
 row.addEventListener('touchcancel',()=>{clearTimeout(pressTimer);pressTimer=null},{passive:true});
 row.addEventListener('click',e=>{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false}},true);
 row.ondragstart=e=>{e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'};row.ondragover=e=>{e.preventDefault()};row.ondrop=async e=>{e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving)await move(moving,x,e.shiftKey)};
-tree.append(row);if(x.kind==='directory'&&!collapsed.has(x.id))draw(x,level+1)})};draw(null,0)}
+tree.append(row);if(x.kind==='directory'&&!collapsed.has(x.id))draw(x,level+1)})};if(!rootCollapsed)draw(null,1)}
 // v2.2.12: Remember the reading position independently for each Explorer file.
 // The workspace main element is the actual scroll container (not window).
 const readingPositions=new Map();
@@ -153,14 +214,14 @@ async function choose(x){
  }catch(e){alert('開啟失敗：'+e.message)}
 }
 async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
-async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();await loadRecordDB();for(const node of items)if(node.kind==='directory')collapsed.add(node.id);orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
-async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
+async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();await loadRecordDB();for(const node of items)if(node.kind==='directory')collapsed.add(node.id);orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
+async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
 function dirOf(p){return p?p.handle:root}
 function normalizeNewFileName(name){
  const trimmed=name.trim();
  return /\.[^./\\]+$/.test(trimmed)?trimmed:trimmed+'.md';
 }
-async function create(kind){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=current()?.kind==='directory'?current():current()?.parent||null;const nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
+async function create(kind,forceRoot=false){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=forceRoot?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
 function inlineName(title,value){return new Promise(resolve=>{const box=document.querySelector('#inline-name');box.replaceChildren();const lab=document.createElement('label');lab.textContent=title;const inp=document.createElement('input');inp.value=value;const ok=document.createElement('button');ok.textContent='確認';const cancel=document.createElement('button');cancel.textContent='取消';box.append(lab,inp,ok,cancel);box.hidden=false;inp.focus();inp.select();const done=v=>{box.hidden=true;resolve(v)};ok.onclick=()=>done(inp.value.trim());cancel.onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value.trim());if(e.key==='Escape')done(null)}})}
 async function copyNode(x,target,name){
  if(x.kind==='file'){
@@ -205,10 +266,12 @@ async function rename(x){
   // Reject collisions instead of overwriting an existing file/folder.
   for await(const [existing] of parent.entries())if(existing===n)throw Error('目標名稱已存在');
   const oldName=x.name;
+  await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);
   const h=await copyNode(x,parent,n);
   await parent.removeEntry(oldName,{recursive:true});
   x.name=n;x.handle=h;
   if(x.kind==='directory')await rebindDescendants(x);
+  await relocateRecords(previous);
   if(selected===x.id){setName(n);if(x.kind==='file')handle=h}
   orderDirty=true;display();
  }catch(e){alert('重新命名失敗：'+e.message)}
@@ -229,10 +292,12 @@ async function move(x,target,after=false){
   const dest=dirOf(p);
   for await(const [existing] of dest.entries())if(existing===x.name)throw Error('目標位置已有同名項目：'+x.name);
   const source=dirOf(x.parent);
+  await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);
   const h=await copyNode(x,dest,x.name);
   await source.removeEntry(x.name,{recursive:true});
   x.parent=p;x.handle=h;
   if(x.kind==='directory')await rebindDescendants(x);
+  await relocateRecords(previous);
   if(selected===x.id&&x.kind==='file')handle=h;
   orderDirty=true;display();toast('已移動 '+x.name);
  }catch(e){alert('移動失敗：'+e.message)}
@@ -254,9 +319,10 @@ async function moveWithPicker(x){
    // Explicit move-to-root without requiring an existing sibling.
    try{
     for await(const [name] of root.entries())if(name===x.name)throw Error('Root 已有同名項目');
-    const oldParent=dirOf(x.parent);const h=await copyNode(x,root,x.name);
+    await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);const oldParent=dirOf(x.parent);const h=await copyNode(x,root,x.name);
     await oldParent.removeEntry(x.name,{recursive:true});x.parent=null;x.handle=h;
     if(x.kind==='directory')await rebindDescendants(x);
+    await relocateRecords(previous);
     if(selected===x.id&&x.kind==='file')handle=h;
     orderDirty=true;display();toast('已移動至 Root');
    }catch(e){alert('移動失敗：'+e.message)}
@@ -267,7 +333,7 @@ function targets(){const ids=batchMode&&checkedIds.size?[...checkedIds]:selected
 function resetBatch(){batchMode=false;checkedIds.clear();display()}
 async function deleteTargets(){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');if(!confirm('確定刪除 '+nodes.length+' 個項目及其子項目？此操作無法復原。'))return;let errors=[];for(const x of nodes){try{await removeNode(x)}catch(e){errors.push(x.name+'：'+e.message)}}if(errors.length)alert('部分刪除失敗：\n'+errors.join('\n'));else toast('已刪除 '+nodes.length+' 個項目');resetBatch()}
 function clipTargets(cut){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');clipboard={nodes:nodes.map(x=>({node:x,name:x.name,kind:x.kind})),cut};toast((cut?'已剪下 ':'已複製 ')+nodes.length+' 個項目，請選擇目的資料夾後貼上')}
-async function pasteTargets(){if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')}
+async function pasteTargets(){if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')}
 function operateMenu(left,top){const m=document.querySelector('#context-menu');m.replaceChildren();for(const [label,fn] of [['批量選取'+(batchMode?'（結束）':''),()=>{batchMode=!batchMode;checkedIds.clear();display()}],['刪除',deleteTargets],['剪下',()=>clipTargets(true)],['複製',()=>clipTargets(false)],['貼上',pasteTargets]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().then(fn).catch(e=>alert('操作失敗：'+e.message))};m.append(b)}positionMenu(m,left,top)}
 function positionMenu(m,left,top){m.style.left=Math.max(8,Math.min(left,innerWidth-190))+'px';m.style.top=Math.max(8,Math.min(top,innerHeight-245))+'px';m.hidden=false}
 function menu(x,left,top){

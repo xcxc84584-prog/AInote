@@ -202,3 +202,6 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .bv-danger{color:#ffaaaa!important}
 .toc-entry{display:flex;align-items:center;gap:9px}.toc-entry input{width:18px;height:18px;flex-shrink:0}.toc-entry span{flex:1;overflow-wrap:anywhere}
 @media(max-width:600px){#bv-inline-popup{max-width:calc(100vw - 16px)}.toc-heading{gap:5px}.toc-heading button{min-height:35px}}
+
+/* v2.3.8: blue underline for directory-marked text (browse mode) */
+#editor .bv-toc-underline,#editor .bv-toc-underline *{text-decoration-line:underline!important;text-decoration-color:#3994ff!important;text-decoration-thickness:2px!important;text-underline-offset:3px!important;text-decoration-skip-ink:auto}
