@@ -82,20 +82,20 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 - 保留空白標註內容。
 
 
-## v2.3.8
+## v2.3.9
 - 目錄與標註寫入 Root 內 `.bv-note-records.json`，每個 File 獨立保存；原始 Markdown 不變。
 - Explorer 只顯示資料夾、`.md`、`.txt`；其他檔案仍留在磁碟。
 - 請使用支援 File System Access API 的瀏覽器並授予讀寫權限。
 - 跨裝置需一併複製 Root 中的 `.bv-note-records.json`。
 
-## v2.3.8
+## v2.3.9
 - 目錄與標註每次操作完成後自動保存中繼資料及當前文件。
 - 設定 → 文本工具 → 插入圖片，選擇本地圖片後以 data URL 嵌入 Markdown。
 - 已開啟空 Root 時，+Fold 直接建立資料夾。
 
-### v2.3.8
+### v2.3.9
 - 新增 File 時，若名稱未含副檔名，預設補上 `.md`（例如 `筆記` → `筆記.md`）；已輸入 `.txt` 或 `.md` 則保留。
 
 
-## v2.3.8
+## v2.3.9
 - Root 右鍵／長按新增「重新命名 Root」。選取 Root 的上一層資料夾授權後，完整複製所有檔案（包含隱藏中繼資料），遷移目錄與標註鍵值，刪除舊 Root。

@@ -8,9 +8,21 @@ const RECORD_FILE=".bv-note-records.json";
 let recordDB={version:1,files:{}};
 let recordWrite=Promise.resolve();
 async function flushRecordDB(){if(!root)return;const target=root;const payload=JSON.stringify(recordDB,null,2);recordWrite=recordWrite.catch(()=>{}).then(async()=>{const h=await target.getFileHandle(RECORD_FILE,{create:true});const w=await h.createWritable();await w.write(payload);await w.close()});return recordWrite;}
-async function loadRecordDB(){recordDB={version:1,files:{}};try{const h=await root.getFileHandle(RECORD_FILE);const data=JSON.parse(await(await h.getFile()).text());if(data&&data.version===1&&data.files&&typeof data.files==='object')recordDB=data;}catch(e){if(e.name!=='NotFoundError')console.warn('Record load failed',e)}}
-window.BVGetFileRecords=key=>recordDB.files[key]||null;
-window.BVPutFileRecords=(key,value)=>{if(!root||!key)return Promise.resolve();recordDB.files[key]=value;return flushRecordDB().catch(e=>{console.error('Record save failed',e);status('目錄/標註儲存失敗：'+e.message);throw e})};
+// v2.3.9: canonical record keys are relative to Root, never prefixed by Root name.
+function canonicalRecordKey(key){if(!key)return '';const prefix=root?.name+'/';if(prefix&&key.startsWith(prefix))return key.slice(prefix.length);const exact=items.filter(x=>x.kind==='file').map(x=>path(x));const hit=exact.find(p=>key===p||key.endsWith('/'+p));return hit||key;}
+function normalizeRecordDB(){
+ const source=recordDB.files||{},out={};let changed=false;
+ // Prefer the newest canonical entry; preserve populated legacy entries over empty placeholders.
+ for(const [key,value] of Object.entries(source)){
+  const rel=canonicalRecordKey(key);if(rel!==key)changed=true;
+  const count=v=>(v?.toc?.length||0)+(v?.notes?.length||0);
+  if(!out[rel]||count(value)>count(out[rel]))out[rel]=value;
+ }
+ recordDB.files=out;return changed;
+}
+async function loadRecordDB(){recordDB={version:1,files:{}};try{const h=await root.getFileHandle(RECORD_FILE);const data=JSON.parse(await(await h.getFile()).text());if(data&&data.version===1&&data.files&&typeof data.files==='object')recordDB=data;}catch(e){if(e.name!=='NotFoundError')console.warn('Record load failed',e)}if(normalizeRecordDB())await flushRecordDB();}
+window.BVGetFileRecords=key=>recordDB.files[canonicalRecordKey(key)]||null;
+window.BVPutFileRecords=(key,value)=>{if(!root||!key)return Promise.resolve();recordDB.files[canonicalRecordKey(key)]=value;return flushRecordDB().catch(e=>{console.error('Record save failed',e);status('目錄/標註儲存失敗：'+e.message);throw e})};
 
 // Metadata follows the logical document path when a file or enclosing folder changes name/location.
 function captureRecordPaths(node){return [node,...items.filter(y=>isChild(y,node))].filter(y=>y.kind==='file').map(y=>({node:y,old:path(y)}));}
@@ -18,7 +30,7 @@ async function relocateRecords(snapshot,copy=false){
  if(!root||!snapshot?.length)return;
  const changes=[];
  for(const entry of snapshot){const from=entry.old,to=path(entry.node);if(from===to&&!copy)continue;
-  const oldKey=root.name+'/'+from,newKey=root.name+'/'+to;
+  const oldKey=from,newKey=to;
   const value=recordDB.files[oldKey];if(value){recordDB.files[newKey]=structuredClone(value);if(!copy)delete recordDB.files[oldKey];changes.push([oldKey,newKey,value]);}
   if(!copy&&readingPositions.has(from)){readingPositions.set(to,readingPositions.get(from));readingPositions.delete(from);}
  }
@@ -27,7 +39,7 @@ async function relocateRecords(snapshot,copy=false){
  for(const [oldKey,newKey,value] of changes){
   try{localStorage.setItem('bv-note-annotations:'+newKey,JSON.stringify(value));if(!copy)localStorage.removeItem('bv-note-annotations:'+oldKey)}catch{}
  }
- const selectedFile=current();if(selectedFile?.kind==='file'&&changes.some(([,key])=>key===root.name+'/'+path(selectedFile)))window.BVActivateFileRecords?.(root.name+'/'+path(selectedFile));
+ const selectedFile=current();if(selectedFile?.kind==='file'&&changes.some(([,key])=>key===path(selectedFile)))window.BVActivateFileRecords?.(path(selectedFile));
 }
 function normalizeOrders(){const parents=[null,...items.filter(x=>x.kind==='directory')];for(const p of parents)siblings(p).forEach((x,i)=>x.order=i+1)}
 async function loadOrders(){try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(data.version!==1||!Array.isArray(data.paths))return;const ranks=new Map(data.paths.map((p,i)=>[p,i]));for(const x of items)x.order=ranks.has(path(x))?ranks.get(path(x)):100000+x.order;normalizeOrders()}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}}
@@ -114,28 +126,37 @@ async function renameRoot(){
  const name=await inlineName('重新命名 Root',oldName);
  if(!name||name===oldName)return;
  if(/[\\/]/.test(name)||name==='.'||name==='..')return alert('名稱無效');
- // Never open a directory picker as a side effect of Rename.
- // Native move/rename is available only in browsers that implement it for directories.
- if(typeof oldRoot.move!=='function'){
-  alert('此瀏覽器不支援直接重新命名 Root 資料夾。為避免誤觸本地資料夾選擇器或複製刪除造成資料遺失，本操作已取消。可先在檔案總管重新命名 Root，再於 BV-Note 重新開啟。');
-  return;
- }
  try{
-  await saveAll();
-  await window.BVFlushFileRecords?.();
-  await oldRoot.move(name);
-  const oldPrefix=oldName+'/',newPrefix=name+'/';
-  const migrated={version:recordDB.version||1,files:{}};
-  for(const [key,value] of Object.entries(recordDB.files))migrated.files[key.startsWith(oldPrefix)?newPrefix+key.slice(oldPrefix.length):key]=value;
-  recordDB=migrated;
-  await flushRecordDB();
-  for(const node of items.filter(x=>x.kind==='file')){
-   const oldKey=oldPrefix+path(node),newKey=newPrefix+path(node);
-   try{const cached=localStorage.getItem('bv-note-annotations:'+oldKey);if(cached!==null){localStorage.setItem('bv-note-annotations:'+newKey,cached);localStorage.removeItem('bv-note-annotations:'+oldKey)}}catch{}
+  await saveAll();await window.BVFlushFileRecords?.();normalizeRecordDB();await flushRecordDB();
+  if(typeof oldRoot.move==='function'){
+   await oldRoot.move(name);
+   rootLabel.textContent=root.name;display();toast('Root 已重新命名為 '+root.name);return;
   }
-  const x=current();if(x?.kind==='file')window.BVActivateFileRecords?.(newPrefix+path(x));
-  rootLabel.textContent=name;display();toast('Root 已重新命名為 '+name);
- }catch(e){alert('Root 重新命名失敗：'+e.message)}
+  // A parent directory grant is required for physical rename where move() is unsupported.
+  if(!window.showDirectoryPicker){alert('此瀏覽器不支援重新命名資料夾');return;}
+  if(!confirm('此瀏覽器不支援原生 Root 重新命名。\n可手動選取 Root 的「上一層資料夾」來執行安全複製。\n系統將先驗證新 Root 的所有檔案；舊 Root 不會自動刪除，以免資料遺失。\n\n是否繼續？'))return;
+  const parent=await showDirectoryPicker({mode:'readwrite'});
+  let source;
+  try{source=await parent.getDirectoryHandle(oldName)}catch{throw Error('選取的不是原 Root 的上一層資料夾，操作已取消')}
+  if(!(await source.isSameEntry(oldRoot)))throw Error('選取的上一層資料夾不包含目前 Root，操作已取消');
+  try{await parent.getDirectoryHandle(name);throw Error('目標 Root 名稱已存在，為避免覆寫已取消')}catch(e){if(e.name!=='NotFoundError')throw e}
+  const target=await parent.getDirectoryHandle(name,{create:true});
+  async function copyVerify(src,dst){
+   for await(const [entryName,h] of src.entries()){
+    if(h.kind==='directory'){const d=await dst.getDirectoryHandle(entryName,{create:true});await copyVerify(h,d)}
+    else{const file=await h.getFile();const out=await dst.getFileHandle(entryName,{create:true});const w=await out.createWritable();await w.write(await file.arrayBuffer());await w.close();const verify=await out.getFile();if(verify.size!==file.size)throw Error('複製驗證失敗：'+entryName)}
+   }
+  }
+  await copyVerify(oldRoot,target);
+  root=target;await openRootFromHandle(target);
+  alert('新 Root「'+name+'」已建立並驗證。\n舊 Root「'+oldName+'」已保留作為備份，請確認目錄與標註正常後，再自行刪除舊資料夾。');
+ }catch(e){if(e.name!=='AbortError')alert('Root 重新命名失敗：'+e.message)}
+}
+async function openRootFromHandle(d){
+ root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;
+ items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();await loadRecordDB();
+ for(const node of items)if(node.kind==='directory')collapsed.add(node.id);
+ orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();
 }
 
 function rootMenu(left,top){
@@ -210,11 +231,11 @@ async function choose(x){
   dirty=x.buffer!==null;setDocumentVisible(true);switchMode(wasViewing?'view':'edit',true);
   if(wasViewing)restoreReadingPosition(x);
   else {readingRestoring=false;main.scrollTop=0;}
-  toast('已開啟 '+path(x));display();window.BVActivateFileRecords?.((root?.name||'')+'/'+path(x));
+  toast('已開啟 '+path(x));display();window.BVActivateFileRecords?.(path(x));
  }catch(e){alert('開啟失敗：'+e.message)}
 }
 async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
-async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadOrders();await loadRecordDB();for(const node of items)if(node.kind==='directory')collapsed.add(node.id);orderDirty=false;rootLabel.textContent=d.name;rawMarkdown='';setName('未命名.md');dirty=false;setDocumentVisible(false);switchMode('edit');display();toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
+async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await openRootFromHandle(d);toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
 async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
 function dirOf(p){return p?p.handle:root}
 function normalizeNewFileName(name){
