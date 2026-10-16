@@ -1,3 +1,8 @@
+## v2.2.10
+- 瀏覽模式下點選 Explorer File 即切換顯示該檔案的 Markdown 渲染內容，維持瀏覽模式。
+- 修正模式切換時舊編輯框內容覆蓋新載入 Markdown 的問題。
+- 編輯模式切換文件時暫存未保存內容。
+
 # AInote v1.5.2
 
 以 v1.5.1 為基礎。
@@ -36,3 +41,19 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 
 ## v2.2.6 新文件流程
 「新文件」會先選取本地父資料夾，再建立 Root 資料夾「新檔案」及子文件「新文件.md」，寫入磁碟並載入 Explorer。若名稱已存在，使用「新檔案 (2)」等名稱避免覆寫。需要支援 File System Access API 的瀏覽器（HTTPS 或 localhost）；取消選擇不會改變現有文件。
+
+
+## v2.2.7
+- Explorer Operate: 批量選取、刪除、剪下、複製、貼上。
+- 資料夾批量選取自動包含子項目；批量操作只處理最上層被選節點。
+- 修正刪除資料夾的遞迴刪除流程。
+- 剪貼簿僅限當前開啟的 Root 與目前頁面，不跨頁面保留。
+
+
+## v2.2.8
+- 修正 Operate 點擊後被全域 click handler 立即關閉。
+- 批量選取時，對節點長按或右鍵開啟 Operate 選單。
+
+
+## v2.2.9
+- 開啟既有 Root 時，Explorer 中所有 Fold 預設為收合狀態，點擊 Fold 才展開；不影響檔案讀取與儲存。
