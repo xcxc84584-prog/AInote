@@ -176,10 +176,8 @@ window.addEventListener('load',scheduleMathRender);
   const top=below+h+pad<=window.innerHeight?below:Math.max(pad,r.top-h-6);
   m.style.left=left+'px';m.style.top=top+'px';
  }
- let textMode=false;
  function close(){m.hidden=true;b.setAttribute('aria-expanded','false')}
- window.BVMobileTextSettings=(active)=>{if(active){textMode=true;close();b.classList.add('bv-text-settings-active');b.textContent='設定 · 文字功能 ▾'}else{textMode=false;b.classList.remove('bv-text-settings-active');b.textContent='設定 ▾';window.BVTextSettingsClose?.()}};
- b.addEventListener('click',e=>{e.stopPropagation();if(textMode){window.BVMobileTextSettings(false);m.hidden=false;b.setAttribute('aria-expanded','true');position();return;}if(!m.hidden){close();return;}m.hidden=false;b.setAttribute('aria-expanded','true');position()});
+ b.addEventListener('click',e=>{e.stopPropagation();if(!m.hidden){close();return;}m.hidden=false;b.setAttribute('aria-expanded','true');position()});
  document.addEventListener('pointerdown',e=>{if(!m.hidden&&!m.contains(e.target)&&!b.contains(e.target))close()});
  m.addEventListener('click',e=>{if(e.target.closest('button'))close()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape')close()});

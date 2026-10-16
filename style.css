@@ -202,7 +202,3 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .bv-danger{color:#ffaaaa!important}
 .toc-entry{display:flex;align-items:center;gap:9px}.toc-entry input{width:18px;height:18px;flex-shrink:0}.toc-entry span{flex:1;overflow-wrap:anywhere}
 @media(max-width:600px){#bv-inline-popup{max-width:calc(100vw - 16px)}.toc-heading{gap:5px}.toc-heading button{min-height:35px}}
-
-/* v2.2.15: mobile text settings in header */
-#settings-toggle.bv-text-settings-active{outline:2px solid #e0ad4a;outline-offset:1px}
-@media(max-width:900px) and (pointer:coarse){#text-actions{position:fixed!important;z-index:99999;max-width:calc(100vw - 16px);width:190px;box-sizing:border-box}#text-actions[hidden]{display:none!important}}
