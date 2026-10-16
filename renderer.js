@@ -46,7 +46,7 @@ function texToMathML(tex){
  return `<math xmlns="http://www.w3.org/1998/Math/MathML"><mrow>${parse()}</mrow></math>`;
 }
 function renderMathElements(root){root.querySelectorAll('.math-source').forEach(el=>{
- const raw=el.dataset.tex||el.textContent;let display=/^(\$\$|\\\[)/.test(raw),tex=raw.replace(/^\$\$|\$\$$/g,'').replace(/^\\\[|\\\]$/g,'').replace(/^\$|\$$/g,'').replace(/^\\\(|\\\)$/g,'').trim();
+ const raw=el.dataset.tex||el.textContent;let display=raw.startsWith('$$')||raw.startsWith('\\[');let tex=raw.trim();if(display&&tex.startsWith('\\[')&&tex.endsWith('\\]'))tex=tex.slice(2,-2).trim();else if(display&&tex.startsWith('$$')&&tex.endsWith('$$'))tex=tex.slice(2,-2).trim();else if(tex.startsWith('\\(')&&tex.endsWith('\\)'))tex=tex.slice(2,-2).trim();else if(tex.startsWith('$')&&tex.endsWith('$'))tex=tex.slice(1,-1).trim();
  const wrap=document.createElement(display?'div':'span');wrap.className='math-rendered';wrap.dataset.latex=raw;
  try{if(window.katex)katex.render(tex,wrap,{displayMode:display,throwOnError:false,trust:false});else wrap.innerHTML=texToMathML(tex)}catch(e){wrap.textContent=raw}
  el.replaceWith(wrap);
