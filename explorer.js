@@ -32,8 +32,50 @@ setDocumentVisible(false);
 const editableExt=/\.(md|markdown|txt|ainote)$/i;
 const toast=s=>status(s);
 function switchMode(mode){const edit=mode==='edit';sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Edit';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{rawMarkdown=sourceArea.value;renderRaw();}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
-sourceButton.onclick=async()=>{if(sourceArea.style.display==='none'){switchMode('edit');return}rawMarkdown=sourceArea.value;const x=current();if(x&&x.kind==='file'){try{const w=await x.handle.createWritable();await w.write(rawMarkdown);await w.close();x.buffer=null;dirty=false;status('Commit 已保存：'+x.name)}catch(e){alert('Commit 保存失敗：'+e.message);return}}else{await save();if(dirty)return}switchMode('view');refreshUnsaved()};
+window.BVSaveSelectedFile=async(content)=>{
+ const x=current();
+ if(!x||x.kind!=='file'||handle!==x.handle)return null;
+ try{const w=await x.handle.createWritable();await w.write(content);await w.close();x.buffer=null;dirty=false;status('已儲存：'+x.name);refreshUnsaved();return true;}
+ catch(e){alert('儲存失敗：'+e.message);return false;}
+};
+sourceButton.onclick=async()=>{
+ if(sourceArea.style.display==='none'){switchMode('edit');return}
+ rawMarkdown=sourceArea.value;
+ const ok=await save();
+ if(!ok)return;
+ switchMode('view');refreshUnsaved();
+};
 sourceButton.textContent='Commit';editor.contentEditable='false';switchMode('edit');
+// New document transaction: choose parent -> create Root -> create Markdown -> display.
+window.BVCreateNewDocument=async()=>{
+ if(!window.showDirectoryPicker){alert('此瀏覽器不支援選取並寫入本地資料夾。請使用支援 File System Access API 的 Chrome/Edge HTTPS 版本。');return false;}
+ if(dirty&&!confirm('目前文件尚未保存，仍要建立新文件？'))return false;
+ let parent;
+ try{parent=await window.showDirectoryPicker({mode:'readwrite'});}catch(e){if(e.name!=='AbortError')alert('選擇儲存路徑失敗：'+e.message);return false;}
+ try{
+  // Do not overwrite a previously created folder or file.
+  let folderName='新檔案',index=2,folder;
+  while(true){
+   try{await parent.getDirectoryHandle(folderName);folderName='新檔案 ('+(index++)+')';continue;}
+   catch(e){if(e.name!=='NotFoundError')throw e;}
+   try{await parent.getFileHandle(folderName);folderName='新檔案 ('+(index++)+')';continue;}
+   catch(e){if(e.name!=='NotFoundError')throw e;}
+   folder=await parent.getDirectoryHandle(folderName,{create:true});break;
+  }
+  const file=await folder.getFileHandle('新文件.md',{create:true});
+  const writer=await file.createWritable();await writer.write('');await writer.close();
+  root=folder;items=[];selected=null;sequence=0;collapsed.clear();orderDirty=false;
+  rootLabel.textContent=folder.name;
+  const x={id:++sequence,name:'新文件.md',handle:file,parent:null,kind:'file',order:1,buffer:null};
+  items.push(x);
+  handle=null;rawMarkdown='';dirty=false;
+  await choose(x);
+  switchMode('edit');
+  display();toast('已建立 '+folder.name+'/新文件.md');
+  return true;
+ }catch(e){alert('建立新文件失敗：'+e.message);return false;}
+};
+window.BVDetachExplorerSelection=()=>{selected=null;display()};
 function current(){return items.find(x=>x.id===selected)}
 function path(x){let parts=[x.name],p=x.parent;while(p){parts.unshift(p.name);p=p.parent;}return parts.join('/');}
 function siblings(p){return items.filter(x=>x.parent===p).sort((a,b)=>a.order-b.order)}

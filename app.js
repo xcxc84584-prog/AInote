@@ -82,10 +82,28 @@ function htmlToMarkdown(html){return window.TurndownService?new TurndownService(
 input.onchange=async()=>{if(input.files[0]){handle=null;await openFile(input.files[0])}input.value=''};
 document.querySelector('#open').onclick=async()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;if(window.showOpenFilePicker){try{const [h]=await showOpenFilePicker({types:[{description:'Markdown',accept:{'text/markdown':['.md','.markdown','.txt']}}],excludeAcceptAllOption:false});handle=h;await openFile(await h.getFile());return}catch(e){if(e.name==='AbortError')return}}input.click()};
 function download(data,n,mime){const u=URL.createObjectURL(new Blob([data],{type:mime}));const a=document.createElement('a');a.href=u;a.download=n;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000)}
-async function save(as=false){const content=rawMarkdown;try{if(window.showSaveFilePicker){if(!handle||as||!/\.(md|markdown|txt)$/i.test(handle.name))handle=await showSaveFilePicker({suggestedName:name.replace(/\.[^.]+$/,'')+'.md',types:[{description:'Markdown 原始碼',accept:{'text/markdown':['.md']}}]});const w=await handle.createWritable();await w.write(content);await w.close();setName(handle.name);status('已儲存原始 Markdown');dirty=false;window.BVRefreshUnsaved?.();return}download(content,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');dirty=false;window.BVRefreshUnsaved?.();status('已下載原始 Markdown')}catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message)}}
+async function save(as=false){
+ // The selected Explorer file is authoritative only when it matches the active editor.
+ // A standalone "新文件" always uses its own Save File Picker.
+ const content=sourceArea?.style.display!=='none'?sourceArea.value:rawMarkdown;
+ try{
+  if(!as&&typeof window.BVSaveSelectedFile==='function'){
+   const result=await window.BVSaveSelectedFile(content);
+   if(result!==null){if(result){rawMarkdown=content;dirty=false;window.BVRefreshUnsaved?.();}return result;}
+  }
+  if(window.showSaveFilePicker){
+   let target=handle;
+   if(!target||as||!/\.(md|markdown|txt)$/i.test(target.name))target=await showSaveFilePicker({suggestedName:name.replace(/\.[^.]+$/,'')+'.md',types:[{description:'Markdown 原始碼',accept:{'text/markdown':['.md']}}]});
+   const w=await target.createWritable();await w.write(content);await w.close();
+   handle=target;setName(target.name);status('已儲存原始 Markdown');dirty=false;rawMarkdown=content;window.BVRefreshUnsaved?.();return true;
+  }
+  download(content,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');
+  status('已下載原始 Markdown（瀏覽器不支援直接寫入）');dirty=false;rawMarkdown=content;window.BVRefreshUnsaved?.();return true;
+ }catch(e){if(e.name!=='AbortError')alert('儲存失敗：'+e.message);return false;}
+}
 document.querySelector('#save').onclick=()=>save();document.querySelector('#saveas').onclick=()=>save(true);
 document.querySelector('#md').onclick=()=>{download(rawMarkdown,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');status('已匯出原始 Markdown')};
-document.querySelector('#clear').onclick=()=>{if(dirty&&!confirm('捨棄未儲存的內容？'))return;rawMarkdown='';renderRaw();handle=null;setName('未命名.md');dirty=false;window.BVSetDocumentVisible?.(true);window.BVRefreshUnsaved?.();status('新文件')};
+document.querySelector('#clear').onclick=()=>window.BVCreateNewDocument?.();
 const sourceButton=document.createElement('button');sourceButton.textContent='MD 原始碼';sourceButton.id='source-toggle';document.querySelector('.tools').prepend(sourceButton);
 const sourceArea=document.createElement('textarea');sourceArea.id='source-editor';sourceArea.spellcheck=false;sourceArea.style.cssText='display:none;width:100%;height:75vh;box-sizing:border-box;background:#1e222a;color:white;border:1px solid #566071;padding:20px;font:15px/1.65 monospace;resize:vertical';editor.insertAdjacentElement('afterend',sourceArea);
 sourceButton.onclick=()=>{const active=sourceArea.style.display!=='none';if(active){rawMarkdown=sourceArea.value;renderRaw();sourceArea.style.display='none';editor.style.display='';sourceButton.textContent='MD 原始碼';}else{sourceArea.value=rawMarkdown;sourceArea.style.display='block';editor.style.display='none';sourceButton.textContent='返回預覽';}};
