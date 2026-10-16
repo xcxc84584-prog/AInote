@@ -186,3 +186,5 @@ window.addEventListener('load',scheduleMathRender);
  window.addEventListener('resize',()=>{if(!m.hidden)position()});
  window.addEventListener('scroll',()=>{if(!m.hidden)position()},true);
 })();
+
+window.BVGetRawMarkdown=()=>sourceArea.style.display!=='none'?sourceArea.value:rawMarkdown;

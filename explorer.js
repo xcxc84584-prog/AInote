@@ -34,7 +34,7 @@ window.BVRefreshUnsaved=refreshUnsaved;
 setDocumentVisible(false);
 const editableExt=/\.(md|markdown|txt|ainote)$/i;
 const toast=s=>status(s);
-function switchMode(mode, preserveLoadedMarkdown=false){const edit=mode==='edit';sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Edit';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
+function switchMode(mode, preserveLoadedMarkdown=false){const edit=mode==='edit';sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Edit';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();setTimeout(()=>window.BVRefreshFileRecords?.(),50);}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
 window.BVSaveSelectedFile=async(content)=>{
  const x=current();
  if(!x||x.kind!=='file'||handle!==x.handle)return null;
@@ -141,7 +141,7 @@ async function choose(x){
   dirty=x.buffer!==null;setDocumentVisible(true);switchMode(wasViewing?'view':'edit',true);
   if(wasViewing)restoreReadingPosition(x);
   else {readingRestoring=false;main.scrollTop=0;}
-  toast('已開啟 '+path(x));display();
+  toast('已開啟 '+path(x));display();window.BVActivateFileRecords?.((root?.name||'')+'/'+path(x));
  }catch(e){alert('開啟失敗：'+e.message)}
 }
 async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}

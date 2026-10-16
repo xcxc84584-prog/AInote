@@ -180,3 +180,25 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 
 /* v2.2.7 Explorer batch actions */
 .tree-node .node-check{flex:0 0 auto;width:17px;height:17px;accent-color:#5eaaef;cursor:pointer;touch-action:manipulation}.tree-node .node-label{flex:1}.explorer-actions #explorer-operate{white-space:nowrap}#context-menu{min-width:170px;z-index:100001}#context-menu button{width:100%}
+/* v2.2.13 per-file directory and text annotation controls */
+#toc-panel{position:fixed;right:12px;top:70px;width:min(350px,calc(100vw - 24px));max-height:70dvh;overflow:auto;background:#222a35;color:#f5f7fb;border:1px solid #647083;border-radius:10px;z-index:200002;padding:12px;box-shadow:0 12px 36px #0009}
+#toc-panel[hidden],#text-actions[hidden]{display:none!important}
+.toc-heading{display:flex;justify-content:space-between;align-items:center;font-weight:700;padding:5px 8px 12px}
+.toc-entry{padding:12px 9px;border-bottom:1px solid #55606d;cursor:pointer;overflow-wrap:anywhere}
+.toc-entry:hover{background:#384351}
+#text-actions{position:fixed;z-index:200003;display:flex;flex-direction:column;background:#263140;border:1px solid #66778a;border-radius:8px;box-shadow:0 8px 24px #0008;padding:6px;min-width:170px}
+#text-actions button{min-height:42px;color:white;background:transparent;border:0;text-align:left;padding:8px 12px}
+#text-actions button:hover{background:#40506a}
+#editor mark.bv-note-mark{background:#ffe05c!important;color:#111!important;cursor:pointer;border-radius:2px}
+
+/* v2.2.14: inline annotation and TOC operations */
+#editor mark.bv-note-mark,#editor mark.bv-note-mark *{background:#ffe05c!important;color:#101010!important;-webkit-text-fill-color:#101010!important}
+#bv-inline-popup{position:fixed;z-index:200010;background:#263140;color:#fff;border:1px solid #718097;border-radius:10px;padding:12px;box-shadow:0 12px 35px #000b;box-sizing:border-box}
+#bv-inline-popup[hidden]{display:none!important}
+#bv-inline-popup .bv-popup-title{font-weight:700;margin-bottom:8px}
+#bv-inline-popup textarea{display:block;box-sizing:border-box;width:100%;background:#151c27;color:white;border:1px solid #708096;border-radius:6px;padding:8px;resize:vertical}
+.bv-popup-buttons,.toc-batch-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.bv-popup-buttons button,.toc-batch-tools button{padding:7px 10px;cursor:pointer}
+.bv-danger{color:#ffaaaa!important}
+.toc-entry{display:flex;align-items:center;gap:9px}.toc-entry input{width:18px;height:18px;flex-shrink:0}.toc-entry span{flex:1;overflow-wrap:anywhere}
+@media(max-width:600px){#bv-inline-popup{max-width:calc(100vw - 16px)}.toc-heading{gap:5px}.toc-heading button{min-height:35px}}

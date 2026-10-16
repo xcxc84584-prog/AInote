@@ -68,3 +68,9 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 ## v2.2.12
 - Explorer 瀏覽模式切換文件時，記住每份文件的捲動位置，切回時恢復。
 - 重新選取 Root 或關閉 Root 時清除舊位置記錄。
+
+
+## v2.2.14
+- 目錄批量選取與批量刪除。
+- 標註文字強制黃底黑字。
+- 目錄與標註新增/修改/刪除使用就近的內部 UI，不使用瀏覽器 prompt。
