@@ -1,7 +1,0 @@
-/*
-AREA:MathAutoRefresh
-EXTERNAL.USER ---> (ChangeDetection) ---> (ScheduleRender) ---> (MathRefresh)
-*/
-// ChangeDetection：監測貼上、輸入與文件載入後的內容變動，辨識未渲染的數學式。
-// ScheduleRender：合併短時間內的連續事件，避免每次字元輸入都立即重排。
-// MathRefresh：僅渲染尚未處理的公式，避免重複插入已顯示的數學式。

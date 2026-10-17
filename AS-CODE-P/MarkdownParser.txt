@@ -1,7 +1,0 @@
-/*
-AREA:MarkdownParser
-EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
-*/
-// Input：接收此 AREA 的結構化輸入資料。
-// Process：將 Markdown 標題、表格、清單及其他語法轉成文件元素。
-// Output：輸出此 AREA 的處理結果與錯誤狀態。

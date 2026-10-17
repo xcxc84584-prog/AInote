@@ -1,7 +1,0 @@
-/*
-AREA:ClipboardImport
-EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
-*/
-// Input：接收此 AREA 的單一邏輯輸入。
-// Process：解析貼上的文字、HTML 和圖片並插入編輯區。
-// Output：將處理結果輸出給其他 AREA 或使用者。

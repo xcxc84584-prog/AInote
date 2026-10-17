@@ -78,6 +78,23 @@ textTools?.addEventListener('click',()=>{
   lastSelection={...selected};
   button('目錄化',()=>{const text=lastSelection.text;records.toc.push({id:crypto.randomUUID(),text,offset:lastSelection.offset,name:text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate()});
  }
+ button('插入文本',()=>{
+  const current=lastSelection||selected;
+  if(!current?.text)return alert('請先框選要定位的文字');
+  const raw=window.BVGetRawMarkdown?.()||'';
+  const start=current.offset>=0&&raw.slice(current.offset,current.offset+current.text.length)===current.text?current.offset:raw.indexOf(current.text);
+  if(start<0)return alert('找不到框選的原始文字，請重新選取');
+  const end=start+current.text.length;
+  showPopup(selectionAnchor(),'插入文本（選取段落最後一字之後）','',[["插入",value=>{
+   const updated=raw.slice(0,end)+value+raw.slice(end);
+   if(source.style.display!=='none'){
+    source.value=updated;source.dispatchEvent(new Event('input',{bubbles:true}));source.focus();source.setSelectionRange(end+value.length,end+value.length);
+   }else{
+    window.BVSetRawMarkdown?.(updated);
+   }
+   document.querySelector('#status').textContent='文本已插入，請 Commit 儲存';
+  }]]);
+ });
  button('插入圖片',()=>{
   if(source.style.display!=='none')imageInsertionPosition=source.selectionStart;
   else{

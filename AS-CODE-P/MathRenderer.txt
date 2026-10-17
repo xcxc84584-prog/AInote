@@ -1,6 +1,0 @@
-/*
-AREA:MathRenderer
-AREA.MarkdownRenderer ---> (ExtractTeX) ---> (ConvertMathML) ---> AREA.EditorUI
-*/
-// ExtractTeX：擷取行內與區塊 LaTeX 公式並移除外層界定符號。
-// ConvertMathML：離線將常見 LaTeX 語法轉成 MathML，若有 KaTeX 則優先使用 KaTeX。

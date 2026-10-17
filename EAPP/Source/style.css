@@ -1,0 +1,212 @@
+*{box-sizing:border-box}
+body{margin:0;background:#101216;color:#e7eaf0;font:15px/1.7 system-ui,'Microsoft JhengHei',sans-serif}
+header{display:flex;align-items:center;gap:13px;flex-wrap:wrap;background:#191c23;padding:12px 22px;border-bottom:1px solid #343a46;position:sticky;top:0;z-index:5}
+header strong{font-size:20px;color:#a5c8ff}#filename{color:#bbc3d0}#status{font-size:12px;color:#82d6aa;margin-right:auto}
+.tools{display:flex;flex-wrap:wrap;gap:7px}
+button{background:#282d37;color:#e9edf6;border:1px solid #414958;border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{background:#38465c}
+main{padding:30px 14px 70px}
+#editor{background:#22252d;color:#f0f2f6;max-width:900px;min-height:calc(100vh - 195px);margin:auto;padding:56px 68px;outline:none;border:1px solid #363b46;border-radius:10px;box-shadow:0 10px 45px #0005;overflow-wrap:anywhere}
+#editor:empty:before{content:attr(data-placeholder);color:#9099a9}
+#editor h1,#editor h2,#editor h3{line-height:1.35;color:#f7f8fc}
+#editor h1,#editor h2{border-bottom:1px solid #414651;padding-bottom:.3em}
+#editor a{color:#8dbaff}
+#editor img,#editor svg{max-width:100%;height:auto}
+#editor table{border-collapse:collapse;display:block;max-width:100%;overflow:auto}
+#editor td,#editor th{border:1px solid #505868;padding:8px 12px}
+#editor th{background:#343a46}
+#editor pre{white-space:pre-wrap;background:#151820;padding:15px;overflow:auto;border-radius:7px}
+#editor code{background:#343a46;padding:2px 5px;border-radius:4px}
+#editor pre code{background:none;padding:0}
+#editor blockquote{border-left:3px solid #7c99c8;padding-left:16px;color:#b6bfd0}
+#editor hr{border:0;border-top:1px solid #505868}
+#editor .math-rendered{max-width:100%;overflow-x:auto}
+#editor .math-error{color:#ff9999}
+footer{text-align:center;font-size:12px;color:#9ba4b3;padding:12px}
+@media(max-width:700px){header{padding:10px}#editor{padding:26px 19px}main{padding:10px 6px 55px}}
+
+/* Pure white text and transparent selection: no white text backing. */
+#editor, #editor * { color:#ffffff; }
+#editor ::selection {background:rgba(96,145,225,.34);color:#fff}
+#editor ::-moz-selection {background:rgba(96,145,225,.34);color:#fff}
+#editor span[style*="background"],#editor font[style*="background"]{background:transparent!important}
+#editor .katex,#editor .katex *{color:#fff!important}
+#editor .math-rendered{white-space:normal}
+#editor p{margin:.7em 0}
+#editor .katex-display{overflow-x:auto;overflow-y:hidden}
+
+/* v1.3: pasted inline typography must never override dark-mode foreground. */
+#editor :is(p,div,span,strong,em,b,i,u,s,del,small,mark,font,h1,h2,h3,h4,h5,h6,
+ li,ul,ol,blockquote,table,thead,tbody,tr,td,th,pre,code,a,label) {
+ color:#fff !important;
+ text-shadow:none !important;
+ -webkit-text-fill-color:#fff !important;
+}
+#editor :is(p,div,span,strong,em,b,i,u,s,del,small,mark,font,h1,h2,h3,h4,h5,h6,
+ li,ul,ol,blockquote,table,thead,tbody,tr,td,th,a,label) {
+ background-color:transparent !important;
+ background-image:none !important;
+}
+#editor a {text-decoration-color:#fff!important}
+#editor :is(p,div,span,strong,em,b,i,u,s,del,small,mark,font,h1,h2,h3,h4,h5,h6,
+ li,ul,ol,blockquote,table,thead,tbody,tr,td,th,pre,code,a,label)::selection {
+ background:rgba(80,130,215,.45)!important;color:#fff!important;
+}
+#editor svg, #editor svg * { -webkit-text-fill-color:unset!important; }
+#editor svg text, #editor svg tspan { -webkit-text-fill-color:initial!important; }
+/* v1.4: actual rendered elements, not source text */
+#editor {color:#fff!important}
+#editor p,#editor h1,#editor h2,#editor h3,#editor h4,#editor h5,#editor h6,#editor li,#editor td,#editor th {color:#fff!important;-webkit-text-fill-color:#fff!important}
+#editor svg *,#editor math *{-webkit-text-fill-color:unset!important}
+#editor math{color:#fff;font-size:1.2em}
+#editor .math-rendered{display:inline-block;color:#fff;max-width:100%;overflow-x:auto}
+#editor div.math-rendered{display:block;text-align:center;margin:16px 0}
+#editor .svg-block{overflow:auto;max-width:100%;margin:16px 0}
+#editor img{display:inline-block;max-width:100%;height:auto}
+#editor table{display:table;width:100%;border-collapse:collapse;margin:16px 0}
+#editor td,#editor th{border:1px solid #555c6b;background:#272d37!important;color:#fff!important}
+
+#editor {white-space:normal; color:#fff!important;}
+#editor :is(h1,h2,h3,h4,h5,h6,p,li,td,th,blockquote,code,strong,em,del){color:#fff!important;}
+#editor .svg-block svg{max-width:100%;height:auto;}
+#editor .math-rendered{display:inline-block;vertical-align:middle;}
+#editor div.math-rendered{display:block;text-align:center;margin:1.2em 0;}
+#editor table{width:max-content;min-width:60%;max-width:100%;border-collapse:collapse;}
+#editor th,#editor td{border:1px solid #697386;padding:8px 12px;}
+
+/* v1.5.2: no blue underline from links, spelling or grammar extensions */
+#editor, #editor * { text-decoration-line: none !important; text-decoration-style: none !important; }
+#editor a, #editor a:visited, #editor a:hover, #editor a:focus {
+  color: #fff !important; -webkit-text-fill-color: #fff !important;
+  text-decoration: none !important; border-bottom: none !important;
+}
+#editor :is(h1,h2,h3,h4,h5,h6) a { text-decoration: none !important; }
+#editor :is(pre,code) {
+  font-family: Consolas, 'Cascadia Code', 'Courier New', monospace !important;
+  font-variant-ligatures: none; tab-size: 4;
+  text-decoration: none !important;
+}
+#editor pre { white-space: pre; overflow-x: auto; line-height: 1.55; }
+#editor pre code { white-space: inherit; word-break: normal; overflow-wrap: normal; }
+#editor code:not(pre code) { white-space: pre-wrap; }
+#editor [data-gramm], #editor [data-gramm_editor] { text-decoration: none !important; }
+
+/* KaTeX accessibility MathML is not a second visual equation. */
+#editor .katex .katex-mathml{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip:rect(1px,1px,1px,1px)!important;white-space:nowrap!important;}
+#editor .katex .katex-html{display:inline-block;}
+
+.workspace{display:flex;min-height:75vh}#explorer{width:270px;flex-shrink:0;background:#191c23;border-right:1px solid #343a46;padding:12px;overflow:auto}#explorer button{padding:5px 7px;font-size:12px}.explorer-title{font-weight:700;letter-spacing:2px;margin-bottom:12px}#root-label{font-size:12px;overflow-wrap:anywhere;color:#aab5c9;margin:10px 0}.explorer-actions{display:flex;gap:3px;flex-wrap:wrap;margin:12px 0}#tree{font-size:13px}.tree-node{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 5px;cursor:pointer;border-radius:4px}.tree-node:hover{background:#303744}.tree-node.selected{background:#245188;color:white}.tree-node small{color:#9ca9bb}#inline-name{padding:8px;background:#272e3a}#inline-name input{width:100%;background:#101216;color:white;border:1px solid #67748b;padding:6px}#inline-name label{display:block;font-size:12px}#context-menu{position:fixed;z-index:99;background:#252c37;border:1px solid #647087;padding:5px;border-radius:6px}#context-menu button{display:block;width:155px;text-align:left}main{flex:1;min-width:0}#mode-indicator{text-align:right;max-width:900px;margin:auto;color:#9ab3d4;font-size:12px}#source-editor{max-width:900px;margin:auto;display:block;min-height:70vh}#editor[contenteditable=false]{user-select:text}@media(max-width:700px){.workspace{display:block}#explorer{width:100%;max-height:34vh;border-right:0;border-bottom:1px solid #343a46}main{padding-top:12px}}
+
+/* v1.8 collapsible left sidebar */
+#explorer-toggle{position:fixed;left:10px;top:72px;z-index:20;background:#263244;color:#fff;border:1px solid #53637b;border-radius:7px;padding:8px 12px;cursor:pointer;box-shadow:0 3px 14px #0008}
+.workspace{padding-top:35px}#explorer{transition:width .22s ease,padding .22s ease;max-width:85vw;overflow-x:hidden}#explorer.collapsed{width:0!important;padding:0!important;border:0!important;visibility:hidden}.tree-node .node-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tree-node small{flex-shrink:0}
+@media(max-width:700px){.workspace{display:flex!important}.workspace #explorer{width:min(78vw,300px);max-height:none;height:calc(100dvh - 110px);position:fixed;left:0;top:105px;z-index:15;box-shadow:4px 0 15px #0008}.workspace #explorer.collapsed{transform:translateX(-100%)}.workspace main{width:100%}#explorer-toggle{top:62px}}
+/* v1.9: independent Explorer and document scrolling */
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column;min-height:0}
+header{position:relative;top:auto;flex:0 0 auto;max-height:40dvh;overflow-y:auto}
+#explorer-toggle{flex:0 0 auto}
+.workspace{flex:1 1 auto;min-height:0;height:auto;overflow:hidden;display:flex!important}
+.workspace #explorer{height:100%;max-height:none;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;scrollbar-gutter:stable;flex-shrink:0}
+.workspace main{height:100%;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;flex:1 1 auto}
+footer{flex:0 0 auto}
+@media(max-width:700px){
+ .workspace #explorer{position:relative;left:auto;top:auto;height:100%;max-height:none;box-shadow:none;width:min(78vw,300px)}
+ .workspace #explorer.collapsed{position:relative;transform:none;width:0!important;max-width:0!important}
+ .workspace main{width:0;min-width:0;flex:1 1 auto;padding-top:12px}
+}
+
+/* v2.1: Explorer control is aligned with the editor paper on all viewports */
+#explorer-toggle{position:static!important;inset:auto!important;flex:0 0 auto;box-shadow:none;margin:0!important;white-space:nowrap;min-height:36px}
+.workspace{padding-top:0!important}
+.workspace main{display:flex;flex-direction:column;align-items:stretch;min-width:0}
+.editor-topbar{width:100%;max-width:900px;margin:0 auto;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:6px 0 8px;flex-shrink:0}
+.editor-topbar #mode-indicator{margin:0!important;max-width:none;text-align:right;min-width:0}
+@media(max-width:700px){.editor-topbar{width:100%;padding:6px 8px 8px;box-sizing:border-box}#explorer-toggle{font-size:12px;padding:7px 9px;max-width:45vw}.workspace main{padding-top:0!important}}
+
+/* v2.2 adaptive document height, sider drag, settings and mode actions */
+#editor{min-height:0!important;height:auto!important;align-self:stretch;flex-shrink:0;margin-bottom:32px;}
+#editor:empty{min-height:240px!important}
+#source-editor{flex-shrink:0}
+.workspace #explorer{position:relative;min-width:0;max-width:calc(100vw - 180px);padding-right:17px}
+.workspace #explorer.collapsed{min-width:0!important;max-width:0!important;overflow:hidden!important}
+#sider-resizer{position:absolute;right:0;top:0;bottom:0;width:10px;cursor:col-resize;touch-action:none;background:transparent;z-index:3}
+#sider-resizer:hover,#sider-resizer:active{background:#6485b788}
+body.resizing-sider{cursor:col-resize;user-select:none}
+.root-toolbar{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.root-toolbar button{white-space:nowrap}
+#sider-close{color:#ffc7c7;border-color:#804d57}
+#sider-edge{flex:0 0 auto;min-width:38px;min-height:36px}
+#source-toggle.commit-mode{background:#167e46;color:#fff;border-color:#2fb96b;font-weight:700}
+#source-toggle.edit-mode{background:#a62d38;color:#fff;border-color:#eb6874;font-weight:700}
+.settings-wrap{position:relative}
+#settings-menu{position:absolute;right:0;top:calc(100% + 6px);min-width:180px;background:#252b36;border:1px solid #4c5669;border-radius:8px;padding:6px;z-index:50;box-shadow:0 8px 25px #0009}
+#settings-menu[hidden]{display:none!important}
+#settings-menu button{display:block;width:100%;text-align:left;white-space:nowrap}
+@media(max-width:700px){.workspace #explorer{max-width:calc(100vw - 85px)}#editor{margin-bottom:24px}}
+
+/* v2.2.1: Settings popup is portaled to body to avoid header overflow clipping. */
+#settings-menu{position:fixed!important;right:auto!important;top:0;left:0;z-index:10000!important;max-width:calc(100vw - 16px);box-sizing:border-box}
+
+/* v2.2.2: document-less explorer state and unsaved badge */
+.workspace main.no-document #editor,.workspace main.no-document #source-editor,.workspace main.no-document #source-toggle,.workspace main.no-document #unsaved-notice{display:none!important}
+#empty-document-notice{display:none;align-self:stretch;margin:auto;padding:24px;text-align:center;color:#b9c4d4;font-size:17px;line-height:1.8}
+.workspace main.no-document #empty-document-notice{display:block}
+#unsaved-notice{margin-left:auto;color:#ffc36b;font-size:13px;font-weight:600;white-space:nowrap}
+#unsaved-notice[hidden]{display:none!important}
+
+#empty-document-notice{white-space:pre-line;text-align:center;line-height:1.9}
+
+/* v2.2.4: A4-inspired minimum page dimensions with responsive mobile layout. */
+.workspace main #editor{
+ width:100%;max-width:794px;min-width:0;
+ min-height:1123px!important;height:auto!important;
+ overflow-wrap:anywhere;overflow-x:hidden;
+}
+.workspace main #editor pre,.workspace main #editor table,.workspace main #editor .katex-display{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.workspace main #editor img,.workspace main #editor svg{max-width:100%;height:auto}
+@media(max-width:700px){
+ .workspace main #editor{width:100%;min-width:0;min-height:max(560px,calc(100dvh - 165px))!important;padding:24px 16px;}
+ .workspace main #editor table{display:block;overflow-x:auto}
+ .workspace main #editor .katex-display{overflow-x:auto;overflow-y:hidden}
+ .workspace main #editor pre{white-space:pre-wrap;overflow-wrap:anywhere}
+ .workspace main{min-width:0;width:100%}
+}
+
+/* Mobile Explorer long-press context menu */
+.tree-node{ -webkit-touch-callout:none; }
+#context-menu{z-index:99999;max-height:70dvh;overflow-y:auto;box-shadow:0 10px 28px #0008}
+#context-menu button{min-height:42px;touch-action:manipulation}
+
+/* v2.2.7 Explorer batch actions */
+.tree-node .node-check{flex:0 0 auto;width:17px;height:17px;accent-color:#5eaaef;cursor:pointer;touch-action:manipulation}.tree-node .node-label{flex:1}.explorer-actions #explorer-operate{white-space:nowrap}#context-menu{min-width:170px;z-index:100001}#context-menu button{width:100%}
+/* v2.2.13 per-file directory and text annotation controls */
+#toc-panel{position:fixed;right:12px;top:70px;width:min(350px,calc(100vw - 24px));max-height:70dvh;overflow:auto;background:#222a35;color:#f5f7fb;border:1px solid #647083;border-radius:10px;z-index:200002;padding:12px;box-shadow:0 12px 36px #0009}
+#toc-panel[hidden],#text-actions[hidden]{display:none!important}
+.toc-heading{display:flex;justify-content:space-between;align-items:center;font-weight:700;padding:5px 8px 12px}
+.toc-entry{padding:12px 9px;border-bottom:1px solid #55606d;cursor:pointer;overflow-wrap:anywhere}
+.toc-entry:hover{background:#384351}
+#text-actions{position:fixed;z-index:200003;display:flex;flex-direction:column;background:#263140;border:1px solid #66778a;border-radius:8px;box-shadow:0 8px 24px #0008;padding:6px;min-width:170px}
+#text-actions button{min-height:42px;color:white;background:transparent;border:0;text-align:left;padding:8px 12px}
+#text-actions button:hover{background:#40506a}
+#editor mark.bv-note-mark{background:#ffe05c!important;color:#111!important;cursor:pointer;border-radius:2px}
+
+/* v2.2.14: inline annotation and TOC operations */
+#editor mark.bv-note-mark,#editor mark.bv-note-mark *{background:#ffe05c!important;color:#101010!important;-webkit-text-fill-color:#101010!important}
+#bv-inline-popup{position:fixed;z-index:200010;background:#263140;color:#fff;border:1px solid #718097;border-radius:10px;padding:12px;box-shadow:0 12px 35px #000b;box-sizing:border-box}
+#bv-inline-popup[hidden]{display:none!important}
+#bv-inline-popup .bv-popup-title{font-weight:700;margin-bottom:8px}
+#bv-inline-popup textarea{display:block;box-sizing:border-box;width:100%;background:#151c27;color:white;border:1px solid #708096;border-radius:6px;padding:8px;resize:vertical}
+.bv-popup-buttons,.toc-batch-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.bv-popup-buttons button,.toc-batch-tools button{padding:7px 10px;cursor:pointer}
+.bv-danger{color:#ffaaaa!important}
+.toc-entry{display:flex;align-items:center;gap:9px}.toc-entry input{width:18px;height:18px;flex-shrink:0}.toc-entry span{flex:1;overflow-wrap:anywhere}
+@media(max-width:600px){#bv-inline-popup{max-width:calc(100vw - 16px)}.toc-heading{gap:5px}.toc-heading button{min-height:35px}}
+
+/* v2.3.8: blue underline for directory-marked text (browse mode) */
+#editor .bv-toc-underline,#editor .bv-toc-underline *{text-decoration-line:underline!important;text-decoration-color:#3994ff!important;text-decoration-thickness:2px!important;text-underline-offset:3px!important;text-decoration-skip-ink:auto}
+
+/* v2.4.3: wide Markdown tables scroll horizontally without clipping cells. */
+.workspace main #editor{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.workspace main #editor table{display:block!important;width:max-content!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;white-space:nowrap}
+.workspace main #editor table th,.workspace main #editor table td{white-space:nowrap;min-width:max-content}

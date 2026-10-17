@@ -1,7 +1,0 @@
-/*
-AREA:MathPreview
-EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
-*/
-// Input：接收此 AREA 的單一邏輯輸入。
-// Process：將 LaTeX 公式轉換為可視化數學排版。
-// Output：將處理結果輸出給其他 AREA 或使用者。

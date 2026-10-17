@@ -1,7 +1,0 @@
-/*
-AREA:ImageParser
-EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
-*/
-// Input：接收此 AREA 的結構化輸入資料。
-// Process：處理剪貼簿圖片及 Markdown 圖片來源。
-// Output：輸出此 AREA 的處理結果與錯誤狀態。

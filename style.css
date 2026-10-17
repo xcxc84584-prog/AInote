@@ -205,3 +205,8 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 
 /* v2.3.8: blue underline for directory-marked text (browse mode) */
 #editor .bv-toc-underline,#editor .bv-toc-underline *{text-decoration-line:underline!important;text-decoration-color:#3994ff!important;text-decoration-thickness:2px!important;text-underline-offset:3px!important;text-decoration-skip-ink:auto}
+
+/* v2.4.3: wide Markdown tables scroll horizontally without clipping cells. */
+.workspace main #editor{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.workspace main #editor table{display:block!important;width:max-content!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;white-space:nowrap}
+.workspace main #editor table th,.workspace main #editor table td{white-space:nowrap;min-width:max-content}

@@ -170,9 +170,50 @@ async function openRootFromHandle(d){
  try{const session=previousSession;if(session?.rootName===d.name){const target=items.find(x=>x.uuid===session.fileUUID);if(target){await choose(target);if(session.mode==='view')switchMode('view',true);else{switchMode('edit',true);if(typeof session.raw==='string'&&session.raw!==rawMarkdown){sourceArea.value=session.raw;rawMarkdown=session.raw;dirty=true;refreshUnsaved()}}}}}catch(err){console.warn('Session restore',err)}
 }
 
+// Import a copy into the selected directory (or the selected file's parent).
+const importPicker=document.createElement('input');importPicker.type='file';importPicker.accept='.md,.txt';importPicker.multiple=true;importPicker.hidden=true;document.body.append(importPicker);
+let importDestination=null;
+function importFiles(destination){
+ if(!root)return alert('請先開啟 Root');
+ importDestination=destination?.kind==='directory'?destination:destination?.parent||null;
+ importPicker.value='';importPicker.click();
+}
+importPicker.addEventListener('change',async()=>{
+ const files=[...importPicker.files];if(!files.length||!root)return;
+ const parent=importDestination,dir=dirOf(parent);let added=0,errors=[];
+ for(const file of files){
+  if(!/\.(md|txt)$/i.test(file.name)){errors.push(file.name+'：只支援 .md、.txt');continue}
+  try{
+   let name=file.name;let i=2;
+   while(true){try{await dir.getFileHandle(name);const dot=file.name.lastIndexOf('.');name=file.name.slice(0,dot)+' ('+(i++)+')'+file.name.slice(dot)}catch(err){if(err.name==='NotFoundError')break;throw err}}
+   const h=await dir.getFileHandle(name,{create:true});const w=await h.createWritable();await w.write(await file.arrayBuffer());await w.close();
+   const x={id:++sequence,uuid:uuid(),name,handle:h,parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[path(x)]=x.uuid;added++;
+  }catch(err){errors.push(file.name+'：'+err.message)}
+ }
+ await flushNodeDB();orderDirty=true;await saveOrders();display();toast('已導入 '+added+' 個文件');if(errors.length)alert(errors.join('\n'));
+});
+// Standards-compliant ZIP (stored entries); no network dependency.
+function zipCRC(bytes){let c=0xffffffff;for(const b of bytes){c^=b;for(let i=0;i<8;i++)c=(c>>>1)^((c&1)?0xedb88320:0)}return(c^0xffffffff)>>>0}
+function makeZip(entries){
+ const enc=new TextEncoder(),parts=[],central=[];let offset=0;
+ const u16=(v)=>[v&255,(v>>>8)&255],u32=(v)=>[v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255];
+ for(const entry of entries){const name=enc.encode(entry.name),data=entry.data,crc=zipCRC(data),flags=0x800;
+  const local=new Uint8Array([...u32(0x04034b50),...u16(20),...u16(flags),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...name]);parts.push(local,data);
+  central.push(new Uint8Array([...u32(0x02014b50),...u16(20),...u16(20),...u16(flags),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(data.length),...u32(data.length),...u16(name.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(entry.name.endsWith('/')?16:0),...u32(offset),...name]));offset+=local.length+data.length;
+ }
+ const centralSize=central.reduce((n,x)=>n+x.length,0);const end=new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(entries.length),...u16(entries.length),...u32(centralSize),...u32(offset),...u16(0)]);
+ return new Blob([...parts,...central,end],{type:'application/zip'});
+}
+async function exportNode(node){
+ if(!root)return;const entries=[];const base=node?node.name:root.name;
+ async function collect(handle,name){if(handle.kind==='file'){entries.push({name,data:new Uint8Array(await(await handle.getFile()).arrayBuffer())});return}
+  entries.push({name:name+'/',data:new Uint8Array()});for await(const [child,h] of handle.entries())await collect(h,name+'/'+child);
+ }
+ try{await collect(node?.handle||root,base);if(entries.length>65000)throw Error('ZIP 項目數量過多');const blob=makeZip(entries);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=base+'.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('已導出 '+base+'.zip');}catch(err){alert('導出失敗：'+err.message)}
+}
 function rootMenu(left,top){
  const m=document.querySelector('#context-menu');m.replaceChildren();
- for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
+ for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['導入文件',()=>importFiles(null)],['導出文件（ZIP）',()=>exportNode(null)],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
   const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().then(fn).catch(e=>alert(e.message))};m.append(b);
  }positionMenu(m,left,top);
 }
@@ -375,6 +416,8 @@ function menu(x,left,top){
  const m=document.querySelector('#context-menu');m.replaceChildren();
  for(const [label,fn] of [
   ['重新命名',()=>rename(x)],
+  ['導入文件',()=>importFiles(x)],
+  ['導出文件（ZIP）',()=>exportNode(x)],
   ['移動至…',()=>moveWithPicker(x)],
   ['批量選取',()=>{batchMode=true;checkedIds.add(x.id);if(x.kind==='directory')for(const y of items)if(isChild(y,x))checkedIds.add(y.id);display()}],
   [x.kind==='directory'?'刪除資料夾':'刪除文件',()=>{if(confirm('確定刪除 '+x.name+'？'))removeNode(x).catch(e=>alert('刪除失敗：'+e.message))}]

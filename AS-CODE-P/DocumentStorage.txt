@@ -1,7 +1,0 @@
-/*
-AREA:DocumentStorage
-EXTERNAL.USER ---> (Input) ---> (Process) ---> (Output)
-*/
-// Input：接收此 AREA 的結構化輸入資料。
-// Process：將完整文件寫入本地 .ainote，或匯出 Markdown。
-// Output：輸出此 AREA 的處理結果與錯誤狀態。
