@@ -1,0 +1,17 @@
+﻿# Node.js
+node_modules/
+**/node_modules/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Cloudflare Wrangler
+.wrangler/
+**/.wrangler/
+
+# Local logs
+*.log

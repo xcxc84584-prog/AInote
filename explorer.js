@@ -42,6 +42,9 @@ function resolveRecordId(key){return items.find(x=>x.kind==='file'&&(x.uuid===ke
 window.BVGetFileRecords=key=>recordDB.files[resolveRecordId(key)]||null;
 window.BVPutFileRecords=(key,value)=>{if(!root||!key)return Promise.resolve();recordDB.files[resolveRecordId(key)]=value;return flushRecordDB().catch(e=>{status('目錄/標註儲存失敗：'+e.message);throw e})};
 window.BVGetCurrentFileId=()=>current()?.uuid||null;
+window.BVCloudLocalSelection=async()=>{const x=current();if(!root||!x||x.kind!=='file')throw Error('請先在 Explorer 選取本地 File');const file=await x.handle.getFile();return {id:x.uuid,name:x.name,path:path(x),text:x.buffer!==null?x.buffer:await file.text(),unsaved:dirty&&selected===x.id,rootName:root.name};};
+window.BVCloudLocalFolder=async()=>{if(!root)throw Error('請先選取本地 Root');const x=current();if(!rootSelected&&x?.kind!=='directory')throw Error('請在 Explorer 選取 Root 或 Fold');const folder=rootSelected?null:x;const prefix=folder?path(folder)+'/':'';const files=[];for(const n of items.filter(n=>n.kind==='file'&&(!folder||isChild(n,folder)))){const file=await n.handle.getFile();files.push({id:n.uuid,name:n.name,path:folder?path(n).slice(prefix.length):path(n),text:n.buffer!==null?n.buffer:await file.text()});}return {name:folder?.name||root.name,files};};
+window.BVCloudImportText=async(name,text)=>{if(!root)throw Error('請先選取本地 Root');const safe=String(name||'cloud.md').replace(/[\\/]/g,'_');if(!/\.(md|txt)$/i.test(safe))throw Error('僅支援 Markdown 或 TXT');let target=safe,i=1;while(true){try{await root.getFileHandle(target);target=safe.replace(/(\.[^.]+)$/,`_cloud${i++}$1`);}catch(e){if(e.name==='NotFoundError')break;throw e;}}const handle=await root.getFileHandle(target,{create:true});const w=await handle.createWritable();await w.write(text);await w.close();await syncExternal();return target;};
 function captureRecordPaths(node){return [node,...items.filter(y=>isChild(y,node))].map(y=>({node:y,old:path(y)}));}
 async function relocateRecords(snapshot,copy=false){
  if(!root||!snapshot?.length)return;
@@ -273,6 +276,7 @@ main.addEventListener('scroll',()=>{
  rememberReadingPosition();
 },{passive:true});
 async function choose(x){
+ window.BVShowPage?.("editor");
  if(x.kind==='directory'){selected=x.id;rootSelected=false;display();return}
  const wasViewing=sourceArea.style.display==='none';
  rememberReadingPosition();

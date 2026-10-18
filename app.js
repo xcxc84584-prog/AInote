@@ -104,7 +104,7 @@ async function save(as=false){
 document.querySelector('#save').onclick=()=>save();document.querySelector('#saveas').onclick=()=>save(true);
 document.querySelector('#md').onclick=()=>{download(rawMarkdown,name.replace(/\.[^.]+$/,'')+'.md','text/markdown;charset=utf-8');status('已匯出原始 Markdown')};
 document.querySelector('#clear').onclick=()=>window.BVCreateNewDocument?.();
-const sourceButton=document.createElement('button');sourceButton.textContent='MD 原始碼';sourceButton.id='source-toggle';document.querySelector('.tools').prepend(sourceButton);
+const sourceButton=document.createElement('button');sourceButton.textContent='MD 原始碼';sourceButton.id='source-toggle';document.querySelector('#editor-header-tools').prepend(sourceButton);
 const sourceArea=document.createElement('textarea');sourceArea.id='source-editor';sourceArea.spellcheck=false;sourceArea.style.cssText='display:none;width:100%;height:75vh;box-sizing:border-box;background:#1e222a;color:white;border:1px solid #566071;padding:20px;font:15px/1.65 monospace;resize:vertical';editor.insertAdjacentElement('afterend',sourceArea);
 sourceButton.onclick=()=>{const active=sourceArea.style.display!=='none';if(active){rawMarkdown=sourceArea.value;renderRaw();sourceArea.style.display='none';editor.style.display='';sourceButton.textContent='MD 原始碼';}else{sourceArea.value=rawMarkdown;sourceArea.style.display='block';editor.style.display='none';sourceButton.textContent='返回預覽';}};
 sourceArea.addEventListener('input',()=>{rawMarkdown=sourceArea.value;changed()});
