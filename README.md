@@ -111,5 +111,16 @@ Explorer Save persists move/reorder priority in Root/.bv-note-explorer-order.jso
 - 請一併備份 `.bv-note-node-ids.json` 與 `.bv-note-records.json`，否則跨裝置搬移可能無法還原目錄與標註關聯。
 
 
-## v2.4.3
+## v2.4.4
 Root 可點選以建立子 Fold；支援編輯會話恢復、外部檔案清單定期刷新、瀏覽插圖自動保存、目錄面板直接目錄化，移除標註操作。
+
+
+## v2.4.4
+- 修正多行 `$$...$$` 與 `\[...\]` 公式在 Markdown 解析前的保護。
+- sEAPP 更新見 `sEAPP/Math_Fix_v2.4.4.md`。
+
+## v2.4.6
+- 文本工具新增刪除文本（內部確認 UI）。
+- 文本工具新增快速定位至編輯／瀏覽模式。
+- Mermaid `sequenceDiagram` fenced Markdown 轉為 SVG；依賴 CDN 載入 Mermaid 11。
+- sEAPP 同步更新 `sEAPP/Changes_v2.4.6.md`。

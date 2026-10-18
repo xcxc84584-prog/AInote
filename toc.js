@@ -95,6 +95,19 @@ textTools?.addEventListener('click',()=>{
    document.querySelector('#status').textContent='文本已插入，請 Commit 儲存';
   }]]);
  });
+ button('刪除文本',()=>{
+  const current=lastSelection||selected;
+  if(!current?.text)return alert('請先框選要刪除的文字');
+  const raw=window.BVGetRawMarkdown?.()||'';
+  const at=current.offset>=0&&raw.slice(current.offset,current.offset+current.text.length)===current.text?current.offset:raw.indexOf(current.text);
+  if(at<0)return alert('無法在原始 Markdown 找到選取文字，請切換編輯模式後重新選取');
+  showPopup(selectionAnchor(),'刪除所選文本',current.text,[['確認刪除',()=>{
+   const updated=raw.slice(0,at)+raw.slice(at+current.text.length);
+   if(source.style.display!=='none'){source.value=updated;source.dispatchEvent(new Event('input',{bubbles:true}));source.focus();source.setSelectionRange(at,at)}
+   else window.BVSetRawMarkdown?.(updated);
+   document.querySelector('#status').textContent='已刪除選取文本，請 Commit 儲存';
+  },true]]);
+ });
  button('插入圖片',()=>{
   if(source.style.display!=='none')imageInsertionPosition=source.selectionStart;
   else{

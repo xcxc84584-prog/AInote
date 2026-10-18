@@ -435,5 +435,6 @@ let scanBusy=false;async function syncExternal(){if(!root||scanBusy||dirty||orde
 window.addEventListener('focus',syncExternal);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncExternal()});setInterval(()=>{if(!document.hidden)syncExternal()},12000);
 // Ctrl+S saves the complete open Root when present.
 document.addEventListener('keydown',e=>{if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}},true);
+window.BVSwitchEditorMode=(mode)=>switchMode(mode);
 })();
 

@@ -210,3 +210,11 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .workspace main #editor{min-width:0;max-width:100%;overflow-wrap:anywhere}
 .workspace main #editor table{display:block!important;width:max-content!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden;-webkit-overflow-scrolling:touch;white-space:nowrap}
 .workspace main #editor table th,.workspace main #editor table td{white-space:nowrap;min-width:max-content}
+
+/* v2.4.5 Mermaid sequence diagram responsive display */
+#editor .mermaid{max-width:100%;overflow-x:auto;padding:12px 0;text-align:center}
+#editor .mermaid svg{max-width:100%;height:auto}
+
+#editor .bv-mermaid-fallback{border:1px solid #6d5360;border-radius:8px;padding:12px;text-align:left;overflow-x:auto}
+#editor .bv-mermaid-error{color:#ffb4a8;font-size:13px;margin-bottom:8px}
+#editor .bv-mermaid-fallback pre{white-space:pre;overflow-x:auto;max-width:100%;margin:0;color:inherit;background:transparent}

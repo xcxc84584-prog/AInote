@@ -3,7 +3,7 @@ const editor=document.querySelector('#editor'),statusEl=document.querySelector('
 let handle=null,name='未命名.md',dirty=false;
 let rawMarkdown='';let renderingDocument=false;
 function markdownFromEditor(){const clone=editor.cloneNode(true);clone.querySelectorAll('.math-rendered').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.latex||el.dataset.tex||'')));clone.querySelectorAll('.math-source').forEach(el=>el.replaceWith(document.createTextNode(el.dataset.tex||'')));return window.TurndownService?new TurndownService({headingStyle:'atx',codeBlockStyle:'fenced'}).turndown(clone.innerHTML):clone.innerHTML;}
-function renderRaw(){renderingDocument=true;editor.innerHTML=safeHTML(parseDocument(rawMarkdown));renderLooseMath(editor);scheduleMathRender();renderingDocument=false;}
+function renderRaw(){renderingDocument=true;editor.innerHTML=safeHTML(parseDocument(rawMarkdown));renderLooseMath(editor);scheduleMathRender();window.BVRenderMermaid?.();renderingDocument=false;}
 function updateRawFromVisual(){if(!renderingDocument){rawMarkdown=markdownFromEditor();changed();}}
 
 editor.spellcheck=false;
@@ -15,7 +15,7 @@ function safeHTML(html){
  const t=document.createElement('template');t.innerHTML=html;
  t.content.querySelectorAll('script,iframe,object,embed,style,link,meta,form').forEach(x=>x.remove());
  t.content.querySelectorAll('*').forEach(el=>{const svg=!!el.closest('svg');for(const a of [...el.attributes]){
-  const n=a.name.toLowerCase(),v=a.value.trim();if(n.startsWith('on')||n==='style'||n==='color'||n==='bgcolor'||n==='class'&& !['math-source','math-rendered'].includes(v)||['href','src','xlink:href'].includes(n)&&!(/^(https?:\/\/|data:image\/(png|jpeg|gif|webp|svg\+xml);base64,|#)/i.test(v)))el.removeAttribute(a.name);
+  const n=a.name.toLowerCase(),v=a.value.trim();if(n.startsWith('on')||n==='style'||n==='color'||n==='bgcolor'||n==='class'&& !['math-source','math-rendered','mermaid'].includes(v)||['href','src','xlink:href'].includes(n)&&!(/^(https?:\/\/|data:image\/(png|jpeg|gif|webp|svg\+xml);base64,|#)/i.test(v)))el.removeAttribute(a.name);
  }if(!svg&&el.tagName==='FONT')el.removeAttribute('face')});return t.innerHTML;
 }
 function renderLooseMath(root){

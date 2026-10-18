@@ -79,24 +79,32 @@ function svgDataImages(source){
 function parseDocument(source){
  source=String(source).replace(/\r\n?/g,'\n');
  const svgImages=svgDataImages(source);source=svgImages.output;
+ const mermaidBlocks=[];
+ source=source.replace(/(^|\n)[ \t]*```[ \t]*mermaid[ \t]*\n([\s\S]*?)\n[ \t]*```[ \t]*(?=\n|$)/gi,(_,lead,diagram)=>{const id=mermaidBlocks.push(diagram)-1;return lead+'\n\nAIMERMAID'+id+'END\n\n'});
  const tokens=[];
  // Protect display math and SVG from any other Markdown transformations.
  // Protect both TeX display delimiters before marked processes backslash escapes.
  // Also protect inline \( ... \) delimiters, which marked otherwise unescapes.
- source=source.replace(/\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g,all=>{
-  const display=all.startsWith('$$')||all.startsWith('\\[');
-  const open=all.startsWith('$$')?2:2;
-  const tex=all.slice(open,-2).trim();
+ // Protect math before Markdown parsing, including multiline $$ and \[ blocks.
+ // A standalone delimiter must match another standalone delimiter.
+ const protectMath=(all,display)=>{
+  const tex=all.slice(2,-2).trim();
   const tag=display?'div':'span';
   const id=tokens.push(`<${tag} class="math-source" data-tex="${esc(all)}">${esc(tex)}</${tag}>`)-1;
   return display?`\n\nAIPROTECTED${id}END\n\n`:`AIPROTECTED${id}END`;
- });
+ };
+ // First process entire display blocks; prevent Markdown from stripping \ commands.
+ source=source.replace(/(^|\n)[ \t]*\$\$[ \t]*\n([\s\S]*?)\n[ \t]*\$\$[ \t]*(?=\n|$)/g,(_,lead,body)=>lead+protectMath('$$'+body+'$$',true));
+ source=source.replace(/(^|\n)[ \t]*\\\[[ \t]*\n([\s\S]*?)\n[ \t]*\\\][ \t]*(?=\n|$)/g,(_,lead,body)=>lead+protectMath('\\['+body+'\\]',true));
+ // Also support delimiters and content on the same line.
+ source=source.replace(/\$\$[^\n]*?\$\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/g,all=>protectMath(all,all.startsWith('$$')||all.startsWith('\\[')));
  source=source.replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi,all=>{
   const id=tokens.push(`<div class="svg-block">${all}</div>`)-1;
   return `\n\nAIPROTECTED${id}END\n\n`;
  });
  let html=window.marked?marked.parse(source,{gfm:true,breaks:false}):markdownToHTML(source);
  html=html.replace(/(?:<p>\s*)?AIPROTECTEDSVG(\d+)END(?:\s*<\/p>)?/g,(_,n)=>svgImages.saved[+n]);
+ html=html.replace(/(?:<p>\s*)?AIMERMAID(\d+)END(?:\s*<\/p>)?/g,(_,n)=>'<div class="mermaid">'+esc(mermaidBlocks[+n])+'</div>');
  html=html.replace(/(?:<p>\s*)?AIPROTECTED(\d+)END(?:\s*<\/p>)?/g,(_,n)=>tokens[+n]);
  return html;
 }
