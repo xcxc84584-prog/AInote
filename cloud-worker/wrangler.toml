@@ -1,7 +1,10 @@
-name = "bv-note-v3-api"
+name = "bv-note-cloud"
 main = "worker.js"
 compatibility_date = "2026-09-01"
 
 [vars]
-# Restrict access to the deployed GitHub Pages origin, e.g. https://USERNAME.github.io
-ALLOWED_ORIGIN = "https://USERNAME.github.io"
+# Restrict access to the deployed GitHub Pages origin, e.g. https://xcxc84584-prog.github.io
+ALLOWED_ORIGIN = "https://xcxc84584-prog.github.io"
+
+[triggers]
+crons = ["0 * * * *"]

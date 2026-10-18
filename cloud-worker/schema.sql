@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS cloud_files (
  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
  name TEXT NOT NULL,
  revision INTEGER NOT NULL DEFAULT 0,
- last_commit TIMESTAMPTZ
+ last_commit TIMESTAMPTZ,
+ life_days INTEGER CHECK (life_days IN (1,7,14,30,90)),
+ expires_at TIMESTAMPTZ
 );
 CREATE TABLE IF NOT EXISTS commits (
  file_id UUID NOT NULL REFERENCES cloud_files(file_id) ON DELETE CASCADE,
