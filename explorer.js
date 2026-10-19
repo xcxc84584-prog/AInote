@@ -85,9 +85,7 @@ window.BVRefreshUnsaved=refreshUnsaved;
 setDocumentVisible(false);
 const editableExt=/\.(md|markdown|txt|ainote)$/i;
 const toast=s=>status(s);
-let submittedResetTimer=null;
-function cancelSubmittedReset(){if(submittedResetTimer!==null){clearTimeout(submittedResetTimer);submittedResetTimer=null}}
-function switchMode(mode, preserveLoadedMarkdown=false){cancelSubmittedReset();const edit=mode==='edit';try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode,rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:edit?sourceArea.value:rawMarkdown}))}catch{};sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Submitted';sourceButton.title=edit?'提交目前編輯內容':'已提交；點擊以繼續編輯';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();setTimeout(()=>window.BVRefreshFileRecords?.(),50);}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
+function switchMode(mode, preserveLoadedMarkdown=false){const edit=mode==='edit';try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode,rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:edit?sourceArea.value:rawMarkdown}))}catch{};sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent='Commit';sourceButton.title='提交目前編輯內容';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();setTimeout(()=>window.BVRefreshFileRecords?.(),50);}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
 window.BVSaveSelectedFile=async(content)=>{
  const x=current();
  if(!x||x.kind!=='file'||handle!==x.handle)return null;
@@ -99,8 +97,7 @@ sourceButton.onclick=async()=>{
  rawMarkdown=sourceArea.value;
  const ok=await save();
  if(!ok)return;
- switchMode('view');refreshUnsaved();
- submittedResetTimer=setTimeout(()=>{submittedResetTimer=null;if(sourceArea.style.display==='none')switchMode('edit');},2000);
+ switchMode('edit');refreshUnsaved();
 };
 sourceButton.textContent='Commit';editor.contentEditable='false';switchMode('edit');
 // New document transaction: choose parent -> create Root -> create Markdown -> display.
