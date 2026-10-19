@@ -93,11 +93,14 @@ window.BVSaveSelectedFile=async(content)=>{
  catch(e){alert('儲存失敗：'+e.message);return false;}
 };
 sourceButton.onclick=async()=>{
- if(sourceArea.style.display==='none'){switchMode('edit');return}
- rawMarkdown=sourceArea.value;
+ // Local mode only: Commit saves Markdown and enters preview; Edit returns to editor.
+ if(sourceArea.style.display==='none'){switchMode('edit');return;}
+ const nextRaw=sourceArea.value;
  const ok=await save();
  if(!ok)return;
- switchMode('view');refreshUnsaved();
+ rawMarkdown=nextRaw;
+ switchMode('view',true);
+ refreshUnsaved();
 };
 editor.contentEditable='false';switchMode('edit');
 // New document transaction: choose parent -> create Root -> create Markdown -> display.
