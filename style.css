@@ -255,3 +255,21 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .bv-mark-toggle{flex:1;min-width:0;text-align:left;background:transparent;color:#f0f3fa;border:0;cursor:pointer;overflow-wrap:anywhere;padding:5px}
 .bv-mark-locate{flex:none;white-space:nowrap;background:#29354a;color:#fff;border:1px solid #58667d;border-radius:5px;padding:5px 8px;cursor:pointer}
 #toc-panel .toc-heading{flex-wrap:wrap;gap:5px}
+
+/* v3.4.2: highlighted text always black, including selected text */
+#editor span.bv-mark-highlight,
+#editor span.bv-mark-highlight:is(span),
+#editor span.bv-mark-highlight *,
+#editor span.bv-mark-highlight::selection,
+#editor span.bv-mark-highlight *::selection {
+ color:#000000!important;
+ -webkit-text-fill-color:#000000!important;
+ background-color:#ffe45c!important;
+ background-image:none!important;
+ text-shadow:none!important;
+}
+#editor span.bv-mark-highlight::selection {background:#ffcc33!important;color:#000!important;-webkit-text-fill-color:#000!important}
+.bv-mark-summary{cursor:pointer}
+.bv-mark-toggle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bv-mark-entry:has(.bv-mark-toggle[aria-expanded="false"]){padding:5px 8px}
+#toc-panel .toc-heading button{flex-shrink:0}

@@ -33,7 +33,7 @@ function addMark(selected){
  const at=selected.offset>=0&&raw.slice(selected.offset,selected.offset+selected.text.length)===selected.text?selected.offset:raw.indexOf(selected.text);
  if(at<0)return alert('找不到選取文字在 Markdown 原文中的位置，請切換原始碼模式選取');
  records.marks.push({id:crypto.randomUUID(),text:selected.text,offset:at,name:selected.text.trim().split('\n')[0].slice(0,80),note:'',before:raw.slice(Math.max(0,at-30),at),after:raw.slice(at+selected.text.length,at+selected.text.length+30)});
- expandedMarks.add(records.marks[records.marks.length-1].id);saveRecords();renderMarks();decorate();
+ saveRecords();renderMarks();decorate();
 }
 function renderMarks(){
  marksPanel.replaceChildren();const head=document.createElement('div');head.className='toc-heading';
@@ -41,9 +41,9 @@ function renderMarks(){
  const close=document.createElement('button');close.textContent='×';close.onclick=()=>marksPanel.hidden=true;head.append(close);marksPanel.append(head);
  const add=document.createElement('button');add.textContent='＋ 標註目前選取';add.onclick=()=>addMark(getSelected()||cachedSelection);marksPanel.append(add);
  for(const r of records.marks){const row=document.createElement('div');row.className='bv-mark-entry';
- const summary=document.createElement('div');summary.className='bv-mark-summary';
+ const summary=document.createElement('div');summary.className='bv-mark-summary';summary.title='點擊詞卡可展開或收合';
  const toggle=document.createElement('button');toggle.className='bv-mark-toggle';toggle.textContent=(expandedMarks.has(r.id)?'▾ ':'▸ ')+(r.name||r.text.slice(0,80));toggle.title='展開／收合標註';toggle.setAttribute('aria-expanded',String(expandedMarks.has(r.id)));toggle.onclick=()=>{expandedMarks.has(r.id)?expandedMarks.delete(r.id):expandedMarks.add(r.id);renderMarks()};summary.append(toggle);
- const locateButton=document.createElement('button');locateButton.textContent='快速定位';locateButton.className='bv-mark-locate';locateButton.onclick=()=>{if(!locate(r))alert('找不到標註位置，原文可能已被修改')};summary.append(locateButton);row.append(summary);
+ const locateButton=document.createElement('button');locateButton.textContent='快速定位';locateButton.className='bv-mark-locate';locateButton.onclick=()=>{if(!locate(r))alert('找不到標註位置，原文可能已被修改')};summary.append(locateButton);row.append(summary);summary.addEventListener('click',e=>{if(e.target.closest('.bv-mark-locate,.bv-mark-toggle'))return;toggle.click()});
  if(expandedMarks.has(r.id)){
  const quote=document.createElement('div');quote.className='bv-mark-quote';quote.textContent=r.text;row.append(quote);
  const label=document.createElement('label');label.textContent='備註';row.append(label);
@@ -58,7 +58,7 @@ function renderMarks(){
 }
 function getSelected(){const isEdit=source.style.display!=='none';if(isEdit){const text=source.value.slice(source.selectionStart,source.selectionEnd);return text.trim()?{text,offset:source.selectionStart}:null;}const sel=window.getSelection();if(!sel||sel.isCollapsed||!editor.contains(sel.anchorNode))return null;const text=sel.toString();if(!text.trim())return null;const raw=window.BVGetRawMarkdown?.()||'';return {text,offset:raw.indexOf(text)};}
 function button(label,fn){const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=()=>{menu.hidden=true;fn()};menu.append(b)}
-function showMenu(x,y,selected=null){lastSelection=selected||getSelected();if(!lastSelection)return false;menu.replaceChildren();button('標註化',()=>addMark(lastSelection));button('目錄化',()=>{const text=lastSelection.text;records.toc.push({id:crypto.randomUUID(),text,offset:lastSelection.offset,name:text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate();});menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-190))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-110))+'px';return true;}
+function showMenu(x,y,selected=null){lastSelection=selected||getSelected();if(!lastSelection)return false;menu.replaceChildren();button('標註',()=>addMark(lastSelection));button('目錄化',()=>{const text=lastSelection.text;records.toc.push({id:crypto.randomUUID(),text,offset:lastSelection.offset,name:text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate();});menu.hidden=false;menu.style.left=Math.max(8,Math.min(x,innerWidth-190))+'px';menu.style.top=Math.max(8,Math.min(y,innerHeight-110))+'px';return true;}
 function locate(r){
  const raw=window.BVGetRawMarkdown?.()||'';const at=resolveMarkOffset(r,raw);if(at<0)return false;
  if(source.style.display!=='none'){
@@ -76,7 +76,7 @@ function resolveMarkOffset(r,raw){
  while((pos=raw.indexOf(r.text,pos+1))>=0){let n=0;const before=raw.slice(Math.max(0,pos-(r.before||'').length),pos);const after=raw.slice(pos+r.text.length,pos+r.text.length+(r.after||'').length);if(r.before&&before===r.before)n+=2;if(r.after&&after===r.after)n+=2;if(n>score){score=n;best=pos}}
  return score>0?best:-1;
 }
-function renderPanel(){panel.replaceChildren();const heading=document.createElement('div');heading.className='toc-heading';heading.textContent='目錄';const batch=document.createElement('button');batch.textContent=batchMode?'完成選取':'批量選取';batch.onclick=()=>{batchMode=!batchMode;if(!batchMode)chosen.clear();renderPanel()};heading.append(batch);const make=document.createElement('button');make.textContent='目錄化';make.onclick=()=>{const selected=getSelected()||cachedSelection;if(!selected)return alert('請先在文件中框選文字');records.toc.push({id:crypto.randomUUID(),text:selected.text,offset:selected.offset,name:selected.text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate()};heading.append(make);const annotate=document.createElement('button');annotate.textContent='標註化';annotate.onclick=()=>addMark(getSelected()||cachedSelection);heading.append(annotate);const close=document.createElement('button');close.textContent='×';close.onclick=()=>panel.hidden=true;heading.append(close);panel.append(heading);
+function renderPanel(){panel.replaceChildren();const heading=document.createElement('div');heading.className='toc-heading';heading.textContent='目錄';const batch=document.createElement('button');batch.textContent=batchMode?'完成選取':'批量選取';batch.onclick=()=>{batchMode=!batchMode;if(!batchMode)chosen.clear();renderPanel()};heading.append(batch);const make=document.createElement('button');make.textContent='目錄化';make.onclick=()=>{const selected=getSelected()||cachedSelection;if(!selected)return alert('請先在文件中框選文字');records.toc.push({id:crypto.randomUUID(),text:selected.text,offset:selected.offset,name:selected.text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate()};heading.append(make);const annotate=document.createElement('button');annotate.textContent='標註';annotate.title='將目前選取文字標註為黃底黑字';annotate.onclick=()=>addMark(getSelected()||cachedSelection);heading.append(annotate);const close=document.createElement('button');close.textContent='×';close.onclick=()=>panel.hidden=true;heading.append(close);panel.append(heading);
 if(batchMode){const tools=document.createElement('div');tools.className='toc-batch-tools';const all=document.createElement('button');all.textContent='全選';all.onclick=()=>{records.toc.forEach(r=>chosen.add(r.id));renderPanel()};tools.append(all);const del=document.createElement('button');del.textContent=`刪除所選 (${chosen.size})`;del.className='bv-danger';del.disabled=!chosen.size;del.onclick=()=>{showPopup(del,'批量刪除目錄',`確定刪除 ${chosen.size} 個目錄？`,[['確認刪除',()=>{records.toc=records.toc.filter(r=>!chosen.has(r.id));chosen.clear();saveRecords();renderPanel();decorate()},true]])};tools.append(del);panel.append(tools)}
 for(const r of records.toc){const row=document.createElement('div');row.className='toc-entry';if(batchMode){const check=document.createElement('input');check.type='checkbox';check.checked=chosen.has(r.id);check.onchange=()=>{check.checked?chosen.add(r.id):chosen.delete(r.id);renderPanel()};row.append(check)}const name=document.createElement('span');name.textContent=r.name;row.append(name);row.onclick=e=>{if(batchMode){if(e.target.tagName!=='INPUT'){chosen.has(r.id)?chosen.delete(r.id):chosen.add(r.id);renderPanel()}return}locate(r);panel.hidden=true};const actions=()=>{showPopup(row,'目錄名稱',r.name,[['儲存',value=>{if(value.trim())r.name=value.trim();saveRecords();renderPanel();decorate()}],['刪除',()=>{records.toc=records.toc.filter(x=>x!==r);chosen.delete(r.id);saveRecords();renderPanel();decorate()},true]])};row.oncontextmenu=e=>{e.preventDefault();actions()};let timer;row.addEventListener('touchstart',()=>{timer=setTimeout(actions,550)},{passive:true});row.addEventListener('touchend',()=>clearTimeout(timer));row.addEventListener('touchmove',()=>clearTimeout(timer));panel.append(row)}if(!records.toc.length){const empty=document.createElement('p');empty.textContent='目前沒有目錄。選取文字後使用「目錄化」。';panel.append(empty)}}
 function decorate(){
@@ -89,7 +89,7 @@ function decorate(){
    if(n.parentElement?.closest('pre,code,svg,.katex,.bv-toc-underline,.bv-mark-highlight'))continue;
    let start=0,idx;
    while((idx=n.textContent.indexOf(needle,start))>=0){
-    if(count++===occurrence){const range=document.createRange();range.setStart(n,idx);range.setEnd(n,idx+needle.length);const span=document.createElement('span');span.className=className;if(id)span.dataset.markId=id;range.surroundContents(span);return true}
+    if(count++===occurrence){const range=document.createRange();range.setStart(n,idx);range.setEnd(n,idx+needle.length);const span=document.createElement('span');span.className=className;if(id){span.dataset.markId=id;span.style.setProperty('color','#000000','important');span.style.setProperty('-webkit-text-fill-color','#000000','important');span.style.setProperty('background-color','#ffe45c','important');}range.surroundContents(span);return true}
     start=idx+Math.max(1,needle.length);
    }
   }return false;
@@ -145,7 +145,7 @@ textTools?.addEventListener('click',()=>{
  button('標記列表',()=>{marksPanel.hidden=!marksPanel.hidden;if(!marksPanel.hidden){panel.hidden=true;renderMarks()}});
  if(selected){
   lastSelection={...selected};
-  button('標註化',()=>addMark(lastSelection));button('目錄化',()=>{const text=lastSelection.text;records.toc.push({id:crypto.randomUUID(),text,offset:lastSelection.offset,name:text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate()});
+  button('標註',()=>addMark(lastSelection));button('目錄化',()=>{const text=lastSelection.text;records.toc.push({id:crypto.randomUUID(),text,offset:lastSelection.offset,name:text.split('\n')[0].trim().slice(0,100)||'未命名目錄'});saveRecords();renderPanel();decorate()});
  }
  button('插入文本',()=>{
   const current=lastSelection||selected;
