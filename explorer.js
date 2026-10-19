@@ -84,8 +84,9 @@ window.BVSetDocumentVisible=setDocumentVisible;
 window.BVRefreshUnsaved=refreshUnsaved;
 setDocumentVisible(false);
 const editableExt=/\.(md|markdown|txt|ainote)$/i;
+const isPdfFile=name=>/\.pdf$/i.test(name||'');
 const toast=s=>status(s);
-function switchMode(mode, preserveLoadedMarkdown=false){const edit=mode==='edit';try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode,rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:edit?sourceArea.value:rawMarkdown}))}catch{};sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Edit';sourceButton.title=edit?'儲存本地文件並切換至瀏覽模式':'切換至本地編輯模式';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();setTimeout(()=>window.BVRefreshFileRecords?.(),50);}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
+function switchMode(mode, preserveLoadedMarkdown=false){if(window.BVPdfViewer?.active){window.BVPdfViewer.hide()}const edit=mode==='edit';try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode,rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:edit?sourceArea.value:rawMarkdown}))}catch{};sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Edit';sourceButton.title=edit?'儲存本地文件並切換至瀏覽模式':'切換至本地編輯模式';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();setTimeout(()=>window.BVRefreshFileRecords?.(),50);}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
 window.BVSaveSelectedFile=async(content)=>{
  const x=current();
  if(!x||x.kind!=='file'||handle!==x.handle)return null;
@@ -93,6 +94,7 @@ window.BVSaveSelectedFile=async(content)=>{
  catch(e){alert('儲存失敗：'+e.message);return false;}
 };
 sourceButton.onclick=async()=>{
+ if(window.BVPdfViewer?.active)return;
  // Local mode only: Commit saves Markdown and enters preview; Edit returns to editor.
  if(sourceArea.style.display==='none'){switchMode('edit');return;}
  const nextRaw=sourceArea.value;
@@ -136,7 +138,7 @@ window.BVDetachExplorerSelection=()=>{selected=null;display()};
 function current(){return items.find(x=>x.id===selected)}
 function path(x){let parts=[x.name],p=x.parent;while(p){parts.unshift(p.name);p=p.parent;}return parts.join('/');}
 function siblings(p){return items.filter(x=>x.parent===p).sort((a,b)=>a.order-b.order)}
-async function scan(dir,parent){for await(const [n,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt)$/i.test(n))continue;const x={id:++sequence,name:n,handle:h,parent,kind:h.kind,order:sequence,buffer:null};items.push(x);if(h.kind==='directory')await scan(h,x)}}
+async function scan(dir,parent){for await(const [n,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(n))continue;const x={id:++sequence,name:n,handle:h,parent,kind:h.kind,order:sequence,buffer:null};items.push(x);if(h.kind==='directory')await scan(h,x)}}
 async function renameRoot(){
  if(!root)return;
  const oldRoot=root,oldName=oldRoot.name;
@@ -179,7 +181,7 @@ async function openRootFromHandle(d){
 }
 
 // Import a copy into the selected directory (or the selected file's parent).
-const importPicker=document.createElement('input');importPicker.type='file';importPicker.accept='.md,.txt';importPicker.multiple=true;importPicker.hidden=true;document.body.append(importPicker);
+const importPicker=document.createElement('input');importPicker.type='file';importPicker.accept='.md,.txt,.pdf';importPicker.multiple=true;importPicker.hidden=true;document.body.append(importPicker);
 let importDestination=null;
 function importFiles(destination){
  if(!root)return alert('請先開啟 Root');
@@ -190,7 +192,7 @@ importPicker.addEventListener('change',async()=>{
  const files=[...importPicker.files];if(!files.length||!root)return;
  const parent=importDestination,dir=dirOf(parent);let added=0,errors=[];
  for(const file of files){
-  if(!/\.(md|txt)$/i.test(file.name)){errors.push(file.name+'：只支援 .md、.txt');continue}
+  if(!/\.(md|txt|pdf)$/i.test(file.name)){errors.push(file.name+'：只支援 .md、.txt、.pdf');continue}
   try{
    let name=file.name;let i=2;
    while(true){try{await dir.getFileHandle(name);const dot=file.name.lastIndexOf('.');name=file.name.slice(0,dot)+' ('+(i++)+')'+file.name.slice(dot)}catch(err){if(err.name==='NotFoundError')break;throw err}}
@@ -281,6 +283,7 @@ main.addEventListener('scroll',()=>{
  rememberReadingPosition();
 },{passive:true});
 async function choose(x){
+ window.BVPdfViewer?.hide();sourceButton.hidden=false;
  window.BVShowPage?.("editor");
  if(x.kind==='directory'){selected=x.id;rootSelected=false;display();return}
  const wasViewing=sourceArea.style.display==='none';
@@ -288,7 +291,17 @@ async function choose(x){
  if(dirty&&current()&&current().kind==='file')current().buffer=wasViewing?rawMarkdown:sourceArea.value;
  selected=x.id;rootSelected=false;
  try{
-  const f=await x.handle.getFile();rawMarkdown=x.buffer??await f.text();setName(x.name);handle=x.handle;
+  const f=await x.handle.getFile();
+  if(isPdfFile(x.name)){
+   rawMarkdown='';setName(x.name);handle=x.handle;dirty=false;
+   setDocumentVisible(true);
+   sourceArea.style.display='none';editor.style.display='none';
+   sourceButton.hidden=true;
+   await window.BVPdfViewer.show(f);
+   toast('唯讀 PDF：'+path(x));display();return;
+  }
+  sourceButton.hidden=false;
+  rawMarkdown=x.buffer??await f.text();setName(x.name);handle=x.handle;
   dirty=x.buffer!==null;setDocumentVisible(true);switchMode(wasViewing?'view':'edit',true);
   if(wasViewing)restoreReadingPosition(x);
   else {readingRestoring=false;main.scrollTop=0;}
@@ -297,7 +310,7 @@ async function choose(x){
 }
 async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
 async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await openRootFromHandle(d);toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
-async function closeRoot(){if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
+async function closeRoot(){window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
 function dirOf(p){return p?p.handle:root}
 function normalizeNewFileName(name){
  const trimmed=name.trim();
@@ -440,7 +453,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#context-menu')&&!e.
 document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root){window.BVCreateNewDocument();return;}create('directory')};document.querySelector('#add-file').onclick=()=>create('file');
 sourceArea.addEventListener('input',()=>{sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
 // Re-scan external file changes on focus and while the page is visible.
-let scanBusy=false;async function syncExternal(){if(!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}}
+let scanBusy=false;async function syncExternal(){if(!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}}
 window.addEventListener('focus',syncExternal);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncExternal()});setInterval(()=>{if(!document.hidden)syncExternal()},12000);
 // Ctrl+S saves the complete open Root when present.
 document.addEventListener('keydown',e=>{if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}},true);
