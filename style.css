@@ -236,3 +236,15 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .cloud-progress-info{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#d5e8ff;margin-bottom:8px}
 #cloud-progress-bar{display:block;width:100%;height:15px;accent-color:#2cb87d}
 #cloud-create-panel select,#cloud-commit-life select{display:block;width:100%;max-width:240px;margin-top:7px;background:#101720;color:#fff;border:1px solid #566376;border-radius:6px;padding:9px}
+
+/* v3.4.0 */
+#editor .bv-mark-highlight,#editor .bv-mark-highlight *{background:#ffe45c!important;color:#000!important;border-radius:2px}
+#marks-panel{position:fixed;right:12px;top:70px;width:min(390px,calc(100vw - 24px));max-height:75dvh;overflow:auto;background:#222a35;color:#f5f7fb;border:1px solid #647083;border-radius:10px;z-index:200004;padding:12px;box-shadow:0 12px 36px #0009}
+#marks-panel[hidden]{display:none!important}
+.bv-mark-entry{border:1px solid #576478;border-radius:8px;padding:10px;margin:10px 0;display:grid;gap:7px}
+.bv-mark-link{background:transparent;border:0;color:#d7e8ff;text-align:left;font-weight:700;cursor:pointer}
+.bv-mark-quote{background:#ffe45c;color:#000;padding:5px;border-radius:3px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:90px;overflow:auto}
+.bv-mark-entry textarea{width:100%;min-height:65px;box-sizing:border-box;background:#151d28;color:white;border:1px solid #677588;border-radius:5px;padding:7px}
+.bv-mark-tools{display:flex;flex-wrap:wrap;gap:5px}.bv-mark-tools button{padding:6px 9px}
+#bv-pdf-resizer{height:22px;touch-action:none;cursor:ns-resize;display:flex;justify-content:center;align-items:center;background:#303a49;color:white;user-select:none}
+#bv-pdf-resizer::after{content:'⋯ 拖曳調整 PDF 高度 ⋯';font-size:12px}
