@@ -248,3 +248,10 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .bv-mark-tools{display:flex;flex-wrap:wrap;gap:5px}.bv-mark-tools button{padding:6px 9px}
 #bv-pdf-resizer{height:22px;touch-action:none;cursor:ns-resize;display:flex;justify-content:center;align-items:center;background:#303a49;color:white;user-select:none}
 #bv-pdf-resizer::after{content:'⋯ 拖曳調整 PDF 高度 ⋯';font-size:12px}
+
+/* v3.4.1: compact annotation cards and high-contrast text highlights */
+#editor .bv-mark-highlight,#editor .bv-mark-highlight *{background-color:#ffe45c!important;color:#000!important;-webkit-text-fill-color:#000!important;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.bv-mark-summary{display:flex;align-items:center;gap:8px;min-width:0}
+.bv-mark-toggle{flex:1;min-width:0;text-align:left;background:transparent;color:#f0f3fa;border:0;cursor:pointer;overflow-wrap:anywhere;padding:5px}
+.bv-mark-locate{flex:none;white-space:nowrap;background:#29354a;color:#fff;border:1px solid #58667d;border-radius:5px;padding:5px 8px;cursor:pointer}
+#toc-panel .toc-heading{flex-wrap:wrap;gap:5px}
