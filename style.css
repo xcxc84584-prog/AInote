@@ -273,3 +273,14 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 .bv-mark-toggle{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bv-mark-entry:has(.bv-mark-toggle[aria-expanded="false"]){padding:5px 8px}
 #toc-panel .toc-heading button{flex-shrink:0}
+
+/* v3.4.4 draggable hover notes and editor */
+#bv-mark-float{position:fixed;top:70px;right:14px;z-index:200010;width:min(340px,calc(100vw - 20px));max-height:75dvh;overflow:auto;background:#202a38;color:#f5f7fb;border:1px solid #697a90;border-radius:10px;box-shadow:0 14px 40px #0009;padding:12px;box-sizing:border-box}
+#bv-mark-float[hidden]{display:none!important}
+.bv-mark-float-head{display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:move;touch-action:none;user-select:none;border-bottom:1px solid #485669;padding-bottom:8px;margin-bottom:8px}
+.bv-mark-float-head button{cursor:pointer;background:#303e51;color:#fff;border:1px solid #607087;border-radius:5px}
+.bv-mark-float-label{font-size:12px;color:#c8d5e5;overflow-wrap:anywhere;margin-bottom:8px}
+.bv-mark-float-note{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+#bv-mark-float textarea{box-sizing:border-box;width:100%;background:#131c29;color:#fff;border:1px solid #6d7a8b;border-radius:6px;padding:8px;resize:vertical}
+.bv-mark-float-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+#editor .bv-mark-highlight{cursor:pointer}

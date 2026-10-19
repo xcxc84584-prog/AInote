@@ -35,10 +35,48 @@ function addMark(selected){
  records.marks.push({id:crypto.randomUUID(),text:selected.text,offset:at,name:selected.text.trim().split('\n')[0].slice(0,80),note:'',before:raw.slice(Math.max(0,at-30),at),after:raw.slice(at+selected.text.length,at+selected.text.length+30)});
  saveRecords();renderMarks();decorate();
 }
+// Floating annotation note: starts at the upper-right and can be dragged by its header.
+const markFloat=document.createElement('section');markFloat.id='bv-mark-float';markFloat.hidden=true;document.body.append(markFloat);
+let floatPinned=false,floatMarkId=null;
+function hideMarkFloat(force=false){if(force||!floatPinned){markFloat.hidden=true;floatPinned=false;floatMarkId=null}}
+function showMarkFloat(r,edit=false){
+ if(!r||(!edit&&!String(r.note||'').trim()))return;
+ markFloat.replaceChildren();floatPinned=edit;floatMarkId=r.id;
+ const head=document.createElement('div');head.className='bv-mark-float-head';
+ const title=document.createElement('strong');title.textContent=edit?'編輯標註備註':'標註備註';head.append(title);
+ const close=document.createElement('button');close.type='button';close.textContent='×';close.onclick=()=>hideMarkFloat(true);head.append(close);markFloat.append(head);
+ const label=document.createElement('div');label.className='bv-mark-float-label';label.textContent=r.name||r.text;markFloat.append(label);
+ if(edit){const area=document.createElement('textarea');area.rows=5;area.value=r.note||'';area.placeholder='輸入備註';markFloat.append(area);
+ const actions=document.createElement('div');actions.className='bv-mark-float-actions';
+ const save=document.createElement('button');save.textContent='儲存備註';save.onclick=()=>{r.note=area.value;saveRecords();renderMarks();hideMarkFloat(true)};actions.append(save);
+ const cancel=document.createElement('button');cancel.textContent='取消';cancel.onclick=()=>hideMarkFloat(true);actions.append(cancel);markFloat.append(actions);
+ }else{const note=document.createElement('div');note.className='bv-mark-float-note';note.textContent=r.note;markFloat.append(note)}
+ markFloat.hidden=false;
+ if(!markFloat.dataset.moved){markFloat.style.top='70px';markFloat.style.right='14px';markFloat.style.left='auto'}
+}
+let dragFloat=null;
+markFloat.addEventListener('pointerdown',e=>{if(!e.target.closest('.bv-mark-float-head')||e.target.closest('button'))return;
+ const rect=markFloat.getBoundingClientRect();dragFloat={id:e.pointerId,dx:e.clientX-rect.left,dy:e.clientY-rect.top};markFloat.setPointerCapture(e.pointerId);e.preventDefault()});
+markFloat.addEventListener('pointermove',e=>{if(!dragFloat||dragFloat.id!==e.pointerId)return;
+ const x=Math.max(0,Math.min(innerWidth-markFloat.offsetWidth,e.clientX-dragFloat.dx));
+ const y=Math.max(0,Math.min(innerHeight-markFloat.offsetHeight,e.clientY-dragFloat.dy));
+ markFloat.style.left=x+'px';markFloat.style.top=y+'px';markFloat.style.right='auto';markFloat.dataset.moved='1'});
+for(const ev of ['pointerup','pointercancel'])markFloat.addEventListener(ev,()=>dragFloat=null);
+editor.addEventListener('pointerover',e=>{if(floatPinned)return;const span=e.target.closest?.('.bv-mark-highlight[data-mark-id]');if(!span)return;const r=records.marks.find(x=>x.id===span.dataset.markId);if(r?.note?.trim()&&floatMarkId!==r.id)showMarkFloat(r,false)});
+editor.addEventListener('pointerout',e=>{if(floatPinned)return;const span=e.target.closest?.('.bv-mark-highlight[data-mark-id]');if(span&&!span.contains(e.relatedTarget))hideMarkFloat()});
+editor.addEventListener('dblclick',e=>{const span=e.target.closest?.('.bv-mark-highlight[data-mark-id]');if(!span)return;const r=records.marks.find(x=>x.id===span.dataset.markId);if(r){e.preventDefault();showMarkFloat(r,true)}});
+function downloadMarkList(){
+ const name=(document.querySelector('#current-file-name')?.textContent||activeKey||'BV-Note').replace(/[\\/:*?"<>|]/g,'_');
+ const clean=v=>String(v||'').replace(/\r/g,'').trim();
+ const lines=['# 標記列表','',`來源文件：${name}`,'',`標記數量：${records.marks.length}`,''];
+ records.marks.forEach((r,i)=>{lines.push(`## ${i+1}. ${clean(r.name)||'未命名標註'}`,'',`> ${clean(r.text).replace(/\n/g,'\n> ')}`,'','**備註**','',clean(r.note)||'（無備註）','','---','')});
+ const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/markdown;charset=utf-8'});
+ const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='標記列表.md';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
 function renderMarks(){
  marksPanel.replaceChildren();const head=document.createElement('div');head.className='toc-heading';
  const title=document.createElement('strong');title.textContent=`標記列表 (${records.marks.length})`;head.append(title);
- const close=document.createElement('button');close.textContent='×';close.onclick=()=>marksPanel.hidden=true;head.append(close);marksPanel.append(head);
+ const close=document.createElement('button');close.textContent='×';close.onclick=()=>marksPanel.hidden=true;head.append(close);const download=document.createElement('button');download.textContent='下載列表 (.md)';download.onclick=downloadMarkList;head.insertBefore(download,close);marksPanel.append(head);
  const add=document.createElement('button');add.textContent='＋ 標註目前選取';add.onclick=()=>addMark(getSelected()||cachedSelection);marksPanel.append(add);
  for(const r of records.marks){const row=document.createElement('div');row.className='bv-mark-entry';
  const summary=document.createElement('div');summary.className='bv-mark-summary';summary.title='點擊詞卡可展開或收合';
@@ -103,7 +141,7 @@ function decorate(){
  }
 }
 window.BVFlushFileRecords=()=>{if(!activeKey)return Promise.resolve();return window.BVPutFileRecords?.(activeKey,structuredClone(records))||Promise.resolve()};
-window.BVActivateFileRecords=(key)=>{activeKey=key;panel.hidden=true;marksPanel.hidden=true;popup.hidden=true;batchMode=false;chosen.clear();readRecords()};
+window.BVActivateFileRecords=(key)=>{activeKey=key;panel.hidden=true;marksPanel.hidden=true;popup.hidden=true;hideMarkFloat(true);batchMode=false;chosen.clear();readRecords()};
 window.BVRefreshFileRecords=()=>{if(!activeKey)return;reconcile();renderPanel();renderMarks();if(source.style.display==='none')requestAnimationFrame(decorate)};
 tocButton.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden)renderPanel()};
 // Text actions are accessible exclusively from Settings → 文本工具.
