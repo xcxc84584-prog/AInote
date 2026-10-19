@@ -33,7 +33,33 @@ async function readHashId(handle){return (await readHashInfo(handle)).id}
 
 async function writeHashId(handle,id,lifeDays,expiresAt){const h=await handle.getFileHandle('filehashid.txt',{create:true});const w=await h.createWritable();await w.write(JSON.stringify({file_hash_id:id,life_days:lifeDays,expires_at:expiresAt},null,2)+'\n');await w.close()}
 async function getCloud(id,rev){return api('/api/files/'+encodeURIComponent(id)+(rev?'?revision='+encodeURIComponent(rev):''))}
-async function download(id,rev){progress(20,'下載雲端 ZIP…');const f=await getCloud(id,rev);progress(85,'正在產生下載檔案…');saveBlob(f.name.endsWith('.zip')?f.name:f.name+'.zip',new Blob([base64ToBytes(f.content)],{type:'application/zip'}));msg('已下載 ZIP：'+f.name)}
+async function download(id,rev){
+ progress(20,'下載雲端 ZIP…');
+ if(!window.JSZip)throw Error('JSZip 尚未載入，無法附加 filehashid.txt');
+ const f=await getCloud(id,rev);
+ if(!validId(f.file_id)||f.file_id.toLowerCase()!==id.toLowerCase())throw Error('雲端回傳的 File ID 不一致');
+ const original=base64ToBytes(f.content);
+ // Validate the original archive before adding metadata; never silently overwrite user files.
+ const zip=await JSZip.loadAsync(original,{checkCRC32:true});
+ if(zip.file('filehashid.txt'))throw Error('雲端 ZIP 已包含 filehashid.txt；為避免覆寫原有識別資料，已取消下載');
+ progress(48,'正在計算各文件 SHA-256…');
+ const entries=[];
+ for(const [path,item] of Object.entries(zip.files)){
+  if(item.dir)continue;
+  if(path==='filehashid.txt')continue;
+  const bytes=await item.async('uint8array');
+  entries.push({path,cloud_file_id:f.file_id,sha256:await shaBytes(bytes)});
+ }
+ entries.sort((a,b)=>a.path.localeCompare(b.path));
+ const meta=await api('/api/files/'+encodeURIComponent(id)+'/meta');
+ const manifest={version:'1.0',hash_algorithm:'SHA-256',file_hash_id:f.file_id,cloud_file_id:f.file_id,revision:f.revision,life_days:meta.life_days,expires_at:meta.expires_at,source_zip_sha256:await shaBytes(original),files:entries};
+ zip.file('filehashid.txt',JSON.stringify(manifest,null,2)+'\n');
+ progress(80,'正在封裝 filehashid.txt…');
+ const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
+ const name=f.name.endsWith('.zip')?f.name:f.name+'.zip';
+ saveBlob(name,new Blob([bytes],{type:'application/zip'}));
+ msg('已下載 ZIP（包含 filehashid.txt 與 '+entries.length+' 筆文件 SHA-256）：'+name);
+}
 async function removeFile(id){if(!confirm('永久刪除此雲端 ZIP 及所有 Commit 紀錄？不可復原。'))return;progress(35,'刪除雲端檔案…');await api('/api/files/'+id,'DELETE');files=files.filter(f=>f.file_id!==id);if(selectedCloud===id){selectedCloud=null;$('cloud-history').textContent='雲端專案已刪除'}renderFiles(files);msg('雲端 ZIP 已刪除，本地 Fold 不受影響')}
 $('cloud-create-button').onclick=()=>{try{window.BVCloudFolderHandle();showCreatePanel()}catch(e){msg('錯誤：'+e.message)}};
 $('cloud-create-cancel').onclick=()=>{$('cloud-create-panel').hidden=true};
