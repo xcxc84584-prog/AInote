@@ -5,4 +5,4 @@ compatibility_date = "2026-10-01"
 [vars]
 # Replace with your EXACT deployed website origin, without trailing slash.
 # Comma-separated multiple origins are supported.
-ALLOWED_ORIGINS = "https://YOUR-USERNAME.github.io"
+ALLOWED_ORIGINS = "https://xcxc84584-prog.github.io"

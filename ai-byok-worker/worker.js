@@ -32,6 +32,12 @@ export default {
       });
       const text=await upstream.text();
       return new Response(text, {status:upstream.status,headers:{...cors,'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store'}});
-    } catch { return reply({error:{message:'Upstream request failed'}},502); }
+    } catch (error) {
+      // Do not log request headers, API keys, or request bodies.
+      const type = error instanceof Error ? error.name : 'UnknownError';
+      const message = error instanceof Error ? String(error.message).slice(0, 240) : 'Unknown upstream exception';
+      console.error('BV_BYOK_UPSTREAM_FAILURE', { type, message: message.replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED]') });
+      return reply({error:{message:'Upstream request failed',code:'OPENAI_UPSTREAM_FETCH_ERROR',type}},502);
+    }
   }
 };
