@@ -18,3 +18,11 @@ body.ai-active #ai-header-tools{position:relative}body.ai-active #ai-chat-page{o
 
 /* v3.5.11 Block actions and unified navigation */
 .ai-block-actions{display:flex;align-items:center;gap:7px}.ai-ui-edit{background:#9c2732!important;border:1px solid #e55b68!important;color:#fff!important;font-weight:700}.ai-ui-edit.ai-ui-commit{background:#16834f!important;border:1px solid #43ce88!important;color:#fff!important}.ai-ui-delete{background:#3a2930!important;border:1px solid #9b4a56!important;color:#ffb7be!important}.ai-ui-delete:hover{background:#692a36!important}#ai-header-back{background:#ffd943!important;color:#151515!important;border:1px solid #e3b82a!important;font-weight:800!important}#ai-explorer-note{margin-left:5px}#ai-back-note-model{width:auto!important}#ai-chat-context button[hidden]{display:none!important}
+
+/* v3.5.12: match note-mode Explorer header and toolbar grouping */
+#ai-explorer .ai-explorer-title{display:flex;align-items:center;gap:7px;justify-content:flex-start;letter-spacing:1.5px}
+#ai-explorer .ai-explorer-title>span{margin-right:auto}
+#ai-explorer .ai-explorer-title #ai-explorer-note{margin-left:0;background:#28486c;color:#eaf4ff;border:1px solid #5079a4}
+#ai-explorer .ai-explorer-navigation{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 10px}
+#ai-explorer .ai-explorer-navigation #ai-back-note-model{width:auto!important;text-align:center}
+#ai-explorer .ai-explorer-actions{gap:5px;margin:8px 0}
