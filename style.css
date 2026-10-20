@@ -284,3 +284,78 @@ body.resizing-sider{cursor:col-resize;user-select:none}
 #bv-mark-float textarea{box-sizing:border-box;width:100%;background:#131c29;color:#fff;border:1px solid #6d7a8b;border-radius:6px;padding:8px;resize:vertical}
 .bv-mark-float-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 #editor .bv-mark-highlight{cursor:pointer}
+
+/* BV-Note v3.5.0: isolated AI Chat Manager UI prototype */
+#ai-header-tools[hidden],#ai-explorer[hidden],#ai-chat-page[hidden]{display:none!important}
+#ai-header-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+#ai-header-tools button{white-space:nowrap}
+#ai-page-toggle{background:#30496e;color:#eaf3ff;border:1px solid #628bc4;border-radius:5px;margin-left:auto}
+body.ai-active .workspace #explorer,body.ai-active .workspace main,body.ai-active .workspace #cloud-page{display:none!important}
+body.ai-active .workspace{display:flex!important;min-width:0}
+#ai-chat-page{display:flex;flex-direction:column;flex:1;min-width:0;background:#151920;color:#e5eaf3;overflow:auto}
+.ai-chat-topbar{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #343a46;font-weight:600}
+.ai-chat-topbar button{min-width:40px}
+.ai-preview-tag{margin-left:auto;font-size:12px;color:#91aac9;font-weight:400}
+.ai-chat-content{display:flex;flex:1;align-items:center;justify-content:center;padding:30px 15px}
+.ai-welcome{max-width:550px;text-align:center}
+.ai-welcome-icon{display:grid;place-items:center;margin:auto;background:#283e60;border:1px solid #4d79b6;border-radius:14px;color:#b9d7ff;font-weight:800;width:64px;height:64px;font-size:22px}
+.ai-welcome h1{font-size:25px;margin:20px 0 10px}
+.ai-welcome p{line-height:1.8;color:#c5d0df}
+.ai-welcome .ai-secondary{font-size:13px;color:#8fa0b5}
+.ai-welcome-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:24px}
+.ai-placeholder{opacity:.7;cursor:default}
+
+/* v3.5.1 Connector */
+.ai-extension-label{display:block;margin:12px auto;color:#afc3dc;font-size:13px}.ai-extension-label input{display:block;width:min(400px,85vw);margin:6px auto;padding:9px;border:1px solid #53627a;border-radius:5px;background:#111824;color:#fff}.ai-chat-entry{display:block;width:100%;padding:11px 9px;margin-bottom:5px;text-align:left;background:#202936;border:1px solid #354257;border-radius:5px;color:#dbe9f9;overflow-wrap:anywhere}.ai-chat-entry:hover,.ai-chat-entry.active{border-color:#76a7e9;background:#263c58}#ai-remote-chat{max-width:880px;margin:20px auto;width:100%;text-align:left}#ai-remote-chat[hidden]{display:none}.ai-message{background:#202936;border:1px solid #354257;border-radius:8px;padding:15px;margin:12px 0;white-space:pre-wrap;overflow-wrap:anywhere}.ai-message h3{font-size:13px;color:#9db9df;margin:0 0 10px}.ai-chat-content.ai-chat-loaded{display:block}.ai-chat-content.ai-chat-loaded .ai-welcome{display:none}
+
+/* v3.5.2 chat blocks */
+.ai-live-status{padding:7px 20px;color:#a9c4e9;font-size:12px;border-bottom:1px solid #303947;overflow-wrap:anywhere}
+.ai-chat-content.ai-chat-loaded{padding:18px 24px}.ai-chat-content.ai-chat-loaded #ai-remote-chat{max-width:980px;margin:0 auto}
+.ai-chat-note{color:#a4b6cb;font-size:13px;line-height:1.7}
+.ai-block-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ai-block-top h3{margin:0 auto 0 0}
+.ai-block-top button,.ai-block-actions button,.ai-load-more{font-size:12px;padding:6px 10px}
+.ai-block-text{font:inherit;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;margin:12px 0 0}
+.ai-block-editor{box-sizing:border-box;width:100%;min-height:170px;resize:vertical;background:#111924;border:1px solid #6a87a9;color:#edf3fa;border-radius:6px;padding:12px;font:13px/1.6 monospace;margin-top:10px}
+.ai-block-actions{display:flex;gap:8px;margin-top:10px}.ai-load-more{display:block;margin:20px auto}
+[hidden]{display:none!important}
+
+/* v3.5.3: Block mode states */
+.ai-block-top .ai-mode-edit{background:#68272d;color:#fff;border:1px solid #b94b55}
+.ai-block-top .ai-mode-commit{background:#1b693f;color:#fff;border:1px solid #3fb477}
+.ai-block-rendered{overflow-wrap:anywhere;line-height:1.65;margin:12px 0 0}
+.ai-block-rendered pre{white-space:pre-wrap;overflow-x:auto;padding:10px;background:#111924;border-radius:6px}
+.ai-block-rendered p:first-child{margin-top:0}
+.ai-block-rendered img,.ai-block-rendered svg{max-width:100%;height:auto}
+
+/* sEAPP A37: local chat registry table, reusing existing sidebar styles */
+.ai-registry-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.ai-registry-table th,.ai-registry-table td{padding:5px 3px;border-bottom:1px solid #354257;overflow-wrap:anywhere}
+.ai-registry-table th:first-child{width:55%}.ai-registry-table th:nth-child(2){width:18%}
+.ai-registry-table .ai-chat-entry{padding:6px 4px;margin:0;font-size:12px}
+.ai-registry-table td>button:not(.ai-chat-entry){padding:5px;font-size:11px}
+.ai-extension-label textarea{display:block;box-sizing:border-box;width:min(500px,90vw);margin:6px auto;background:#111824;color:#fff;border:1px solid #53627a;border-radius:5px;padding:9px;font:13px/1.5 monospace}
+
+/* v3.5.9 sEAPP ExplorerStyle: one shared Explorer visual system.
+   AI Explorer shares original Explorer selectors; no independent card styling. */
+.workspace :is(#explorer,#ai-explorer){box-sizing:border-box;width:270px;flex:0 0 270px;min-width:0;background:#191c23;border-right:1px solid #343a46;padding:12px;color:#dce6f5;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.workspace #ai-explorer.collapsed{display:none!important}
+#ai-explorer .explorer-title{display:flex;align-items:center;justify-content:space-between;font-weight:700;letter-spacing:2px;margin-bottom:12px;font-size:13px}
+#ai-explorer button{padding:5px 7px;font-size:12px}
+#ai-explorer .ai-explorer-actions{display:flex;gap:3px;flex-wrap:wrap;margin:12px 0}
+#ai-explorer .ai-explorer-filter{margin:8px 0}
+#ai-explorer #ai-chat-search{box-sizing:border-box;width:100%;background:#101216;color:#dce6f5;border:1px solid #53637b;border-radius:4px;padding:7px;font:12px inherit}
+#ai-explorer .ai-explorer-root{font-size:12px;color:#aab5c9;margin:10px 0;overflow-wrap:anywhere}
+#ai-explorer .ai-chat-list{font-size:13px;min-height:0;padding:0}
+#ai-explorer .ai-chat-list-empty{font-size:12px;color:#aab5c9;margin:12px 0}
+#ai-explorer .ai-ui-chat-tree{margin:0;padding:0;border:0;background:transparent;border-radius:0}
+#ai-explorer .ai-ui-chat-tree>summary{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:5px;cursor:pointer;list-style:none;border-radius:4px;background:transparent;color:inherit}
+#ai-explorer .ai-ui-chat-tree>summary::-webkit-details-marker{display:none}
+#ai-explorer .ai-ui-chat-tree>summary::before{content:'▸';font-size:10px;flex:none}
+#ai-explorer .ai-ui-chat-tree[open]>summary::before{content:'▾'}
+#ai-explorer .ai-ui-chat-tree>summary:hover,#ai-explorer .ai-block-node:hover{background:#303744}
+#ai-explorer .ai-ui-chat-tree>summary small{color:#9ca9bb;margin-left:auto}
+#ai-explorer .ai-ui-chat-tree>summary .node-label{flex:1}
+#ai-explorer .ai-block-node{box-sizing:border-box;display:flex;width:100%;border:0;background:transparent;color:#dce6f5;text-align:left;padding:5px 5px 5px 22px;border-radius:4px;box-shadow:none;margin:0;font-size:12px}
+#ai-explorer .node-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ai-explorer .ai-explorer-bottom{margin-top:18px;padding-top:12px;border-top:1px solid #343a46;color:#9ca9bb;font-size:11px}
+@media(max-width:700px){.workspace #ai-explorer{width:min(78vw,300px);flex-basis:min(78vw,300px);max-height:calc(100dvh - 120px)}}
