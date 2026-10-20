@@ -1,0 +1,5 @@
+{
+  "file_hash_id": "e3197a26-86eb-4804-ad28-a8e8b00db4c4",
+  "life_days": 7,
+  "expires_at": "2026-10-26T06:07:08.920Z"
+}
