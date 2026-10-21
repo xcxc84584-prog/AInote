@@ -46,5 +46,14 @@ $('bv-auth-form').addEventListener('submit',async e=>{
  }catch(err){msg.textContent=err.message}
 });
 $('bv-auth-logout').addEventListener('click',async()=>{try{await request('/api/auth/logout','POST')}catch{}token='';email='';localStorage.removeItem(KEY);update();$('ai-ui-hint').textContent='已登出。請登入後使用 AI Chat。'});
+// Reload/reset only transient form data; retain login token and saved chats.
+function clearTransientInputs(){
+ const ids=['bv-auth-email','bv-auth-password','bv-signup-code','bv-signup-email-code','bv-signup-challenge','bv-migrate-code','bv-migrate-challenge','bv-auth-message','ai-message-input','ai-chat-search','cloud-search-input','ai-personal-key'];
+ for(const id of ids){const el=$(id);if(!el)continue;if('value' in el)el.value='';else el.textContent='';}
+ const dialog=$('bv-auth-dialog');if(dialog?.open)dialog.close();
+ mode='login';signupMethod='email';const method=$('bv-signup-method');if(method)method.value='email';switchMode();
+}
+// pageshow also runs when the browser restores a page from back/forward cache.
+window.addEventListener('pageshow',clearTransientInputs);
 window.BVAuth={getToken:()=>token,refresh,open:show,request};update();refresh();
 })();
