@@ -8,3 +8,4 @@ ALLOWED_ORIGIN = "https://xcxc84584-prog.github.io"
 
 [triggers]
 crons = ["0 * * * *"]
+
