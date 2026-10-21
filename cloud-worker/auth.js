@@ -1,3 +1,4 @@
+import {jwtVerify,createRemoteJWKSet} from 'jose';
 import {neon} from '@neondatabase/serverless';
 const encoder=new TextEncoder();
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
@@ -18,6 +19,38 @@ async function derive(password,salt){
 
 async function current(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT u.id,u.email,s.id AS session_id FROM bv_sessions s JOIN bv_users u ON u.id=s.user_id WHERE s.token_hash=${hash} AND s.expires_at>NOW() LIMIT 1`;return rows[0]||null;}
 export async function authApi(req,env,path){if(!path.startsWith('/api/auth/')&&path!=='/api/ai/chat'&&path!=='/api/ai/chunk')return null;if(!env.DATABASE_URL)return bad('DATABASE_URL missing',503);const sql=neon(env.DATABASE_URL);let phase='route';try{
+ // Google Identity Services: verify signed ID token on server; never trust email from browser.
+ if(path==='/api/auth/google'&&req.method==='POST'){
+  if(!env.GOOGLE_CLIENT_ID)return bad('管理員尚未設定 GOOGLE_CLIENT_ID',503);
+  phase='google-verify';
+  const b=await req.json();const idToken=String(b.credential||'');
+  if(idToken.length<100||idToken.length>12000)return bad('Google 憑證格式錯誤',400);
+  const jwks=createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
+  let payload;
+  try{({payload}=await jwtVerify(idToken,jwks,{issuer:['https://accounts.google.com','accounts.google.com'],audience:env.GOOGLE_CLIENT_ID,algorithms:['RS256']}));}
+  catch{return bad('Google 身分驗證失敗或憑證已過期',401)}
+  const email=String(payload.email||'').toLowerCase(),sub=String(payload.sub||'');
+  if(payload.email_verified!==true||!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)||!/^\d{5,32}$/.test(sub))return bad('請使用已驗證的 Gmail Google 帳號',403);
+  phase='google-account';
+  // Account linking by verified Google mailbox. Never change legacy password hash.
+  const existing=await sql`SELECT id FROM bv_google_identities WHERE google_sub=${sub} LIMIT 1`;
+  let userId=existing[0]?.id;
+  if(!userId){
+   const found=await sql`SELECT id FROM bv_users WHERE email=${email} LIMIT 1`;
+   if(found.length)userId=found[0].id;
+   else{
+    const id=newUUID(),salt=random(),unusable='google-only$'+random();
+    const inserted=await sql`INSERT INTO bv_users(id,email,password_salt,password_hash) VALUES(${id},${email},${salt},${unusable}) ON CONFLICT(email) DO NOTHING RETURNING id`;
+    userId=inserted[0]?.id;
+    if(!userId){const raced=await sql`SELECT id FROM bv_users WHERE email=${email} LIMIT 1`;userId=raced[0]?.id;}
+   }
+   const linked=await sql`INSERT INTO bv_google_identities(id,google_sub,email) VALUES(${userId},${sub},${email}) ON CONFLICT DO NOTHING RETURNING id`;
+   if(!linked.length){const linkedSub=await sql`SELECT id FROM bv_google_identities WHERE google_sub=${sub} LIMIT 1`;if(linkedSub[0]?.id!==userId)return bad('Google 帳號已綁定其他使用者',409);}
+  }
+  const token=random(),hash=await digest(token),session=newUUID();
+  await sql`INSERT INTO bv_sessions(id,user_id,token_hash,expires_at) VALUES(${session},${userId},${hash},NOW()+INTERVAL '30 days')`;
+  return json({token,email,expires_in_days:30,google:true});
+ }
  // Legacy account migration requires proof of mailbox ownership. Never permit
  // replacing a password based on email address or signup code alone.
  if(path==='/api/auth/migrate/start'&&req.method==='POST'){

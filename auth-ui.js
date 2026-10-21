@@ -2,7 +2,7 @@
 async function request(path,method='GET',data){const res=await fetch(API+path,{method,headers:{...(data?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:data?JSON.stringify(data):undefined});const body=await res.json().catch(()=>({error:'API 回傳格式錯誤'}));if(!res.ok)throw Error(body.error||'HTTP '+res.status);return body;}
 function update(){ $('bv-auth-open').textContent=email?'帳號：'+email:'建立新帳號 / 登入';$('bv-auth-logout').hidden=!email;$('bv-auth-status').textContent=email?'已登入：'+email:'未登入';}
 async function refresh(){if(!token){email='';update();return null}try{const me=await request('/api/auth/me');email=me.email;update();const hint=$('ai-ui-hint');if(hint)hint.textContent='帳號：'+email+'｜今日 AI 剩餘 '+me.remaining+'/100';return me}catch{token='';email='';localStorage.removeItem(KEY);update();return null}}
-function show(){mode='login';switchMode();$('bv-auth-message').textContent='';$('bv-auth-dialog').showModal()}
+function show(){mode='login';switchMode();$('bv-auth-message').textContent='';$('bv-auth-dialog').showModal();renderGoogleButton()}
 let signupMethod='email';
 function switchMode(){
  const register=mode==='register',migrate=mode==='migrate',emailSignup=register&&signupMethod==='email';
@@ -14,6 +14,7 @@ function switchMode(){
  $('bv-auth-submit').textContent=register?(emailSignup?'寄送驗證碼 / 完成註冊':'使用邀請碼註冊'):migrate?'寄送驗證碼 / 完成遷移':'登入';
  $('bv-auth-switch').textContent=register||migrate?'返回登入':'建立新帳號';
  $('bv-auth-migrate').hidden=migrate;
+ $('bv-google-signin').hidden=!(mode==='login'||mode==='register'||mode==='migrate');
 }
 $('bv-signup-method').addEventListener('change',()=>{signupMethod=$('bv-signup-method').value;$('bv-signup-challenge').value='';$('bv-signup-email-code').value='';switchMode()});
 $('bv-auth-open').addEventListener('click',show);
@@ -45,6 +46,21 @@ $('bv-auth-form').addEventListener('submit',async e=>{
   const result=await request('/api/auth/login','POST',b);token=result.token;localStorage.setItem(KEY,token);$('bv-auth-password').value='';$('bv-auth-dialog').close();await refresh();
  }catch(err){msg.textContent=err.message}
 });
+// Google Identity Services: ID token is verified by Worker using Google's JWKS.
+let googleReady=false;
+async function googleSignIn(response){
+ const msg=$('bv-auth-message');msg.textContent='正在驗證 Google 身分…';
+ try{const r=await request('/api/auth/google','POST',{credential:response.credential});token=r.token;localStorage.setItem(KEY,token);$('bv-auth-dialog').close();await refresh();}
+ catch(err){msg.textContent=err.message;}
+}
+function renderGoogleButton(){
+ const target=$('bv-google-signin'),hint=$('bv-google-hint');if(!target)return;
+ const clientId=window.BV_GOOGLE_CLIENT_ID;
+ if(!clientId){hint.textContent='管理員尚未設定 Google Client ID';return;}
+ if(!window.google?.accounts?.id){hint.textContent='Google 登入模組載入中，請稍後重新開啟視窗';return;}
+ if(!googleReady){google.accounts.id.initialize({client_id:clientId,callback:googleSignIn,auto_select:false});googleReady=true;}
+ target.replaceChildren();google.accounts.id.renderButton(target,{theme:'outline',size:'large',text:'continue_with',width:290});hint.textContent='Google 驗證後可直接登入；相同 Gmail 的舊帳號會保留原有資料。';
+}
 $('bv-auth-logout').addEventListener('click',async()=>{try{await request('/api/auth/logout','POST')}catch{}token='';email='';localStorage.removeItem(KEY);update();$('ai-ui-hint').textContent='已登出。請登入後使用 AI Chat。'});
 // Reload/reset only transient form data; retain login token and saved chats.
 function clearTransientInputs(){
