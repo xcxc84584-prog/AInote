@@ -1,3 +1,4 @@
+// AREA A07 START: PDFViewer | File: pdf-viewer.js
 /* BV-Note PDF Viewer: isolated, read-only, no Markdown processing. */
 (()=>{
  const main=document.querySelector('.workspace main');
@@ -21,3 +22,4 @@
  async function show(file){hide();if(!file||!(/\.pdf$/i.test(file.name)||file.type==='application/pdf'))throw Error('不是 PDF 文件');const n=generation;url=URL.createObjectURL(file);if(n!==generation)return;frame.src=url+'#toolbar=1&navpanes=0';frame.style.display='block';wrap.style.display='flex'}
  window.BVPdfViewer={show,hide,get active(){return frame.style.display!=='none'}};
 })();
+// AREA A07 END: PDFViewer

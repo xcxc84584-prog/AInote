@@ -1,3 +1,4 @@
+// AREA A03 START: MarkdownRenderer | File: renderer.js
 'use strict';
 // Offline Markdown renderer. Keeps raw SVG blocks and images as elements.
 const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -108,3 +109,4 @@ function parseDocument(source){
  html=html.replace(/(?:<p>\s*)?AIPROTECTED(\d+)END(?:\s*<\/p>)?/g,(_,n)=>tokens[+n]);
  return html;
 }
+// AREA A03 END: MarkdownRenderer

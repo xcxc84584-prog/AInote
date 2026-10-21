@@ -1,3 +1,4 @@
+// AREA A06 START: EditorController | File: app.js
 'use strict';
 const editor=document.querySelector('#editor'),statusEl=document.querySelector('#status'),filenameEl=document.querySelector('#filename'),input=document.querySelector('#file');
 let handle=null,name='未命名.md',dirty=false;
@@ -204,3 +205,4 @@ window.addEventListener('load',scheduleMathRender);
 window.BVGetRawMarkdown=()=>sourceArea.style.display!=='none'?sourceArea.value:rawMarkdown;
 
 window.BVSetRawMarkdown=(text)=>{rawMarkdown=text;renderRaw();dirty=true;window.BVRefreshUnsaved?.();window.BVRefreshFileRecords?.();};
+// AREA A06 END: EditorController

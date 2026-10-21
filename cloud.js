@@ -1,3 +1,4 @@
+// AREA A08 START: CloudClient | File: cloud.js
 'use strict';
 (()=>{
 const $=id=>document.getElementById(id),msg=t=>{$('cloud-message').textContent=t};
@@ -74,3 +75,4 @@ $('cloud-zip-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('�
 $('cloud-import-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('請先以 File Hash ID 搜尋');await download(selectedCloud);msg('已下載 ZIP，請透過本地 Explorer 匯入；不會覆蓋本地檔案')});
 renderFiles([]);
 })();
+// AREA A08 END: CloudClient

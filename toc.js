@@ -1,3 +1,4 @@
+// AREA A01 START: TOCAndAnnotations | File: toc.js
 'use strict';
 (()=>{
 const editor=document.querySelector('#editor'),source=document.querySelector('#source-editor'),main=document.querySelector('.workspace main');
@@ -229,3 +230,4 @@ textTools?.addEventListener('click',()=>{
 document.addEventListener('pointerdown',e=>{if(!menu.contains(e.target))menu.hidden=true;if(!panel.contains(e.target)&&e.target!==tocButton&&!popup.contains(e.target))panel.hidden=true;if(!marksPanel.contains(e.target)&&!menu.contains(e.target))marksPanel.hidden=true});
 editor.addEventListener('input',()=>setTimeout(window.BVRefreshFileRecords,100));source.addEventListener('input',()=>setTimeout(window.BVRefreshFileRecords,100));
 })();
+// AREA A01 END: TOCAndAnnotations
