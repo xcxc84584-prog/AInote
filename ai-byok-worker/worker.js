@@ -1,6 +1,6 @@
 // AREA A10 START: BYOKProxy | File: ai-byok-worker/worker.js
 // sEAPP AREA AIRequestProxy: BYOK relay. Never persist or log user API keys.
-const MAX_BODY = 1500000;
+const MAX_BODY = 12000000;
 export default {
   async fetch(request, env) {
     const origin = request.headers.get('Origin') || '';
@@ -29,7 +29,7 @@ export default {
     try {
       const upstream = await fetch('https://api.openai.com/v1/responses', {
         method:'POST', headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json'},
-        body:raw, redirect:'error'
+        body:raw, redirect:'manual'
       });
       const text=await upstream.text();
       return new Response(text, {status:upstream.status,headers:{...cors,'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store'}});
