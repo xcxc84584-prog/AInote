@@ -138,6 +138,7 @@ export async function authApi(req,env,path){if(!path.startsWith('/api/auth/')&&p
   if(!user)return bad('帳號或密碼錯誤',401);
   // The original 310k noble PBKDF2 hashes cannot be verified within the Free Worker CPU budget.
   // Do not silently downgrade or overwrite existing hashes.
+  if(String(user.password_hash||'').startsWith('google-only$'))return bad('此帳號使用 Google 免密碼登入，請點選「使用 Google 繼續」',409);
   if(!String(user.password_hash||'').startsWith(PASSWORD_SCHEME))return bad('此帳號使用舊版密碼雜湊，請先進行帳號密碼遷移；原有密碼資料未被修改',409);
   if(await derive(password,user.password_salt)!==user.password_hash)return bad('帳號或密碼錯誤',401);
   const token=random(),hash=await digest(token),session=newUUID();
