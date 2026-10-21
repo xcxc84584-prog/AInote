@@ -35,14 +35,41 @@ $('ai-header-ai-settings').addEventListener('click',()=>{const p=$('ai-api-panel
 const attachments=[];
 const BYOK_ENDPOINT="https://bv-note-byok.xcxc84584.workers.dev/ai/responses";
 const MAX_ATTACHMENTS=10;
-const MAX_FILE_BYTES=5*1024*1024;
-const MAX_EXTRACTED_BYTES=2000000;
+const MAX_FILE_BYTES=100*1024*1024;
+const CHUNK_BYTES=5*1024*1024;
+const MAX_EXTRACTED_BYTES=32*1024*1024;
 const MAX_ZIP_ENTRIES=100;
+// Large file contents are staged as 5 MiB parts; website AI currently reads only an excerpt.
 $('ai-attach-button').addEventListener('click',()=>$('ai-attach-input').click());
-$('ai-attach-input').addEventListener('change',async e=>{for(const f of e.target.files){if(f.size>MAX_FILE_BYTES){notice('附件超過 5MB：'+f.name);continue}if(attachments.length>=MAX_ATTACHMENTS){notice('每次最多 10 個附件');break}attachments.push(f)}e.target.value='';showAttachments()});
-$('ai-message-input').addEventListener('paste',e=>{const images=Array.from(e.clipboardData?.items||[]).filter(x=>x.kind==='file'&&x.type.startsWith('image/'));if(!images.length)return;e.preventDefault();for(const item of images){if(attachments.length>=MAX_ATTACHMENTS){notice('每次最多 10 個附件');break}const f=item.getAsFile();if(!f)continue;if(f.size>MAX_FILE_BYTES){notice('圖片超過 5MB');continue}attachments.push(new File([f],'pasted-image-'+Date.now()+'.png',{type:f.type}))}showAttachments()});
+$('ai-attach-input').addEventListener('change',async e=>{for(const f of e.target.files){if(f.size>MAX_FILE_BYTES){notice('附件超過 100 MiB：'+f.name);continue}if(attachments.length>=MAX_ATTACHMENTS){notice('每次最多 10 個附件');break}attachments.push(f)}e.target.value='';showAttachments()});
+$('ai-message-input').addEventListener('paste',e=>{const images=Array.from(e.clipboardData?.items||[]).filter(x=>x.kind==='file'&&x.type.startsWith('image/'));if(!images.length)return;e.preventDefault();for(const item of images){if(attachments.length>=MAX_ATTACHMENTS){notice('每次最多 10 個附件');break}const f=item.getAsFile();if(!f)continue;if(f.size>MAX_FILE_BYTES){notice('圖片超過 100 MiB');continue}attachments.push(new File([f],'pasted-image-'+Date.now()+'.png',{type:f.type}))}showAttachments()});
 async function extractedText(f){const ext=f.name.toLowerCase().split('.').pop();if(['doc','ppt','xls'].includes(ext))throw Error('舊版 Office 格式 '+f.name+' 尚無安全解析器，請轉存為 docx/pptx/xlsx');if(['zip','docx','pptx','xlsx'].includes(ext)){if(!window.JSZip)throw Error('ZIP 解析模組未載入');const zip=await JSZip.loadAsync(f);const entries=Object.values(zip.files).filter(x=>!x.dir);if(entries.length>MAX_ZIP_ENTRIES)throw Error('壓縮檔項目超過 '+MAX_ZIP_ENTRIES);let total=0;const pieces=[];const allowed=/\.(txt|md|json|csv|xml|html|css|js|ts|py|java|c|cpp|h|hpp|yaml|yml|log|sql)$/i;for(const e of entries){if(e.name.includes('..')||e.name.startsWith('/'))continue;let include=ext==='zip'?allowed.test(e.name):ext==='docx'?/^word\/(document|header\d*|footer\d*)\.xml$/.test(e.name):ext==='pptx'?/^ppt\/slides\/slide\d+\.xml$/.test(e.name):/^xl\/(worksheets\/sheet\d+|sharedStrings)\.xml$/.test(e.name);if(!include)continue;const t=await e.async('string');total+=t.length;if(total>MAX_EXTRACTED_BYTES)throw Error('附件解壓文字超過限制');let content=t;if(ext!=='zip'){const doc=new DOMParser().parseFromString(t,'application/xml');content=doc.documentElement.textContent||''}pieces.push('--- '+e.name+' ---\n'+content)}if(!pieces.length)throw Error('無可讀取內容：'+f.name);return pieces.join('\n')}const t=await f.text();if(t.length>MAX_EXTRACTED_BYTES)throw Error('文字附件過大');return t}
 function showAttachments(){const el=$('ai-attachment-list');el.replaceChildren();attachments.forEach((f,i)=>{const b=document.createElement('button');b.type='button';b.textContent='✕ '+f.name;b.title='移除此附件';b.addEventListener('click',()=>{attachments.splice(i,1);showAttachments()});el.append(b)})}
+// Local-only: slices are processed in the browser. Only a small manifest is sent for quota accounting.
+async function uploadSiteAttachment(file,token){
+ const name=file.name.toLowerCase();
+ if(file.type.startsWith('image/')||name.endsWith('.pdf'))throw Error('網站模式尚未支援圖片/PDF 文字解析；請使用個人 API Key 模式');
+ const content=await extractedText(file);
+ const blob=new Blob([content],{type:'text/plain;charset=utf-8'});
+ if(!blob.size)throw Error('附件沒有可讀取的文字：'+file.name);
+ const count=Math.ceil(blob.size/CHUNK_BYTES);
+ if(count>200)throw Error('附件分片數超過限制');
+ const id=crypto.randomUUID();
+ for(let i=0;i<count;i++){
+  const part=blob.slice(i*CHUNK_BYTES,(i+1)*CHUNK_BYTES);
+  // Read locally, calculate a SHA-256 checksum, and transmit ONLY the digest/length metadata.
+  const bytes=await part.arrayBuffer();
+  const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+  notice('本地處理 '+file.name+'：'+(i+1)+'/'+count+'（每片計入 1 次網站額度）');
+  const response=await fetch(window.BV_CLOUD_API_URL+'/api/ai/chunk',{method:'POST',headers:{
+   'Authorization':'Bearer '+token,'Content-Type':'application/json'
+  },body:JSON.stringify({upload_id:id,part_index:i,part_count:count,bytes:bytes.byteLength,sha256:digest})});
+  let result;try{result=await response.json()}catch{throw Error('分片登記失敗 HTTP '+response.status)}
+  if(!response.ok)throw Error((result.error||'分片登記失敗')+' [ErrorID: '+(result.error_id||response.status)+']');
+ }
+ // Only this bounded excerpt is transmitted to the AI; the rest stays in the browser.
+ return {id,count,name:file.name,excerpt:content.slice(0,3500)};
+}
 function asDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error('讀取附件失敗'));r.readAsDataURL(file)})}
 async function send(){const source=$('ai-message-input').value.trim();if((!source&&!attachments.length)||sending)return;
 const own=$('ai-api-mode').value==='byok',model=$('ai-model-select').value,key=$('ai-personal-key').value.trim();
@@ -50,17 +77,24 @@ if(own&&!key){notice('請輸入個人 API Key');return}
 if(!own&&!window.BVAuth?.getToken()){notice('請先登入 BV-Note 帳號');window.BVAuth?.open();return}
 const url=BYOK_ENDPOINT;
 sending=true;$('ai-send-preview').disabled=true;notice('正在準備附件…');
-try{const parts=[{type:'input_text',text:source||'請分析附件'}],labels=[];
-for(const f of attachments){const data=await asDataURL(f);if(f.type.startsWith('image/')){if(!/^(image\/png|image\/jpeg|image\/webp|image\/gif)$/.test(f.type))throw Error('不支援的圖片類型');parts.push({type:'input_image',image_url:data});labels.push('[圖片] '+f.name)}else if(f.name.toLowerCase().endsWith('.pdf')){if(!own)throw Error('PDF 附件目前需要使用個人 API Key 模式');parts.push({type:'input_file',filename:f.name,file_data:data});labels.push('[PDF] '+f.name)}else{const content=await extractedText(f);parts.push({type:'input_text',text:'\n--- FILE: '+f.name+' ---\n'+content+'\n--- END FILE ---'});labels.push('[文件] '+f.name)}}
+try{const parts=[{type:'input_text',text:source||'請分析附件'}],labels=[],uploads=[];
+for(const f of attachments){
+ if(!own){uploads.push(await uploadSiteAttachment(f,window.BVAuth.getToken()));labels.push('[本地分片計費] '+f.name);continue}
+ if(f.size>20*1024*1024)throw Error('個人 API 模式單檔上限 20 MiB；更大的附件需使用 OpenAI Files API（尚未整合）');
+ const data=await asDataURL(f);
+ if(f.type.startsWith('image/')){if(!/^(image\/png|image\/jpeg|image\/webp|image\/gif)$/.test(f.type))throw Error('不支援的圖片類型');parts.push({type:'input_image',image_url:data});labels.push('[圖片] '+f.name)}
+ else if(f.name.toLowerCase().endsWith('.pdf')){parts.push({type:'input_file',filename:f.name,file_data:data});labels.push('[PDF] '+f.name)}
+ else{const content=await extractedText(f);parts.push({type:'input_text',text:'\n--- FILE: '+f.name+' ---\n'+content+'\n--- END FILE ---'});labels.push('[文件] '+f.name)}
+}
 let c=current();if(!c){createChat();c=current()}
 const shown=source+(labels.length?'\n\n'+labels.join('\n'):'');c.blocks.push({role:'Q',text:shown});if(c.blocks.length===1)c.title=(source||labels[0]).replace(/[#*`\n]/g,' ').slice(0,38)||c.title;
 persist();renderTree();renderThread();notice('正在向 OpenAI 發送請求…');
 const history=c.blocks.slice(0,-1).map(b=>({role:b.role==='Q'?'user':'assistant',content:b.text}));history.push({role:'user',content:parts});
 const headers={'Content-Type':'application/json'};let endpoint,body;
 if(own){endpoint=url;headers['X-BV-User-Key']=key;body=JSON.stringify({model,input:history,store:false})}
-else{endpoint=window.BV_CLOUD_API_URL+'/api/ai/chat';headers.Authorization='Bearer '+window.BVAuth.getToken();body=JSON.stringify({input:history})}
+else{endpoint=window.BV_CLOUD_API_URL+'/api/ai/chat';headers.Authorization='Bearer '+window.BVAuth.getToken();body=JSON.stringify({input:history,uploads})}
 const res=await fetch(endpoint,{method:'POST',headers,body});const data=await res.json();if(!res.ok){const msg=typeof data.error==='string'?data.error:data.error?.message||'HTTP '+res.status;throw Error(msg+' [ErrorID: '+(data.error_id||'AI-FE-HTTP-'+res.status)+']')}
-const output=data.output_text||data.output?.flatMap(o=>o.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('\n')||'';if(!output)throw Error('API 沒有回傳文字內容');c.blocks.push({role:'A',text:output});$('ai-message-input').value='';attachments.length=0;showAttachments();persist();renderTree();renderThread();notice('已收到 AI 回答'+(own?'（個人 API）':'（網站 API）'));if(!own)window.BVAuth?.refresh();
+const output=data.output_text||data.output?.flatMap(o=>o.content||[]).filter(x=>x.type==='output_text').map(x=>x.text).join('\n')||'';if(!output)throw Error('API 沒有回傳文字內容');c.blocks.push({role:'A',text:output});$('ai-message-input').value='';attachments.length=0;showAttachments();persist();renderTree();renderThread();notice('已收到 AI 回答'+(own?'（個人 API）':'（網站 API；附件僅傳送前 3,500 字元預覽，其他內容保留本地）'));if(!own)window.BVAuth?.refresh();
 }catch(e){notice('AI 請求失敗：'+e.message+'。請檢查附件、模型及 API 設定。')}finally{sending=false;$('ai-send-preview').disabled=false}}
 $('ai-send-preview').addEventListener('click',send);$('ai-message-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();send()}});
 window.addEventListener('beforeunload',()=>{apiKey=''});renderTree();renderThread();})();
