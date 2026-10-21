@@ -1,3 +1,4 @@
+// AREA A02 START: ExplorerManager | File: explorer.js
 'use strict';
 (()=>{
 const aside=document.querySelector('#explorer'),tree=document.querySelector('#tree'),rootLabel=document.querySelector('#root-label');
@@ -459,4 +460,4 @@ window.addEventListener('focus',syncExternal);document.addEventListener('visibil
 document.addEventListener('keydown',e=>{if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}},true);
 window.BVSwitchEditorMode=(mode)=>switchMode(mode);
 })();
-
+// AREA A02 END: ExplorerManager

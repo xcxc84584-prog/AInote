@@ -1,3 +1,4 @@
+// AREA A11 START: CloudAPI | File: cloud-worker/worker.js
 import JSZip from 'jszip';
 import { neon } from '@neondatabase/serverless';
 const reply=(data,status=200,origin='')=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{})}});
@@ -29,3 +30,4 @@ if((match=path.match(/^\/api\/files\/([^/]+)$/))&&req.method==='DELETE'){const i
 if((match=path.match(/^\/api\/files\/([^/]+)$/))&&req.method==='GET'){const id=match[1];if(!uuid(id))throw Error('ID 無效');const q=new URL(req.url).searchParams.get('revision');const f=await sql`SELECT name,revision FROM cloud_files WHERE file_id=${id} AND (expires_at IS NULL OR expires_at>NOW())`;if(!f.length)return reply({error:'找不到文件'},404,cors);const rev=q?Number(q):f[0].revision;if(!Number.isInteger(rev)||rev<1)throw Error('版本號無效');const rows=await sql`SELECT content,sha256,created_at FROM commits WHERE file_id=${id} AND revision=${rev}`;if(!rows.length)return reply({error:'找不到版本'},404,cors);return reply({file_id:id,name:f[0].name,revision:rev,...rows[0]},200,cors)}
 return reply({error:'找不到 API 路由'},404,cors);
 }catch(e){console.error('Cloud API error',e);return reply({error:e.message==='Unexpected end of JSON input'?'JSON 格式錯誤':String(e.message||'服務發生錯誤').slice(0,200)},400,cors)}}};
+// AREA A11 END: CloudAPI

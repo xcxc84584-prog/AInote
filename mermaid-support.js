@@ -1,3 +1,4 @@
+// AREA A05 START: MermaidSupport | File: mermaid-support.js
 'use strict';
 // Mermaid source is preserved. Invalid diagrams remain readable, never replaced by an error SVG.
 (()=>{
@@ -33,3 +34,4 @@
  };
  window.addEventListener('load',()=>window.BVRenderMermaid());
 })();
+// AREA A05 END: MermaidSupport

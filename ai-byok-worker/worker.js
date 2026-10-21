@@ -1,3 +1,4 @@
+// AREA A10 START: BYOKProxy | File: ai-byok-worker/worker.js
 // sEAPP AREA AIRequestProxy: BYOK relay. Never persist or log user API keys.
 const MAX_BODY = 1500000;
 export default {
@@ -41,3 +42,4 @@ export default {
     }
   }
 };
+// AREA A10 END: BYOKProxy
