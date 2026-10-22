@@ -25,6 +25,7 @@ function virtualFile(name,text){
  async createWritable(){let next='';return {async write(v){next=typeof v==='string'?v:await new Blob([v]).text()},async close(){data=next}}}};
 }
 async function openSingleFile(file){
+ rememberRoot();
  if(!file||!/\.(md|markdown|txt)$/i.test(file.name)){alert('單檔匯入支援 MD、Markdown、TXT');return}
  if(dirty&&!confirm('目前文件尚未儲存，仍要切換？'))return;
  const content=await file.text(),name=file.name;
@@ -224,6 +225,61 @@ async function renameRoot(){
   alert('新 Root「'+name+'」已建立並驗證。\n舊 Root「'+oldName+'」已保留作為備份，請確認目錄與標註正常後，再自行刪除舊資料夾。');
  }catch(e){if(e.name!=='AbortError')alert('Root 重新命名失敗：'+e.message)}
 }
+// AREA MULTIROOT START: independent Root workspaces and active-file routing.
+const rootWorkspaces=[];
+let switchingRoot=false;
+function snapshotRoot(){
+ if(!root)return null;
+ const active=current();
+ if(active?.kind==='file'&&dirty)active.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
+ return {root,items,selected,sequence,orderDirty,virtualRoot,rootSelected,rootCollapsed,
+  collapsed:new Set(collapsed),nodeDB,recordDB,recordWrite,nodeWrite,
+  activeUUID:active?.kind==='file'?active.uuid:null};
+}
+function rememberRoot(){const snap=snapshotRoot();if(!snap)return;
+ const i=rootWorkspaces.findIndex(w=>w.root===root);
+ if(i<0)rootWorkspaces.push(snap);else rootWorkspaces[i]=snap;
+}
+async function activateRoot(target){
+ if(!target||switchingRoot||target.root===root)return;
+ switchingRoot=true;
+ try{
+  rememberRoot();
+  root=target.root;items=target.items;selected=target.selected;sequence=target.sequence;
+  orderDirty=target.orderDirty;virtualRoot=target.virtualRoot;
+  rootSelected=target.rootSelected;rootCollapsed=target.rootCollapsed;
+  collapsed.clear();for(const id of target.collapsed)collapsed.add(id);
+  nodeDB=target.nodeDB;recordDB=target.recordDB;recordWrite=target.recordWrite;nodeWrite=target.nodeWrite;
+  resetBatch();rootLabel.textContent=root.name;dirty=false;
+  const file=items.find(x=>x.uuid===target.activeUUID&&x.kind==='file');
+  selected=null;
+  if(file)await choose(file);
+  else {rawMarkdown='';setName('未命名.md');setDocumentVisible(false);switchMode('edit');display();}
+ }finally{switchingRoot=false;}
+}
+function renderOtherRoots(){
+ for(const workspace of rootWorkspaces){if(workspace.root===root)continue;
+  const row=document.createElement('div');row.className='tree-node root-tree-node';
+  row.style.paddingLeft='10px';row.style.cursor='pointer';
+  const label=document.createElement('span');label.className='node-label';label.textContent='▸ ▣ '+workspace.root.name;
+  row.append(label);row.title='切換至此 Root（操作以所選文件所屬 Root 為準）';
+  row.onclick=()=>activateRoot(workspace).catch(e=>alert('Root 切換失敗：'+e.message));
+  tree.append(row);
+  // Show every opened Root's tree; selecting a file activates its owning Root first.
+  const drawInactive=(parent,depth)=>{
+   const children=workspace.items.filter(x=>x.parent===parent).sort((a,b)=>a.order-b.order);
+   for(const x of children){
+    if(explorerQuery&&!x.name.toLocaleLowerCase().includes(explorerQuery)&&!workspace.items.some(y=>y.name.toLocaleLowerCase().includes(explorerQuery)&&(()=>{let a=y.parent;while(a){if(a===x)return true;a=a.parent}return false})()))continue;
+    const node=document.createElement('div');node.className='tree-node';node.style.paddingLeft=(10+depth*15)+'px';
+    const name=document.createElement('span');name.className='node-label';name.textContent=(x.kind==='directory'?'▾ ':'▤ ')+x.name;node.append(name);
+    node.onclick=async()=>{try{await activateRoot(workspace);const live=items.find(y=>y.uuid===x.uuid);if(live){if(live.kind==='file')await choose(live);else{selected=live.id;rootSelected=false;display()}}}catch(e){alert('切換文件失敗：'+e.message)}};
+    tree.append(node);if(x.kind==='directory')drawInactive(x,depth+1);
+   }
+  };
+  drawInactive(null,1);
+ }
+}
+// AREA MULTIROOT END
 async function openRootFromHandle(d){virtualRoot=false;
  const previousSession=(()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')}catch{return null}})();
  root=d;rootSelected=false;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;
@@ -288,7 +344,7 @@ explorerSearchInput.addEventListener('input',()=>{explorerQuery=explorerSearchIn
 explorerSearchClear.addEventListener('click',()=>{explorerSearchInput.value='';explorerQuery='';display();explorerSearchInput.focus()});
 function display(){tree.replaceChildren();
  explorerSearchClear.hidden=!explorerQuery;
- if(!root){explorerSearchStatus.textContent='';return;}
+ if(!root){explorerSearchStatus.textContent='';renderOtherRoots();return;}
  const matches=new Set();let directMatches=0;
  if(explorerQuery){for(const node of items){if(!node.name.toLocaleLowerCase().includes(explorerQuery))continue;directMatches++;matches.add(node.id);let ancestor=node.parent;while(ancestor){matches.add(ancestor.id);ancestor=ancestor.parent}}}
  explorerSearchStatus.textContent=explorerQuery?`符合 ${directMatches} 個項目` : '';
@@ -299,7 +355,7 @@ function display(){tree.replaceChildren();
  rootRow.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();rootMenu(e.clientX,e.clientY)};
  let timer;rootRow.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;const x=e.touches[0].clientX,y=e.touches[0].clientY;timer=setTimeout(()=>rootMenu(x,y),550)},{passive:true});
  for(const ev of ['touchend','touchcancel','touchmove'])rootRow.addEventListener(ev,()=>clearTimeout(timer),{passive:true});
- tree.append(rootRow);
+ tree.append(rootRow);renderOtherRoots();
  const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{if(explorerQuery&&!matches.has(x.id))return;const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
 const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);if(batchMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.name);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()};row.append(cb)}row.onclick=()=>{if(x.kind==='directory'){selected=x.id;rootSelected=false;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)};row.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)};
 // Long-press on mobile opens the same menu as desktop right-click.
@@ -374,8 +430,25 @@ async function choose(x){
  }catch(e){alert('開啟失敗：'+e.message)}
 }
 async function saveAll(){if(!root)return;if(virtualRoot)return saveVirtual();const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
-async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await openRootFromHandle(d);toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
-async function closeRoot(){virtualRoot=false;window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
+async function openRoot(){
+ if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}
+ try{
+  const d=await showDirectoryPicker({mode:'readwrite'});
+  rememberRoot();
+  for(const w of rootWorkspaces){if(w.root===d||typeof w.root.isSameEntry==='function'&&await w.root.isSameEntry(d)){await activateRoot(w);return}}
+  await openRootFromHandle(d);rememberRoot();toast('已加入 Root '+d.name);
+ }catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}
+}
+async function closeRoot(){
+ window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;
+ if((dirty||orderDirty||items.some(x=>x.buffer!==null))&&!confirm('此 Root 有未儲存修改，仍要關閉？'))return;
+ const old=root;const next=rootWorkspaces.find(w=>w.root!==old);
+ rootWorkspaces.splice(rootWorkspaces.findIndex(w=>w.root===old),1);
+ root=null;virtualRoot=false;selected=null;items=[];sequence=0;orderDirty=false;
+ rootSelected=false;rootCollapsed=false;collapsed.clear();resetBatch();dirty=false;
+ rawMarkdown='';setName('未命名.md');setDocumentVisible(false);
+ if(next)await activateRoot(next);else{rootLabel.textContent='尚未選取 Root';switchMode('edit');display()}
+}
 function dirOf(p){return p?p.handle:root}
 function normalizeNewFileName(name){
  const trimmed=name.trim();
