@@ -280,7 +280,19 @@ function rootMenu(left,top){
   const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().then(fn).catch(e=>alert(e.message))};m.append(b);
  }positionMenu(m,left,top);
 }
-function display(){tree.replaceChildren();if(!root)return;
+const explorerSearchInput=document.querySelector('#explorer-search-input');
+const explorerSearchStatus=document.querySelector('#explorer-search-status');
+const explorerSearchClear=document.querySelector('#explorer-search-clear');
+let explorerQuery='';
+explorerSearchInput.addEventListener('input',()=>{explorerQuery=explorerSearchInput.value.trim().toLocaleLowerCase();display()});
+explorerSearchClear.addEventListener('click',()=>{explorerSearchInput.value='';explorerQuery='';display();explorerSearchInput.focus()});
+function display(){tree.replaceChildren();
+ explorerSearchClear.hidden=!explorerQuery;
+ if(!root){explorerSearchStatus.textContent='';return;}
+ const matches=new Set();let directMatches=0;
+ if(explorerQuery){for(const node of items){if(!node.name.toLocaleLowerCase().includes(explorerQuery))continue;directMatches++;matches.add(node.id);let ancestor=node.parent;while(ancestor){matches.add(ancestor.id);ancestor=ancestor.parent}}}
+ explorerSearchStatus.textContent=explorerQuery?`符合 ${directMatches} 個項目` : '';
+
  const rootRow=document.createElement('div');rootRow.className='tree-node root-tree-node';rootRow.style.paddingLeft='10px';rootRow.classList.toggle('selected',rootSelected);
  const rootTitle=document.createElement('span');rootTitle.className='node-label';rootTitle.textContent=(rootCollapsed?'▸ ':'▾ ')+ '▣ '+root.name;rootRow.append(rootTitle);
  rootRow.onclick=e=>{rootSelected=true;selected=null;if(e.detail===2)rootCollapsed=!rootCollapsed;display()};
@@ -288,7 +300,7 @@ function display(){tree.replaceChildren();if(!root)return;
  let timer;rootRow.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;const x=e.touches[0].clientX,y=e.touches[0].clientY;timer=setTimeout(()=>rootMenu(x,y),550)},{passive:true});
  for(const ev of ['touchend','touchcancel','touchmove'])rootRow.addEventListener(ev,()=>clearTimeout(timer),{passive:true});
  tree.append(rootRow);
- const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
+ const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{if(explorerQuery&&!matches.has(x.id))return;const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
 const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);if(batchMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.name);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()};row.append(cb)}row.onclick=()=>{if(x.kind==='directory'){selected=x.id;rootSelected=false;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)};row.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)};
 // Long-press on mobile opens the same menu as desktop right-click.
 let pressTimer=null,startX=0,startY=0,suppressClick=false;
@@ -307,7 +319,7 @@ row.addEventListener('touchend',()=>{clearTimeout(pressTimer);pressTimer=null},{
 row.addEventListener('touchcancel',()=>{clearTimeout(pressTimer);pressTimer=null},{passive:true});
 row.addEventListener('click',e=>{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false}},true);
 row.ondragstart=e=>{e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'};row.ondragover=e=>{e.preventDefault()};row.ondrop=async e=>{e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving)await move(moving,x,e.shiftKey)};
-tree.append(row);if(x.kind==='directory'&&!collapsed.has(x.id))draw(x,level+1)})};if(!rootCollapsed)draw(null,1)}
+tree.append(row);if(x.kind==='directory'&&(explorerQuery||!collapsed.has(x.id)))draw(x,level+1)})};if(explorerQuery||!rootCollapsed)draw(null,1)}
 // v2.2.12: Remember the reading position independently for each Explorer file.
 // The workspace main element is the actual scroll container (not window).
 const readingPositions=new Map();
