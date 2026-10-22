@@ -1,0 +1,16 @@
+/* Step 2: restore visible close controls hidden by legacy unified UI rules */
+#explorer .explorer-title #sider-close,
+#ai-explorer .ai-explorer-title #ai-sider-close {
+  display:inline-flex!important;
+  align-items:center;justify-content:center;
+  flex:0 0 28px;width:28px;height:28px;
+  padding:0;margin-left:auto;
+  border:1px solid #465267;border-radius:6px;
+  background:#252d3a;color:#f0f4fb;
+  font-size:17px;line-height:1;letter-spacing:0;cursor:pointer;
+}
+#explorer .explorer-title #sider-close:hover,
+#ai-explorer .ai-explorer-title #ai-sider-close:hover{background:#3c4759}
+#ai-explorer .ai-explorer-title #ai-sider-close{order:10;margin-left:5px}
+#ai-explorer .ai-explorer-title .ai-explorer-file-actions{order:5;margin-left:auto}
+#ai-explorer .ai-explorer-title{flex-wrap:nowrap}

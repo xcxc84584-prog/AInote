@@ -3,6 +3,58 @@
 (()=>{
 const aside=document.querySelector('#explorer'),tree=document.querySelector('#tree'),rootLabel=document.querySelector('#root-label');
 let root=null,selected=null,items=[],sequence=0,orderDirty=false;
+// Virtual single-file root: all changes remain in IndexedDB until explicit Save.
+let virtualRoot=false;
+const DRAFT_DB='bv-note-single-file-drafts-v1';
+function draftStore(value){
+ return new Promise((resolve,reject)=>{
+  const request=indexedDB.open(DRAFT_DB,1);
+  request.onupgradeneeded=()=>request.result.createObjectStore('drafts',{keyPath:'id'});
+  request.onerror=()=>reject(request.error);
+  request.onsuccess=()=>{
+   const db=request.result,tx=db.transaction('drafts','readwrite');
+   tx.objectStore('drafts').put(value);
+   tx.oncomplete=()=>{db.close();resolve()};
+   tx.onerror=()=>{db.close();reject(tx.error)};
+  };
+ });
+}
+function virtualFile(name,text){
+ let data=text;
+ return {kind:'file',name,async getFile(){return new File([data],name,{type:'text/plain'})},
+ async createWritable(){let next='';return {async write(v){next=typeof v==='string'?v:await new Blob([v]).text()},async close(){data=next}}}};
+}
+async function openSingleFile(file){
+ if(!file||!/\.(md|markdown|txt)$/i.test(file.name)){alert('單檔匯入支援 MD、Markdown、TXT');return}
+ if(dirty&&!confirm('目前文件尚未儲存，仍要切換？'))return;
+ const content=await file.text(),name=file.name;
+ virtualRoot=true;root={name:name.replace(/\.[^.]+$/,'')+' Root',kind:'directory'};
+ rootSelected=false;rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();
+ const x={id:++sequence,uuid:uuid(),name,handle:virtualFile(name,content),parent:null,kind:'file',order:1,buffer:content};
+ items.push(x);nodeDB={version:1,rootId:uuid(),nodes:{[name]:x.uuid}};
+ recordDB={version:2,files:{}};rootLabel.textContent=root.name+'（草稿）';
+ await draftStore({id:x.uuid,name,rootName:root.name,content,updatedAt:Date.now()});
+ await choose(x);dirty=true;refreshUnsaved();display();
+ toast('單檔已匯入 IndexedDB 草稿；按 Save 才會寫入本地');
+}
+const singlePicker=document.createElement('input');singlePicker.type='file';
+singlePicker.accept='.md,.markdown,.txt';singlePicker.hidden=true;document.body.append(singlePicker);
+document.querySelector('#root-import-file').onclick=()=>{singlePicker.value='';singlePicker.click()};
+singlePicker.onchange=()=>openSingleFile(singlePicker.files[0]).catch(e=>alert(e.message));
+async function saveVirtual(){
+ const x=current();if(!x)return;
+ const content=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
+ await draftStore({id:x.uuid,name:x.name,rootName:root.name,content,updatedAt:Date.now()});
+ if(!window.showSaveFilePicker){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));a.download=x.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+ }else{
+  try{const dest=await showSaveFilePicker({suggestedName:x.name,types:[{description:'Markdown / Text',accept:{'text/plain':['.md','.markdown','.txt']}}]});
+   const writer=await dest.createWritable();await writer.write(content);await writer.close();
+  }catch(err){if(err.name==='AbortError')return;throw err}
+ }
+ x.handle=virtualFile(x.name,content);x.buffer=null;dirty=false;refreshUnsaved();toast('已儲存本地文件：'+x.name);
+}
+
 let rootSelected=false;const SESSION_KEY="bv-note-session-v241";
 let batchMode=false;const checkedIds=new Set();let clipboard=null;
 const ORDER_FILE=".bv-note-explorer-order.json";
@@ -14,8 +66,8 @@ let recordDB={version:2,files:{}};
 let recordWrite=Promise.resolve(),nodeWrite=Promise.resolve();
 const uuid=()=>crypto.randomUUID();
 async function writeJSON(target,name,data){const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close()}
-async function flushRecordDB(){if(!root)return;const target=root,payload=structuredClone(recordDB);recordWrite=recordWrite.catch(()=>{}).then(()=>writeJSON(target,RECORD_FILE,payload));return recordWrite;}
-async function flushNodeDB(){if(!root)return;const target=root,payload=structuredClone(nodeDB);nodeWrite=nodeWrite.catch(()=>{}).then(()=>writeJSON(target,ID_FILE,payload));return nodeWrite;}
+async function flushRecordDB(){if(!root||virtualRoot)return;const target=root,payload=structuredClone(recordDB);recordWrite=recordWrite.catch(()=>{}).then(()=>writeJSON(target,RECORD_FILE,payload));return recordWrite;}
+async function flushNodeDB(){if(!root||virtualRoot)return;const target=root,payload=structuredClone(nodeDB);nodeWrite=nodeWrite.catch(()=>{}).then(()=>writeJSON(target,ID_FILE,payload));return nodeWrite;}
 function canonicalRecordKey(key){if(!key)return '';const prefix=root?.name+'/';if(prefix&&key.startsWith(prefix))return key.slice(prefix.length);const exact=items.filter(x=>x.kind==='file').map(x=>path(x));return exact.find(p=>key===p||key.endsWith('/'+p))||key;}
 async function loadNodeDB(){
  nodeDB={version:1,rootId:null,nodes:{}};
@@ -58,7 +110,7 @@ async function relocateRecords(snapshot,copy=false){
 }
 function normalizeOrders(){const parents=[null,...items.filter(x=>x.kind==='directory')];for(const p of parents)siblings(p).forEach((x,i)=>x.order=i+1)}
 async function loadOrders(){try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(!Array.isArray(data.ids)&&!Array.isArray(data.paths))return;const ranks=new Map((data.ids||data.paths).map((p,i)=>[p,i]));for(const x of items)x.order=ranks.has(x.uuid)?ranks.get(x.uuid):ranks.has(path(x))?ranks.get(path(x)):100000+x.order;normalizeOrders()}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}}
-async function saveOrders(){normalizeOrders();const data={version:2,ids:[]};const walk=p=>{for(const x of siblings(p)){data.ids.push(x.uuid);if(x.kind==='directory')walk(x)}};walk(null);const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;}
+async function saveOrders(){if(virtualRoot)return;normalizeOrders();const data={version:2,ids:[]};const walk=p=>{for(const x of siblings(p)){data.ids.push(x.uuid);if(x.kind==='directory')walk(x)}};walk(null);const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;}
 const collapsed=new Set();let rootCollapsed=false;
 const edge=document.querySelector('#sider-edge');
 const closeSider=document.querySelector('#sider-close');
@@ -88,7 +140,7 @@ const editableExt=/\.(md|markdown|txt|ainote)$/i;
 const isPdfFile=name=>/\.pdf$/i.test(name||'');
 const toast=s=>status(s);
 function switchMode(mode, preserveLoadedMarkdown=false){if(window.BVPdfViewer?.active){window.BVPdfViewer.hide()}const edit=mode==='edit';try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode,rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:edit?sourceArea.value:rawMarkdown}))}catch{};sourceArea.style.display=edit?'block':'none';editor.style.display=edit?'none':'block';editor.contentEditable='false';sourceButton.textContent=edit?'Commit':'Edit';sourceButton.title=edit?'儲存本地文件並切換至瀏覽模式':'切換至本地編輯模式';sourceButton.classList.toggle('commit-mode',edit);sourceButton.classList.toggle('edit-mode',!edit);if(edit){sourceArea.value=rawMarkdown;}else{if(!preserveLoadedMarkdown)rawMarkdown=sourceArea.value;renderRaw();setTimeout(()=>window.BVRefreshFileRecords?.(),50);}document.querySelector('#mode-indicator').textContent='';refreshUnsaved();}
-window.BVSaveSelectedFile=async(content)=>{
+window.BVSaveSelectedFile=async(content)=>{if(virtualRoot){sourceArea.value=content;await saveVirtual();return true;}
  const x=current();
  if(!x||x.kind!=='file'||handle!==x.handle)return null;
  try{const w=await x.handle.createWritable();await w.write(content);await w.close();await window.BVFlushFileRecords?.();x.buffer=null;dirty=false;status('已儲存：'+x.name);refreshUnsaved();return true;}
@@ -172,7 +224,7 @@ async function renameRoot(){
   alert('新 Root「'+name+'」已建立並驗證。\n舊 Root「'+oldName+'」已保留作為備份，請確認目錄與標註正常後，再自行刪除舊資料夾。');
  }catch(e){if(e.name!=='AbortError')alert('Root 重新命名失敗：'+e.message)}
 }
-async function openRootFromHandle(d){
+async function openRootFromHandle(d){virtualRoot=false;
  const previousSession=(()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')}catch{return null}})();
  root=d;rootSelected=false;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;
  items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadNodeDB();await loadOrders();await loadRecordDB();
@@ -309,15 +361,15 @@ async function choose(x){
   toast('已開啟 '+path(x));display();window.BVActivateFileRecords?.(x.uuid);
  }catch(e){alert('開啟失敗：'+e.message)}
 }
-async function saveAll(){if(!root)return;const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
+async function saveAll(){if(!root)return;if(virtualRoot)return saveVirtual();const x=current();if(x&&dirty)x.buffer=rawMarkdown;let n=0;try{for(const f of items.filter(y=>y.kind==='file'&&y.buffer!==null)){const w=await f.handle.createWritable();await w.write(f.buffer);await w.close();f.buffer=null;n++}await saveOrders();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();dirty=false;refreshUnsaved();toast('Root 已儲存：'+n+' 個修改文件，節點順序已記錄')}catch(e){alert('儲存失敗：'+e.message)}}
 async function openRoot(){if(!window.showDirectoryPicker){alert('此瀏覽器不支援本地資料夾存取。請使用支援 File System Access API 的桌面版 Chrome/Edge，並以 HTTPS 或 localhost 開啟。');return}if(root&&(dirty||orderDirty)&&!confirm('切換 Root 前，未儲存修改可能遺失。繼續？'))return;try{const d=await showDirectoryPicker({mode:'readwrite'});root=d;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await openRootFromHandle(d);toast('已開啟 Root '+d.name)}catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}}
-async function closeRoot(){window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
+async function closeRoot(){virtualRoot=false;window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;if((dirty||orderDirty)&&!confirm('有未儲存修改，仍要關閉 Root？'))return;root=null;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;items=[];selected=null;resetBatch();collapsed.clear();rootLabel.textContent='尚未選取 Root';rawMarkdown='';dirty=false;setName('未命名.md');setDocumentVisible(false);switchMode('edit');display()}
 function dirOf(p){return p?p.handle:root}
 function normalizeNewFileName(name){
  const trimmed=name.trim();
  return /\.[^./\\]+$/.test(trimmed)?trimmed:trimmed+'.md';
 }
-async function create(kind,forceRoot=false){if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});nodeDB={version:1,rootId:uuid(),nodes:{}};await flushNodeDB();rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=(forceRoot||rootSelected)?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,uuid:uuid(),name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);nodeDB.nodes[path(x)]=x.uuid;await flushNodeDB();orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
+async function create(kind,forceRoot=false){if(virtualRoot)return alert('單一文件 Root 不允許新增子 Fold/File');if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});nodeDB={version:1,rootId:uuid(),nodes:{}};await flushNodeDB();rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=(forceRoot||rootSelected)?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,uuid:uuid(),name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);nodeDB.nodes[path(x)]=x.uuid;await flushNodeDB();orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
 function inlineName(title,value){return new Promise(resolve=>{const box=document.querySelector('#inline-name');box.replaceChildren();const lab=document.createElement('label');lab.textContent=title;const inp=document.createElement('input');inp.value=value;const ok=document.createElement('button');ok.textContent='確認';const cancel=document.createElement('button');cancel.textContent='取消';box.append(lab,inp,ok,cancel);box.hidden=false;inp.focus();inp.select();const done=v=>{box.hidden=true;resolve(v)};ok.onclick=()=>done(inp.value.trim());cancel.onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value.trim());if(e.key==='Escape')done(null)}})}
 async function copyNode(x,target,name){
  if(x.kind==='file'){
@@ -451,10 +503,10 @@ function menu(x,left,top){
  positionMenu(m,left,top);
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu')&&!e.target.closest('#explorer-operate'))document.querySelector('#context-menu').hidden=true});
-document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root){window.BVCreateNewDocument();return;}create('directory')};document.querySelector('#add-file').onclick=()=>create('file');
-sourceArea.addEventListener('input',()=>{sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
+document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root){window.BVCreateNewDocument();return;}create('directory')};document.querySelector('#add-file').onclick=async()=>{if(!root){await openSingleFile(new File([''],'新文件.md',{type:'text/markdown'}));return}create('file')};
+sourceArea.addEventListener('input',()=>{if(virtualRoot&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
 // Re-scan external file changes on focus and while the page is visible.
-let scanBusy=false;async function syncExternal(){if(!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}}
+let scanBusy=false;async function syncExternal(){if(virtualRoot||!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}}
 window.addEventListener('focus',syncExternal);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncExternal()});setInterval(()=>{if(!document.hidden)syncExternal()},12000);
 // Ctrl+S saves the complete open Root when present.
 document.addEventListener('keydown',e=>{if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}},true);

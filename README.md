@@ -1,3 +1,7 @@
+# BV-Note v3.5.19
+
+雙驗證註冊（SIGNUP_CODE 或 Gmail 郵件驗證）與舊帳號遷移。詳見 V3.5.19_DEPLOY.md。
+
 # BV-Note v3.5.16 Local｜無 R2 瀏覽器分片版
 
 ## 架構
