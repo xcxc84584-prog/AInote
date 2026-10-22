@@ -3,26 +3,13 @@ import {authApi} from './auth.js';
 import JSZip from 'jszip';
 import { neon } from '@neondatabase/serverless';
 const reply=(data,status=200,origin='')=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{})}});
-// Apply CORS consistently to authentication responses, including 4xx/5xx.
-function withCors(response, origin) {
-  const headers = new Headers(response.headers);
-  if (origin) headers.set('Access-Control-Allow-Origin', origin);
-  headers.set('Vary', 'Origin');
-  headers.set('Cache-Control', 'no-store');
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
-}
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
 const lifeDays=v=>Number.isInteger(v)&&[1,7,14,30,90].includes(v);
 const hex=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export default {async scheduled(event,env,ctx){ctx.waitUntil((async()=>{if(!env.DATABASE_URL)throw Error('DATABASE_URL missing');const sql=neon(env.DATABASE_URL);await sql`DELETE FROM cloud_files WHERE expires_at IS NOT NULL AND expires_at<=NOW()`;
 if(env.AI_UPLOADS){const listed=await env.AI_UPLOADS.list({prefix:'ai-temp/',limit:1000});const expired=listed.objects.filter(o=>o.uploaded&&Date.now()-new Date(o.uploaded).getTime()>24*3600*1000).map(o=>o.key);if(expired.length)await env.AI_UPLOADS.delete(expired)}
-await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`})())},async fetch(req,env){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count','Access-Control-Max-Age':'3600','Vary':'Origin'}});
-try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
-let match;
+await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`})())},async fetch(req,env){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':cors,'Access-Control-Allow-Methods':'GET,POST,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count','Access-Control-Max-Age':'3600','Vary':'Origin'}});
+try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;const authResponse=await authApi(req,env,path);if(authResponse){const headers=new Headers(authResponse.headers);if(cors){headers.set('Access-Control-Allow-Origin',cors);headers.set('Vary','Origin')}return new Response(authResponse.body,{status:authResponse.status,headers})}let match;
 if(path==='/api/projects'&&req.method==='POST'){const b=await req.json();if(typeof b.name!=='string'||!b.name.trim()||b.name.length>150)throw Error('專案名稱無效');const id=crypto.randomUUID();await sql`INSERT INTO projects(id,name) VALUES(${id},${b.name.trim()})`;return reply({project_id:id},201,cors)}
 if(path==='/api/health'&&req.method==='GET')return reply({ok:true},200,cors);
 if((match=path.match(/^\/api\/files\/([^/]+)\/meta$/))&&req.method==='GET'){const id=match[1];if(!uuid(id))return reply({error:'File Hash ID 格式無效'},400,cors);const rows=await sql`SELECT file_id,project_id,name,revision,last_commit,life_days,expires_at FROM cloud_files WHERE file_id=${id} AND (expires_at IS NULL OR expires_at>NOW())`;return rows.length?reply(rows[0],200,cors):reply({error:'找不到 File Hash ID'},404,cors)}

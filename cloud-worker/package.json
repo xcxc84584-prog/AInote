@@ -9,8 +9,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.0",
     "jszip": "^3.10.1",
-    "@noble/hashes": "^1.8.0",
-    "jose": "^6.1.0"
+    "@noble/hashes": "^1.8.0"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

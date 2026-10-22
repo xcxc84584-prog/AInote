@@ -1,4 +1,5 @@
-import {jwtVerify,createRemoteJWKSet} from 'jose';
+import {pbkdf2} from '@noble/hashes/pbkdf2';
+import {sha256} from '@noble/hashes/sha256';
 import {neon} from '@neondatabase/serverless';
 const encoder=new TextEncoder();
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
@@ -8,114 +9,9 @@ const newUUID=()=>{const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store'}});
 const bad=(message,status=400)=>json({error:message},status);
 const dateTW=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-// Native WebCrypto avoids exhausting the Workers CPU budget.
-// The 100,000 iteration cap is required by the deployed Workers runtime.
-const PASSWORD_SCHEME='pbkdf2-sha256-100000$';
-async function derive(password,salt){
- const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
- const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:encoder.encode(salt),iterations:100000,hash:'SHA-256'},key,256);
- return PASSWORD_SCHEME+b64(new Uint8Array(bits));
-}
-
+async function derive(password,salt){return b64(pbkdf2(sha256,encoder.encode(password),encoder.encode(salt),{c:310000,dkLen:32}));}
 async function current(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT u.id,u.email,s.id AS session_id FROM bv_sessions s JOIN bv_users u ON u.id=s.user_id WHERE s.token_hash=${hash} AND s.expires_at>NOW() LIMIT 1`;return rows[0]||null;}
 export async function authApi(req,env,path){if(!path.startsWith('/api/auth/')&&path!=='/api/ai/chat'&&path!=='/api/ai/chunk')return null;if(!env.DATABASE_URL)return bad('DATABASE_URL missing',503);const sql=neon(env.DATABASE_URL);let phase='route';try{
- // Google Identity Services: verify signed ID token on server; never trust email from browser.
- if(path==='/api/auth/google'&&req.method==='POST'){
-  if(!env.GOOGLE_CLIENT_ID)return bad('管理員尚未設定 GOOGLE_CLIENT_ID',503);
-  phase='google-verify';
-  const b=await req.json();const idToken=String(b.credential||'');
-  if(idToken.length<100||idToken.length>12000)return bad('Google 憑證格式錯誤',400);
-  const jwks=createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
-  let payload;
-  try{({payload}=await jwtVerify(idToken,jwks,{issuer:['https://accounts.google.com','accounts.google.com'],audience:env.GOOGLE_CLIENT_ID,algorithms:['RS256']}));}
-  catch{return bad('Google 身分驗證失敗或憑證已過期',401)}
-  const email=String(payload.email||'').toLowerCase(),sub=String(payload.sub||'');
-  if(payload.email_verified!==true||!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)||!/^\d{5,32}$/.test(sub))return bad('請使用已驗證的 Gmail Google 帳號',403);
-  phase='google-account';
-  // Account linking by verified Google mailbox. Never change legacy password hash.
-  const existing=await sql`SELECT id FROM bv_google_identities WHERE google_sub=${sub} LIMIT 1`;
-  let userId=existing[0]?.id;
-  if(!userId){
-   const found=await sql`SELECT id FROM bv_users WHERE email=${email} LIMIT 1`;
-   if(found.length)userId=found[0].id;
-   else{
-    const id=newUUID(),salt=random(),unusable='google-only$'+random();
-    const inserted=await sql`INSERT INTO bv_users(id,email,password_salt,password_hash) VALUES(${id},${email},${salt},${unusable}) ON CONFLICT(email) DO NOTHING RETURNING id`;
-    userId=inserted[0]?.id;
-    if(!userId){const raced=await sql`SELECT id FROM bv_users WHERE email=${email} LIMIT 1`;userId=raced[0]?.id;}
-   }
-   const linked=await sql`INSERT INTO bv_google_identities(id,google_sub,email) VALUES(${userId},${sub},${email}) ON CONFLICT DO NOTHING RETURNING id`;
-   if(!linked.length){const linkedSub=await sql`SELECT id FROM bv_google_identities WHERE google_sub=${sub} LIMIT 1`;if(linkedSub[0]?.id!==userId)return bad('Google 帳號已綁定其他使用者',409);}
-  }
-  const token=random(),hash=await digest(token),session=newUUID();
-  await sql`INSERT INTO bv_sessions(id,user_id,token_hash,expires_at) VALUES(${session},${userId},${hash},NOW()+INTERVAL '30 days')`;
-  return json({token,email,expires_in_days:30,google:true});
- }
- // Legacy account migration requires proof of mailbox ownership. Never permit
- // replacing a password based on email address or signup code alone.
- if(path==='/api/auth/migrate/start'&&req.method==='POST'){
-  if(!env.RESEND_API_KEY||!env.MIGRATION_FROM_EMAIL)return bad('管理員尚未設定郵件驗證服務',503);
-  const b=await req.json();const email=String(b.email||'').trim().toLowerCase();
-  if(!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)||email.length>254)return bad('請輸入有效 Gmail');
-  phase='migration-request';
-  const rows=await sql`SELECT id,password_hash FROM bv_users WHERE email=${email} LIMIT 1`;
-  // Avoid disclosing whether the address exists or is eligible.
-  if(!rows.length||String(rows[0].password_hash||'').startsWith(PASSWORD_SCHEME))return json({ok:true,message:'若符合遷移條件，驗證碼將寄至信箱'});
-  const recent=await sql`SELECT COUNT(*)::int AS n FROM bv_auth_migrations WHERE email=${email} AND created_at>NOW()-INTERVAL '1 hour'`;
-  if(Number(recent[0]?.n||0)>=3)return json({ok:true,message:'若符合遷移條件，驗證碼將寄至信箱'});
-  const bytes=crypto.getRandomValues(new Uint8Array(6));const code=Array.from(bytes,x=>String(x%100).padStart(2,'0')).join('');
-  const challenge=crypto.randomUUID();const hash=await digest(challenge+':'+code+':'+(env.MIGRATION_PEPPER||''));
-  phase='migration-email';
-  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{'Authorization':'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({from:env.MIGRATION_FROM_EMAIL,to:[email],subject:'BV-Note 帳號遷移驗證碼',text:'您的 BV-Note 帳號遷移驗證碼為：'+code+'\n10 分鐘內有效。若非本人操作請忽略。'})});
-  if(!sent.ok){console.error('AUTH_MIGRATION_EMAIL_ERROR',sent.status);return bad('驗證郵件暫時無法寄送',503)}
-  await sql`INSERT INTO bv_auth_migrations(id,email,code_hash,expires_at) VALUES(${challenge},${email},${hash},NOW()+INTERVAL '10 minutes')`;
-  return json({ok:true,challenge_id:challenge,message:'驗證碼已寄出，10 分鐘內有效'});
- }
- if(path==='/api/auth/migrate/complete'&&req.method==='POST'){
-  const b=await req.json();const email=String(b.email||'').trim().toLowerCase();const challenge=String(b.challenge_id||'');const code=String(b.code||'');const password=String(b.password||'');
-  if(!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)||! /^[0-9a-f-]{36}$/i.test(challenge)||!/^[0-9]{12}$/.test(code)||password.length<12||password.length>128)return bad('遷移資料格式錯誤');
-  phase='migration-verify';
-  const codeHash=await digest(challenge+':'+code+':'+(env.MIGRATION_PEPPER||''));
-  const claim=await sql`UPDATE bv_auth_migrations SET consumed_at=NOW() WHERE id=${challenge} AND email=${email} AND code_hash=${codeHash} AND consumed_at IS NULL AND expires_at>NOW() RETURNING id`;
-  if(!claim.length)return bad('驗證碼錯誤、過期或已使用',403);
-  phase='migration-derive';const salt=random(),hash=await derive(password,salt);
-  phase='migration-update';
-  const users=await sql`UPDATE bv_users SET password_salt=${salt},password_hash=${hash} WHERE email=${email} AND password_hash NOT LIKE ${PASSWORD_SCHEME+'%'} RETURNING id`;
-  if(!users.length)return bad('此帳號已遷移或不存在',409);
-  await sql`DELETE FROM bv_sessions WHERE user_id=${users[0].id}`;
-  return json({ok:true,message:'遷移完成，請使用新密碼登入'});
- }
- // Email registration: verify mailbox ownership before creating any user.
- if(path==='/api/auth/register/email/start'&&req.method==='POST'){
-  if(!env.RESEND_API_KEY||!env.MIGRATION_FROM_EMAIL||!env.MIGRATION_PEPPER)return bad('管理員尚未設定 Gmail 驗證服務',503);
-  const b=await req.json();const email=String(b.email||'').trim().toLowerCase();
-  if(!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)||email.length>254)return bad('請使用有效 Gmail');
-  phase='email-signup-start';
-  const exists=await sql`SELECT id FROM bv_users WHERE email=${email} LIMIT 1`;
-  if(exists.length)return bad('此信箱已註冊，請登入或使用舊帳號遷移',409);
-  const recent=await sql`SELECT COUNT(*)::int AS n FROM bv_auth_email_verifications WHERE email=${email} AND created_at>NOW()-INTERVAL '1 hour'`;
-  if(Number(recent[0]?.n||0)>=3)return bad('驗證碼寄送過於頻繁，請稍後再試',429);
-  const code=Array.from(crypto.getRandomValues(new Uint8Array(6)),x=>String(x%100).padStart(2,'0')).join('');
-  const challenge=crypto.randomUUID();const hash=await digest(challenge+':'+code+':'+env.MIGRATION_PEPPER);
-  // Store before delivery to avoid issuing an unredeemable challenge.
-  await sql`INSERT INTO bv_auth_email_verifications(id,email,code_hash,expires_at) VALUES(${challenge},${email},${hash},NOW()+INTERVAL '10 minutes')`;
-  phase='email-signup-send';
-  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+env.RESEND_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({from:env.MIGRATION_FROM_EMAIL,to:[email],subject:'BV-Note Gmail 註冊驗證碼',text:'您的 BV-Note 註冊驗證碼為：'+code+'\n10 分鐘內有效。若非本人操作請忽略。'})});
-  if(!sent.ok){console.error('AUTH_SIGNUP_EMAIL_ERROR',sent.status);await sql`DELETE FROM bv_auth_email_verifications WHERE id=${challenge}`;return bad('驗證郵件暫時無法寄送',503)}
-  return json({ok:true,challenge_id:challenge,message:'驗證碼已寄出，10 分鐘內有效'});
- }
- if(path==='/api/auth/register/email/complete'&&req.method==='POST'){
-  const b=await req.json();const email=String(b.email||'').trim().toLowerCase();const challenge=String(b.challenge_id||'');const code=String(b.code||'');const password=String(b.password||'');
-  if(!/^[a-z0-9._%+-]+@gmail\.com$/.test(email)||!/^[0-9a-f-]{36}$/i.test(challenge)||!/^[0-9]{12}$/.test(code)||password.length<12||password.length>128)return bad('驗證資料格式錯誤');
-  if(!env.MIGRATION_PEPPER)return bad('管理員尚未設定驗證服務',503);
-  phase='email-signup-verify';const codeHash=await digest(challenge+':'+code+':'+env.MIGRATION_PEPPER);
-  const claimed=await sql`UPDATE bv_auth_email_verifications SET consumed_at=NOW() WHERE id=${challenge} AND email=${email} AND code_hash=${codeHash} AND consumed_at IS NULL AND expires_at>NOW() AND attempts<5 RETURNING id`;
-  if(!claimed.length){await sql`UPDATE bv_auth_email_verifications SET attempts=attempts+1 WHERE id=${challenge} AND email=${email} AND consumed_at IS NULL AND expires_at>NOW()`;return bad('驗證碼錯誤、已過期或嘗試次數過多',403)}
-  phase='email-signup-derive';const salt=random(),hash=await derive(password,salt),id=newUUID();
-  phase='email-signup-create';const rows=await sql`INSERT INTO bv_users(id,email,password_salt,password_hash) VALUES(${id},${email},${salt},${hash}) ON CONFLICT(email) DO NOTHING RETURNING id`;
-  if(!rows.length)return bad('此信箱已註冊，請登入或使用舊帳號遷移',409);
-  return json({ok:true,message:'Gmail 驗證成功，帳號建立完成'},201);
- }
  if(path==='/api/auth/register'&&req.method==='POST'){
   if(!env.SIGNUP_CODE)return bad('註冊尚未開放：管理員需設定 SIGNUP_CODE',503);
   const b=await req.json();const email=String(b.email||'').trim().toLowerCase();const password=String(b.password||'');
@@ -134,13 +30,7 @@ export async function authApi(req,env,path){if(!path.startsWith('/api/auth/')&&p
   const b=await req.json(),email=String(b.email||'').trim().toLowerCase(),password=String(b.password||'');
   if(email.length>254||password.length>128)return bad('帳號或密碼錯誤',401);
   const rows=await sql`SELECT id,email,password_salt,password_hash FROM bv_users WHERE email=${email} LIMIT 1`;
-  const user=rows[0];
-  if(!user)return bad('帳號或密碼錯誤',401);
-  // The original 310k noble PBKDF2 hashes cannot be verified within the Free Worker CPU budget.
-  // Do not silently downgrade or overwrite existing hashes.
-  if(String(user.password_hash||'').startsWith('google-only$'))return bad('此帳號使用 Google 免密碼登入，請點選「使用 Google 繼續」',409);
-  if(!String(user.password_hash||'').startsWith(PASSWORD_SCHEME))return bad('此帳號使用舊版密碼雜湊，請先進行帳號密碼遷移；原有密碼資料未被修改',409);
-  if(await derive(password,user.password_salt)!==user.password_hash)return bad('帳號或密碼錯誤',401);
+  const user=rows[0];if(!user||await derive(password,user.password_salt)!==user.password_hash)return bad('帳號或密碼錯誤',401);
   const token=random(),hash=await digest(token),session=newUUID();
   await sql`INSERT INTO bv_sessions(id,user_id,token_hash,expires_at) VALUES(${session},${user.id},${hash},NOW()+INTERVAL '30 days')`;
   return json({token,email:user.email,expires_in_days:30});
