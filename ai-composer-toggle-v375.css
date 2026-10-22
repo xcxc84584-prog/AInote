@@ -1,0 +1,6 @@
+/* BV-Note v3.7.5: collapsible AI input composer */
+#ai-composer-toggle{margin-left:0!important;background:#29384b;color:#dce9f9;border:1px solid #526782;border-radius:7px;padding:7px 12px;cursor:pointer}
+#ai-composer-toggle:focus-visible{outline:2px solid #9ecbff;outline-offset:2px}
+#ai-chat-composer.is-collapsed #ai-composer-body{display:none}
+#ai-chat-composer.is-collapsed{padding-top:8px;padding-bottom:8px}
+#ai-chat-composer.is-collapsed .ai-ui-model{margin-bottom:0}

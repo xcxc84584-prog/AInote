@@ -29,3 +29,5 @@ body.ai-active #ai-header-tools{position:relative}body.ai-active #ai-chat-page{o
 
 /* v3.5.14 */
 #ai-attachment-list{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:7px}#ai-attachment-list button{background:#293b50;color:#e9f1ff;border:1px solid #5a708b;border-radius:6px;padding:5px 9px}#ai-api-panel select{width:100%;padding:8px;background:#101824;color:white;border:1px solid #4e6179;border-radius:5px}#ai-attach-button{margin-left:8px!important}
+
+.ai-ui-block-text[hidden]{display:none!important}.ai-ui-fold{background:#273b52!important;color:#e6f0ff!important;border:1px solid #506987!important;border-radius:5px;padding:4px 9px}.root-order-target{outline:2px dashed #7fb5f8!important;outline-offset:-2px}

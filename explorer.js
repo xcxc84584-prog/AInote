@@ -279,6 +279,37 @@ function renderOtherRoots(){
   drawInactive(null,1);
  }
 }
+// AREA ROOT ORDER START: opened order, draggable root headers, touch long-press reorder.
+let rootDrag=null;
+function reorderRoot(source,target){
+ if(!source||!target||source===target)return;
+ rememberRoot();const from=rootWorkspaces.findIndex(w=>w.root===source),to=rootWorkspaces.findIndex(w=>w.root===target);
+ if(from<0||to<0)return;
+ const [entry]=rootWorkspaces.splice(from,1);rootWorkspaces.splice(to,0,entry);display();
+}
+function enableRootOrdering(){
+ const headers=[...tree.querySelectorAll('.root-tree-node')];
+ for(const header of headers){
+  const name=header.querySelector('.node-label')?.textContent||'';
+  const workspace=rootWorkspaces.find(w=>name.includes('▣ '+w.root.name));if(!workspace)continue;
+  header.draggable=true;header.title=(header.title||'')+'｜拖曳排序，觸控長按後移動';
+  header.addEventListener('dragstart',e=>{rootDrag=workspace.root;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','bv-root-order')});
+  header.addEventListener('dragover',e=>{if(rootDrag){e.preventDefault();header.classList.add('root-order-target')}});
+  header.addEventListener('dragleave',()=>header.classList.remove('root-order-target'));
+  header.addEventListener('drop',e=>{if(!rootDrag)return;e.preventDefault();header.classList.remove('root-order-target');reorderRoot(rootDrag,workspace.root);rootDrag=null});
+  header.addEventListener('dragend',()=>{rootDrag=null;header.classList.remove('root-order-target')});
+  let press=null,ready=false;
+  header.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;ready=false;press=setTimeout(()=>{ready=true;header.classList.add('root-order-target')},550)},{passive:true});
+  header.addEventListener('touchmove',e=>{if(!ready)return;const t=e.touches[0],other=document.elementFromPoint(t.clientX,t.clientY)?.closest('.root-tree-node');headers.forEach(h=>h.classList.toggle('root-order-target',h===other))},{passive:true});
+  header.addEventListener('touchend',e=>{clearTimeout(press);if(ready){const t=e.changedTouches[0],other=document.elementFromPoint(t.clientX,t.clientY)?.closest('.root-tree-node');const target=other&&rootWorkspaces.find(w=>(other.querySelector('.node-label')?.textContent||'').includes('▣ '+w.root.name));if(target)reorderRoot(workspace.root,target.root);e.preventDefault()}ready=false;headers.forEach(h=>h.classList.remove('root-order-target'))});
+  header.addEventListener('touchcancel',()=>{clearTimeout(press);ready=false;headers.forEach(h=>h.classList.remove('root-order-target'))});
+ }
+ // Rendered active Root may be anywhere: move each Root section to its open-order position.
+ const sections=[];let currentSection=null;
+ for(const node of [...tree.children]){if(node.classList.contains('root-tree-node')){currentSection=[];sections.push({root:rootWorkspaces.find(w=>(node.querySelector('.node-label')?.textContent||'').includes('▣ '+w.root.name))?.root,nodes:currentSection})}if(currentSection)currentSection.push(node)}
+ for(const w of rootWorkspaces){const section=sections.find(x=>x.root===w.root);if(section)for(const node of section.nodes)tree.append(node)}
+}
+// AREA ROOT ORDER END
 // AREA MULTIROOT END
 async function openRootFromHandle(d){virtualRoot=false;
  const previousSession=(()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')}catch{return null}})();
@@ -344,7 +375,7 @@ explorerSearchInput.addEventListener('input',()=>{explorerQuery=explorerSearchIn
 explorerSearchClear.addEventListener('click',()=>{explorerSearchInput.value='';explorerQuery='';display();explorerSearchInput.focus()});
 function display(){tree.replaceChildren();
  explorerSearchClear.hidden=!explorerQuery;
- if(!root){explorerSearchStatus.textContent='';renderOtherRoots();return;}
+ if(!root){explorerSearchStatus.textContent='';renderOtherRoots();enableRootOrdering();return;}
  const matches=new Set();let directMatches=0;
  if(explorerQuery){for(const node of items){if(!node.name.toLocaleLowerCase().includes(explorerQuery))continue;directMatches++;matches.add(node.id);let ancestor=node.parent;while(ancestor){matches.add(ancestor.id);ancestor=ancestor.parent}}}
  explorerSearchStatus.textContent=explorerQuery?`符合 ${directMatches} 個項目` : '';
@@ -355,7 +386,7 @@ function display(){tree.replaceChildren();
  rootRow.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();rootMenu(e.clientX,e.clientY)};
  let timer;rootRow.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;const x=e.touches[0].clientX,y=e.touches[0].clientY;timer=setTimeout(()=>rootMenu(x,y),550)},{passive:true});
  for(const ev of ['touchend','touchcancel','touchmove'])rootRow.addEventListener(ev,()=>clearTimeout(timer),{passive:true});
- tree.append(rootRow);renderOtherRoots();
+ tree.append(rootRow);
  const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{if(explorerQuery&&!matches.has(x.id))return;const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
 const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);if(batchMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.name);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()};row.append(cb)}row.onclick=()=>{if(x.kind==='directory'){selected=x.id;rootSelected=false;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)};row.oncontextmenu=e=>{e.preventDefault();e.stopPropagation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)};
 // Long-press on mobile opens the same menu as desktop right-click.
@@ -375,7 +406,7 @@ row.addEventListener('touchend',()=>{clearTimeout(pressTimer);pressTimer=null},{
 row.addEventListener('touchcancel',()=>{clearTimeout(pressTimer);pressTimer=null},{passive:true});
 row.addEventListener('click',e=>{if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false}},true);
 row.ondragstart=e=>{e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'};row.ondragover=e=>{e.preventDefault()};row.ondrop=async e=>{e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving)await move(moving,x,e.shiftKey)};
-tree.append(row);if(x.kind==='directory'&&(explorerQuery||!collapsed.has(x.id)))draw(x,level+1)})};if(explorerQuery||!rootCollapsed)draw(null,1)}
+tree.append(row);if(x.kind==='directory'&&(explorerQuery||!collapsed.has(x.id)))draw(x,level+1)})};if(explorerQuery||!rootCollapsed)draw(null,1);renderOtherRoots();enableRootOrdering()}
 // v2.2.12: Remember the reading position independently for each Explorer file.
 // The workspace main element is the actual scroll container (not window).
 const readingPositions=new Map();
