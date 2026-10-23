@@ -1,4 +1,4 @@
-// BV-Note v3.8.9.2 FHI console with verified administrator access.
+// BV-Note v3.8.9.4 FHI console with verified administrator access.
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
 async function digest(s){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
@@ -20,6 +20,10 @@ const commands=[
  {syntax:'/check ALL.Account-Flow:<UserID>',description:'Admin only: run all registered Account-Flow checks.',tags:'check account flow all',admin:true},
  {syntax:'/check PART.Account-Flow:<UserID><1>',description:'Admin only: run selected Account-Flow checks by number.',tags:'check account flow part',admin:true},
  {syntax:'/check PART.Account-Flow:<UserID><[2,7]>',description:'Admin only: run multiple numbered Account-Flow checks.',tags:'check account flow part batch',admin:true},
+ {syntax:'/check TARGET.Account<[1,3]><[10000,10]><[H,H]>',description:'Admin: filter accounts by Account-Flow metric ranges (AND).',tags:'target account filter',admin:true},
+ {syntax:'/ip',description:'Admin: last recorded IP for each account/guest.',tags:'ip audit',admin:true},
+ {syntax:'/ip <UserID>',description:'Admin: historical IP for an account or guest ID.',tags:'ip history',admin:true},
+ {syntax:'/log',description:'Admin: internal structured log overview (reserved for application reporters).',tags:'log internal',admin:true},
  {syntax:'/admin logout',description:'End the current administrator session.',tags:'logout session',admin:true}
 ];
 async function getUser(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null}
@@ -62,6 +66,39 @@ if(flow){
  const lines=[`ACCOUNT FLOW | ${target.email} | ${target.id}`];
  for(const n of selected)lines.push(await checks[n]());
  return reply({ok:true,lines});
+}
+// v3.8.9.4: registered and guest identities, parameterized queries only.
+const target=command.match(/^\/check\s+TARGET\.Account<\[([^\]]+)\]><\[([^\]]+)\]><\[([^\]]+)\]>$/i);
+if(target){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ const ids=target[1].split(',').map(x=>x.trim()), lows=target[2].split(',').map(x=>x.trim()), highs=target[3].split(',').map(x=>x.trim());
+ if(!ids.length||ids.length>20||ids.length!==lows.length||ids.length!==highs.length||new Set(ids).size!==ids.length||ids.some(x=>!['1','2','3'].includes(x)))return fail('TARGET-400','Invalid or repeated metric IDs');
+ const parse=(v,unlimited)=>v.toUpperCase()===unlimited?null:(/^\d+(?:\.\d+)?$/.test(v)&&Number.isFinite(Number(v))?Number(v):NaN);
+ const lo=lows.map(x=>parse(x,'L')),hi=highs.map(x=>parse(x,'H'));
+ if([...lo,...hi].some(x=>Number.isNaN(x))||lo.some((v,i)=>v!==null&&hi[i]!==null&&v>hi[i]))return fail('TARGET-400','Invalid range');
+ const rows=await sql`SELECT 'account' AS kind,u.id::text AS identity,u.email AS label,
+ COALESCE((SELECT SUM(octet_length(p.data)) FROM bv_cloud_parts p JOIN bv_cloud_uploads a ON a.id=p.upload_id WHERE a.owner_id=u.id),0)::bigint AS bytes,
+ COALESCE((SELECT used FROM bv_ai_usage WHERE user_id=u.id AND usage_day=(NOW() AT TIME ZONE 'Asia/Taipei')::date),0)::int AS calls,
+ COALESCE((SELECT MAX(request_count) FROM bv_account_request_seconds q WHERE q.user_id=u.id AND q.second_at>=NOW()-INTERVAL '24 hours'),0)::bigint AS peak
+ FROM bv_users u ORDER BY u.created_at DESC LIMIT 1000`;
+ const guests=await sql`SELECT guest_number,COALESCE((SELECT MAX(request_count) FROM bv_guest_request_seconds r WHERE r.guest_number=g.guest_number AND r.second_at>=NOW()-INTERVAL '24 hours'),0)::bigint AS peak FROM bv_console_guests g WHERE last_seen>=NOW()-INTERVAL '24 hours' ORDER BY guest_number LIMIT 1000`;
+ const all=[...rows.map(r=>({name:r.label+' | '+r.identity,values:{1:Number(r.bytes)/1024,2:Number(r.calls),3:Number(r.peak)}})),...guests.map(g=>({name:'Guest-'+g.guest_number,values:{1:0,2:0,3:Number(g.peak)}}))];
+ const found=all.filter(r=>ids.every((id,i)=>(lo[i]===null||r.values[id]>=lo[i])&&(hi[i]===null||r.values[id]<=hi[i])));
+ return reply({ok:true,lines:[`TARGET ACCOUNT | matched ${found.length} of ${all.length} (maximum 1000 registered and 1000 guests)`,...found.map(r=>r.name+' | '+ids.map(id=>id+'='+r.values[id].toFixed(id==='1'?2:0)).join(' | '))]});
+}
+const ip=command.match(/^\/ip(?:\s+(.+))?$/i);
+if(ip){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ if(!ip[1]){const rows=await sql`SELECT DISTINCT ON (identity) identity,ip,seen_at FROM bv_console_ip_history ORDER BY identity,seen_at DESC LIMIT 2000`;return reply({ok:true,lines:[`LATEST IP (${rows.length})`,...rows.map(r=>`${r.identity} | ${r.ip} | ${r.seen_at}`)]});}
+ const key=ip[1].trim();if(key.length>200)return fail('IP-400','Invalid identity');
+ let identity=key;if(!/^Guest-\d+$/i.test(key)){const users=await sql`SELECT id FROM bv_users WHERE id::text=${key} OR LOWER(email)=LOWER(${key}) LIMIT 1`;if(users.length)identity='Account-'+users[0].id;}
+ const rows=await sql`SELECT ip,seen_at FROM bv_console_ip_history WHERE LOWER(identity)=LOWER(${identity}) ORDER BY seen_at DESC LIMIT 500`;
+ return reply({ok:true,lines:[`IP HISTORY | ${identity} | ${rows.length} recent records`,...rows.map(r=>`${r.seen_at} | ${r.ip}`)]});
+}
+if(/^\/log$/i.test(command)){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ const rows=await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs ORDER BY created_at DESC LIMIT 100`;
+ return reply({ok:true,lines:[`INTERNAL LOGS (${rows.length}; reporter hook ready)`,...rows.map(r=>`${r.created_at} | ${r.source} | ${r.level} | ${r.event_code} | ${r.message}`)]});
 }
 if(command==='/check File-Hash-ID-List'){
  const rows=await sql`SELECT d.file_id,d.owner_id,d.name,d.revision FROM bv_cloud_documents d WHERE (${admin} OR d.owner_id=${user}) AND NOT EXISTS(SELECT 1 FROM bv_console_hidden_fhi h WHERE h.owner_id=d.owner_id AND h.file_id=d.file_id) ORDER BY d.updated_at DESC LIMIT 500`;

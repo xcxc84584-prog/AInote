@@ -1,4 +1,5 @@
 import {consoleApi} from './console-api.js';
+import {report_webserver_powershell_log} from './console-log.js';
 import {authApi} from './auth.js';
 import {chunkApi} from './chunk-api.js';
 import {deltaApi} from './delta-api.js';
@@ -24,8 +25,24 @@ const lifeDays=v=>Number.isInteger(v)&&[1,7,14,30,90].includes(v);
 const hex=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export default {async scheduled(event,env,ctx){ctx.waitUntil((async()=>{if(!env.DATABASE_URL)throw Error('DATABASE_URL missing');const sql=neon(env.DATABASE_URL);await sql`DELETE FROM cloud_files WHERE expires_at IS NOT NULL AND expires_at<=NOW()`;
 if(env.AI_UPLOADS){const listed=await env.AI_UPLOADS.list({prefix:'ai-temp/',limit:1000});const expired=listed.objects.filter(o=>o.uploaded&&Date.now()-new Date(o.uploaded).getTime()>24*3600*1000).map(o=>o.key);if(expired.length)await env.AI_UPLOADS.delete(expired)}
-await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads WHERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`})())},async fetch(req,env,ctx){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count, X-BV-SHA256, X-BV-Console-Admin','Access-Control-Max-Age':'3600','Vary':'Origin'}});
+await sql`DELETE FROM bv_console_guests WHERE last_seen < NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_console_ip_history WHERE seen_at < NOW()-INTERVAL '30 days'`;await sql`DELETE FROM bv_guest_request_seconds WHERE second_at < NOW()-INTERVAL '2 days'`;await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads WHERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`})())},async fetch(req,env,ctx){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Guest-ID, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count, X-BV-SHA256, X-BV-Console-Admin','Access-Control-Max-Age':'3600','Vary':'Origin'}});
 try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;
+// Best-effort identity/IP accounting. Guest token is a non-authorizing pseudonym.
+if(path.startsWith('/api/')&&req.method!=='OPTIONS')ctx.waitUntil((async()=>{try{
+ const ip=(req.headers.get('CF-Connecting-IP')||'').slice(0,45);
+ const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];
+ let identity=null,guestNumber=null;
+ if(token){const hash=await hex(token);const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() LIMIT 1`;if(rows.length)identity='Account-'+rows[0].user_id;}
+ if(!identity){const guest=req.headers.get('X-BV-Guest-ID')||'';
+ if(!/^[0-9a-f]{8}-[0-9a-f-]{27,40}$/i.test(guest))return;
+ // Database sequence IDs are recycled only after expiry; guest tokens never authorize access.
+ const rows=await sql`WITH active AS (UPDATE bv_console_guests SET last_seen=NOW() WHERE guest_token=${guest} RETURNING guest_number), available AS (SELECT n FROM generate_series(1,100000) n WHERE NOT EXISTS(SELECT 1 FROM bv_console_guests g WHERE g.guest_number=n) ORDER BY n LIMIT 1) INSERT INTO bv_console_guests(guest_number,guest_token,last_seen) SELECT n,${guest},NOW() FROM available WHERE NOT EXISTS(SELECT 1 FROM active) ON CONFLICT DO NOTHING RETURNING guest_number`;
+ if(rows.length)guestNumber=rows[0].guest_number;else {const existing=await sql`SELECT guest_number FROM bv_console_guests WHERE guest_token=${guest}`;guestNumber=existing[0]?.guest_number;}
+ if(!guestNumber)return;identity='Guest-'+guestNumber;
+ await sql`INSERT INTO bv_guest_request_seconds(guest_number,second_at,request_count) VALUES(${guestNumber},date_trunc('second',NOW()),1) ON CONFLICT(guest_number,second_at) DO UPDATE SET request_count=bv_guest_request_seconds.request_count+1`;
+ }
+ if(ip&&identity)await sql`INSERT INTO bv_console_ip_history(identity,ip,seen_at) VALUES(${identity},${ip},NOW())`;
+ }catch(e){console.error('Console identity metrics:',e)}})());
 // Best-effort authenticated per-second request counter; no request bodies or tokens stored.
 if(path.startsWith('/api/') && req.method!=='OPTIONS')ctx.waitUntil((async()=>{try{const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return;const hash=await hex(token);await sql`INSERT INTO bv_account_request_seconds(user_id,second_at,request_count) SELECT user_id,date_trunc('second',NOW()),1 FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() ON CONFLICT(user_id,second_at) DO UPDATE SET request_count=bv_account_request_seconds.request_count+1`}catch(e){console.error('Account request metric failed',e)}})());
 const consoleResponse=await consoleApi(req,env,path,sql);if(consoleResponse)return withCors(consoleResponse,cors);const deltaResponse=await deltaApi(req,env,path,sql);if(deltaResponse)return withCors(deltaResponse,cors);const chunkResponse=await chunkApi(req,env,path,sql);if(chunkResponse)return withCors(chunkResponse,cors);const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
