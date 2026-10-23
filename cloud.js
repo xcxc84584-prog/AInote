@@ -121,16 +121,13 @@ async function uploadChunked(fileId,name,bytes,days,baseRevision){
  let status=await uploadRetry(()=>api('/api/v378/uploads/'+uploadId));
  if(status.state==='complete'){localStorage.removeItem(key);return {ok:true,file_id:fileId,revision:start.revision}}
  const done=new Set(status.received||[]),chunkSize=Math.ceil(bytes.length/start.part_count)<=262144?262144:2097152;
- for(let i=0;i<start.part_count;i++){
-  if(done.has(i))continue;
+ let uploaded=done.size;
+ await parallelChunks(Array.from({length:start.part_count},(_,i)=>i).filter(i=>!done.has(i)),3,async i=>{
   const chunk=bytes.slice(i*chunkSize,(i+1)*chunkSize),digest=await shaBytes(chunk);
   try{await uploadRetry(()=>rawApi('/api/v378/uploads/'+uploadId+'/'+i,'PUT',chunk,{'Content-Type':'application/octet-stream','X-BV-SHA256':digest}))}
-  catch(e){ // A response may have been lost after Neon committed the part.
-   const check=await uploadRetry(()=>api('/api/v378/uploads/'+uploadId)).catch(()=>null);
-   if(!check?.received?.includes(i))throw e;
-  }
-  progress(5+90*(i+1)/start.part_count,'上傳分片 '+(i+1)+' / '+start.part_count);
- }
+  catch(e){const check=await uploadRetry(()=>api('/api/v378/uploads/'+uploadId)).catch(()=>null);if(!check?.received?.includes(i))throw e}
+  uploaded++;progress(5+90*uploaded/start.part_count,'上傳分片 '+uploaded+' / '+start.part_count);
+ });
  // Completion can take longer than an individual part. Never discard the resumable ID on ambiguous failures.
  let lastError;
  for(let attempt=0;attempt<5;attempt++){
@@ -144,7 +141,21 @@ async function uploadChunked(fileId,name,bytes,days,baseRevision){
  }
  throw Error('Complete 尚未確認成功；分片已保留，可再次提交續傳。'+(lastError?.message||''));
 }
-async function getChunked(id,revision){const meta=await api('/api/v378/files/'+id+'/meta'+(revision?'?revision='+encodeURIComponent(revision):''));if(meta.size_bytes>100*1024*1024)throw Error('ZIP 超過 100 MiB');const data=new Uint8Array(meta.size_bytes);let offset=0;for(let i=0;i<meta.part_count;i++){const res=await rawApi('/api/v378/files/'+id+'/parts/'+i+(revision?'?revision='+encodeURIComponent(revision):''),'GET');const bytes=new Uint8Array(await res.arrayBuffer());if(await shaBytes(bytes)!==res.headers.get('X-BV-SHA256'))throw Error('分片驗證失敗');data.set(bytes,offset);offset+=bytes.length;progress(5+90*(i+1)/meta.part_count,'取得分片 '+(i+1)+' / '+meta.part_count)}if(offset!==data.length||await shaBytes(data)!==meta.sha256)throw Error('完整 ZIP 驗證失敗');return {meta,bytes:data}}
+async function getChunked(id,revision){
+ const meta=await api('/api/v378/files/'+id+'/meta'+(revision?'?revision='+encodeURIComponent(revision):''));
+ if(meta.size_bytes>100*1024*1024)throw Error('ZIP 超過 100 MiB');
+ const chunks=new Array(meta.part_count);let downloaded=0;
+ await parallelChunks(Array.from({length:meta.part_count},(_,i)=>i),3,async i=>{
+  const res=await rawApi('/api/v378/files/'+id+'/parts/'+i+(revision?'?revision='+encodeURIComponent(revision):''),'GET');
+  const part=new Uint8Array(await res.arrayBuffer());
+  if(await shaBytes(part)!==res.headers.get('X-BV-SHA256'))throw Error('分片驗證失敗：'+i);
+  chunks[i]=part;downloaded++;progress(5+90*downloaded/meta.part_count,'取得分片 '+downloaded+' / '+meta.part_count);
+ });
+ const data=new Uint8Array(meta.size_bytes);let offset=0;
+ for(const part of chunks){if(!part||offset+part.length>data.length)throw Error('ZIP 分片大小錯誤');data.set(part,offset);offset+=part.length}
+ if(offset!==data.length||await shaBytes(data)!==meta.sha256)throw Error('完整 ZIP 驗證失敗');
+ return {meta,bytes:data};
+}
 // v3.8.3: content-addressed incremental Cloud Root, SHA-256 verified on both directions.
 const DELTA_SIZE=256*1024;
 // Keep the proven 256 KiB Neon request size, but overlap three network requests.

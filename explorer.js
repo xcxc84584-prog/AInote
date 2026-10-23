@@ -46,12 +46,21 @@ function cloudDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(
 async function cloudRead(key){const db=await cloudDB();try{return await new Promise((resolve,reject)=>{const q=db.transaction('roots').objectStore('roots').get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}finally{db.close()}}
 async function cloudWrite(key,value){const db=await cloudDB();try{await new Promise((resolve,reject)=>{const tx=db.transaction('roots','readwrite');tx.objectStore('roots').put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}finally{db.close()}}
 function memoryFile(name,bytes){let data=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);return {kind:'file',name,async getFile(){return new File([data],name)},async createWritable(){let next=data;return {async write(v){next=new Uint8Array(await new Blob([v]).arrayBuffer())},async close(){data=next}}},bytes(){return data}}}
+// Cloud directory handles implement Explorer's ordinary directory operations in memory.
+function cloudDir(node=null){return {kind:'directory',name:node?.name||root?.name||'Cloud',
+ async *entries(){for(const n of siblings(node))yield [n.name,n.handle]},
+ async getFileHandle(name,{create=false}={}){const n=siblings(node).find(n=>n.name===name);if(n){if(n.kind!=='file')throw Error('名稱為資料夾');return n.handle}if(create)return memoryFile(name,new Uint8Array());throw new DOMException('Not found','NotFoundError')},
+ async getDirectoryHandle(name,{create=false}={}){const n=siblings(node).find(n=>n.name===name);if(n){if(n.kind!=='directory')throw Error('名稱為文件');return n.handle}if(create)return cloudDir({name});throw new DOMException('Not found','NotFoundError')},
+ async removeEntry(name){if(!siblings(node).some(n=>n.name===name))throw new DOMException('Not found','NotFoundError')}
+}}
+let cloudSaveTimer;
+function queueCloudSave(){if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(async()=>{try{const snap=await window.BVCloudExportVirtualRoot();await cloudWrite('bv378-root-'+snap.id,{id:snap.id,name:root.name,entries:snap.entries,updatedAt:Date.now()})}catch(e){console.error('Cloud Root autosave',e)}},600)}
 async function loadCloudRoot(saved){
- rememberRoot();virtualRoot=true;cloudVirtualId=saved.id;root={name:saved.name.replace(/\.zip$/i,'')+'（Cloud）',kind:'directory',cloudId:saved.id};
+ rememberRoot();virtualRoot=true;cloudVirtualId=saved.id;root={name:saved.name.replace(/\.zip$/i,'')+'（Cloud）',kind:'directory',cloudId:saved.id};Object.assign(root,cloudDir(null));
  rootSelected=false;rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();dirty=false;
  nodeDB={version:1,rootId:uuid(),nodes:{}};recordDB={version:2,files:{}};
  const directories=new Map();directories.set('',null);
- const addDir=key=>{if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:{kind:'directory',name},parent,kind:'directory',order:sequence,buffer:null};items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x};
+ const addDir=key=>{if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:null,parent,kind:'directory',order:sequence,buffer:null};x.handle=cloudDir(x);items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x};
  for(const entry of saved.entries){if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
  // All imported Cloud Root folders start collapsed; no document auto-opens.
  for(const node of items)if(node.kind==='directory')collapsed.add(node.id);
@@ -88,8 +97,30 @@ window.BVCloudExportVirtualRoot=async()=>{
 window.BVCloudRestoreVirtualRoot=async(id)=>{const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true};
 const singlePicker=document.createElement('input');singlePicker.type='file';
 singlePicker.accept='.md,.markdown,.txt';singlePicker.hidden=true;document.body.append(singlePicker);
-document.querySelector('#root-import-file').onclick=()=>{singlePicker.value='';singlePicker.click()};
+document.querySelector('#root-import-file').onclick=()=>{if(cloudVirtualId&&root?.cloudId===cloudVirtualId){cloudImport.value='';cloudImport.click()}else{singlePicker.value='';singlePicker.click()}};
 singlePicker.onchange=()=>openSingleFile(singlePicker.files[0]).catch(e=>alert(e.message));
+const cloudImport=document.createElement('input');cloudImport.type='file';cloudImport.multiple=true;cloudImport.hidden=true;document.body.append(cloudImport);
+const cloudFolderPicker=document.createElement('input');cloudFolderPicker.type='file';cloudFolderPicker.multiple=true;cloudFolderPicker.webkitdirectory=true;cloudFolderPicker.hidden=true;document.body.append(cloudFolderPicker);
+const cloudFolderButton=document.createElement('button');cloudFolderButton.type='button';cloudFolderButton.textContent='導入 Fold 至 Cloud';cloudFolderButton.title='將本地資料夾導入目前 Cloud Root 的選取位置（僅 IndexedDB）';
+document.querySelector('#root-import-file').after(cloudFolderButton);
+cloudFolderButton.onclick=()=>{if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)return alert('請先選取 Cloud Root');cloudFolderPicker.value='';cloudFolderPicker.click()};
+cloudFolderPicker.onchange=async()=>{if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)return;const active=current(),base=rootSelected?null:(active?.kind==='directory'?active:active?.parent||null);try{
+ const files=[...cloudFolderPicker.files];if(files.reduce((n,f)=>n+f.size,0)>100*1024*1024)throw Error('單次導入超過 100 MiB');
+ const dirs=new Map();dirs.set('',base);
+ function ensureDir(parts){let parent=base,key='';for(const name of parts){if(!name||name==='.'||name==='..'||/[\\/\x00-\x1f]/.test(name))throw Error('資料夾名稱無效');key+=(key?'/':'')+name;if(dirs.has(key)){parent=dirs.get(key);continue}let node=siblings(parent).find(n=>n.name===name);if(node&&node.kind!=='directory')throw Error('名稱衝突：'+name);if(!node){node={id:++sequence,uuid:uuid(),name,parent,kind:'directory',order:sequence,buffer:null};node.handle=cloudDir(node);items.push(node);nodeDB.nodes[path(node)]=node.uuid}dirs.set(key,node);parent=node}return parent}
+ for(const file of files){const parts=file.webkitRelativePath.split('/');const name=parts.pop();const parent=ensureDir(parts);if(siblings(parent).some(n=>n.name===name))throw Error('同名文件：'+name);const node={id:++sequence,uuid:uuid(),name,parent,kind:'file',order:sequence,buffer:null,handle:memoryFile(name,new Uint8Array(await file.arrayBuffer()))};items.push(node);nodeDB.nodes[path(node)]=node.uuid}
+ orderDirty=true;display();queueCloudSave();toast('已導入 Cloud Fold（'+files.length+' 個文件）')
+ }catch(e){alert('導入 Fold 失敗：'+e.message)}};
+
+cloudImport.onchange=async()=>{const x=current(),parent=rootSelected?null:(x?.kind==='directory'?x:x?.parent||null),files=[...cloudImport.files];try{
+ if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)throw Error('請先選取 Cloud Root');
+ if(files.some(f=>!f.name||f.name==='.'||f.name==='..'||/[\\/\x00-\x1f]/.test(f.name)))throw Error('不合法的文件名稱');
+ if(files.some(f=>siblings(parent).some(n=>n.name===f.name)))throw Error('目的資料夾有同名文件');
+ if(files.reduce((n,f)=>n+f.size,0)>100*1024*1024)throw Error('單次導入超過 100 MiB');
+ for(const f of files){const n={id:++sequence,uuid:uuid(),name:f.name,handle:memoryFile(f.name,new Uint8Array(await f.arrayBuffer())),parent,kind:'file',order:sequence,buffer:null};items.push(n);nodeDB.nodes[path(n)]=n.uuid}
+ if(parent)collapsed.delete(parent.id);orderDirty=true;display();queueCloudSave();toast('已導入 '+files.length+' 個文件至 IndexedDB')
+ }catch(e){alert('Cloud 導入失敗：'+e.message)}};
+
 async function saveVirtual(){
  const x=current();if(x?.kind==='file')x.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
  if(cloudVirtualId&&root?.cloudId===cloudVirtualId){
@@ -251,6 +282,7 @@ async function renameRoot(){
  const name=await inlineName('重新命名 Root',oldName);
  if(!name||name===oldName)return;
  if(/[\\/]/.test(name)||name==='.'||name==='..')return alert('名稱無效');
+ if(cloudVirtualId&&root?.cloudId===cloudVirtualId){root.name=name.endsWith('（Cloud）')?name:name+'（Cloud）';rootLabel.textContent=root.name;display();queueCloudSave();return;}
  try{
   await saveAll();await window.BVFlushFileRecords?.();await flushNodeDB();await flushRecordDB();
   if(typeof oldRoot.move==='function'){
@@ -425,7 +457,7 @@ const explorerSearchClear=document.querySelector('#explorer-search-clear');
 let explorerQuery='';
 explorerSearchInput.addEventListener('input',()=>{explorerQuery=explorerSearchInput.value.trim().toLocaleLowerCase();display()});
 explorerSearchClear.addEventListener('click',()=>{explorerSearchInput.value='';explorerQuery='';display();explorerSearchInput.focus()});
-function display(){tree.replaceChildren();
+function display(){cloudFolderButton.hidden=!(cloudVirtualId&&root?.cloudId===cloudVirtualId);tree.replaceChildren();
  explorerSearchClear.hidden=!explorerQuery;
  if(!root){explorerSearchStatus.textContent='';renderOtherRoots();enableRootOrdering();return;}
  const matches=new Set();let directMatches=0;
@@ -550,7 +582,7 @@ async function createCloudNode(kind,forceRoot=false){
  if(active?.kind==='file'&&dirty)active.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
  const handle=kind==='file'?memoryFile(name,new Uint8Array(0)):{kind:'directory',name};
  const node={id:++sequence,uuid:uuid(),name,handle,parent,kind,order:sequence,buffer:null};
- items.push(node);nodeDB.nodes[path(node)]=node.uuid;
+ if(kind==='directory')node.handle=cloudDir(node);items.push(node);nodeDB.nodes[path(node)]=node.uuid;
  // Persist the full Cloud Root snapshot in IndexedDB; no local filesystem writes.
  const entries=[];
  for(const item of items.filter(n=>n.kind==='directory'))entries.push({path:path(item)+'/',dir:true});
@@ -590,7 +622,15 @@ async function rebindDescendants(dirNode){
   if(child.kind==='directory')await rebindDescendants(child);
  }
 }
+async function cloudRemove(x){
+ const removed=[x,...items.filter(n=>isChild(n,x))];
+ for(const n of removed){delete nodeDB.nodes[path(n)];delete recordDB.files[n.uuid]}
+ items=items.filter(n=>!removed.includes(n));
+ if(removed.some(n=>n.id===selected)){selected=null;setDocumentVisible(false)}
+ orderDirty=true;display();queueCloudSave();
+}
 async function removeNode(x){
+ if(cloudVirtualId&&root?.cloudId===cloudVirtualId)return cloudRemove(x);
  // Remove the actual entry from its parent, never by interpreting a file as a folder.
  const parent=dirOf(x.parent);
  if(!parent)throw Error('找不到資料夾的父層');
@@ -603,9 +643,14 @@ async function removeNode(x){
  if(selected&&!items.some(y=>y.id===selected)){
   selected=null;handle=null;rawMarkdown='';setName('未命名.md');setDocumentVisible(false);switchMode('edit');
  }
- orderDirty=true;display();
+ orderDirty=true;display();queueCloudSave();
 }
 async function rename(x){
+ if(cloudVirtualId&&root?.cloudId===cloudVirtualId){const n=await inlineName('重新命名',x.name);if(!n||n===x.name)return;if(n==='.'||n==='..'||/[\\/\x00-\x1f]/.test(n)||siblings(x.parent).some(y=>y!==x&&y.name===n))return alert('名稱無效或已存在');
+ const oldPaths=new Map([x,...items.filter(y=>isChild(y,x))].map(y=>[y,path(y)]));x.name=n;if(x.kind==='file')x.handle=memoryFile(n,x.buffer!==null?new TextEncoder().encode(x.buffer):x.handle.bytes());
+ for(const [y,old] of oldPaths){delete nodeDB.nodes[old];nodeDB.nodes[path(y)]=y.uuid}
+ if(selected===x.id)setName(n);orderDirty=true;display();queueCloudSave();return}
+
  const n=await inlineName('重新命名',x.name);
  if(!n||n===x.name)return;
  try{
@@ -621,10 +666,16 @@ async function rename(x){
   if(x.kind==='directory')await rebindDescendants(x);
   await relocateRecords(previous);
   if(selected===x.id){setName(n);if(x.kind==='file')handle=h}
-  orderDirty=true;display();
+  orderDirty=true;display();queueCloudSave();
  }catch(e){alert('重新命名失敗：'+e.message)}
 }
 async function move(x,target,after=false){
+ if(cloudVirtualId&&root?.cloudId===cloudVirtualId){if(!x||!target||x===target||isChild(target,x))return;const p=target.kind==='directory'&&!after?target:target.parent;
+ if(siblings(p).some(y=>y!==x&&y.name===x.name))return alert('目的資料夾已有同名項目');
+ const oldPaths=new Map([x,...items.filter(y=>isChild(y,x))].map(y=>[y,path(y)]));x.parent=p;
+ for(const [y,old] of oldPaths){delete nodeDB.nodes[old];nodeDB.nodes[path(y)]=y.uuid}
+ orderDirty=true;display();queueCloudSave();return}
+
  if(!x||!target||x===target||isChild(target,x))return;
  const p=target.kind==='directory'&&!after?target:target.parent;
  if(x.parent===p){
@@ -634,7 +685,7 @@ async function move(x,target,after=false){
   const at=arr.indexOf(target);
   arr.splice(at<0?arr.length:at+(after?1:0),0,x);
   arr.forEach((y,i)=>y.order=i+1);
-  orderDirty=true;display();return;
+  orderDirty=true;display();queueCloudSave();return;
  }
  try{
   const dest=dirOf(p);
@@ -647,7 +698,7 @@ async function move(x,target,after=false){
   if(x.kind==='directory')await rebindDescendants(x);
   await relocateRecords(previous);
   if(selected===x.id&&x.kind==='file')handle=h;
-  orderDirty=true;display();toast('已移動 '+x.name);
+  orderDirty=true;display();queueCloudSave();toast('已移動 '+x.name);
  }catch(e){alert('移動失敗：'+e.message)}
 }
 async function moveWithPicker(x){
@@ -672,7 +723,7 @@ async function moveWithPicker(x){
     if(x.kind==='directory')await rebindDescendants(x);
     await relocateRecords(previous);
     if(selected===x.id&&x.kind==='file')handle=h;
-    orderDirty=true;display();toast('已移動至 Root');
+    orderDirty=true;display();queueCloudSave();toast('已移動至 Root');
    }catch(e){alert('移動失敗：'+e.message)}
   }
  }else await move(x,dest,false);
@@ -681,9 +732,15 @@ function targets(){const ids=batchMode&&checkedIds.size?[...checkedIds]:selected
 function resetBatch(){batchMode=false;checkedIds.clear();display()}
 async function deleteTargets(){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');if(!confirm('確定刪除 '+nodes.length+' 個項目及其子項目？此操作無法復原。'))return;let errors=[];for(const x of nodes){try{await removeNode(x)}catch(e){errors.push(x.name+'：'+e.message)}}if(errors.length)alert('部分刪除失敗：\n'+errors.join('\n'));else toast('已刪除 '+nodes.length+' 個項目');resetBatch()}
 function clipTargets(cut){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');clipboard={nodes:nodes.map(x=>({node:x,name:x.name,kind:x.kind})),cut};toast((cut?'已剪下 ':'已複製 ')+nodes.length+' 個項目，請選擇目的資料夾後貼上')}
-async function pasteTargets(){if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,uuid:uuid(),name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};nodeDB.nodes[path(newNode)]=newNode.uuid;items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,uuid:uuid(),name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};nodeDB.nodes[path(copy)]=copy.uuid;if(child.kind==='file'&&recordDB.files[child.uuid])recordDB.files[copy.uuid]=structuredClone(recordDB.files[child.uuid]);items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);else if(recordDB.files[x.uuid])recordDB.files[newNode.uuid]=structuredClone(recordDB.files[x.uuid]);await flushNodeDB();await flushRecordDB();done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')}
+async function pasteTargets(){if(cloudVirtualId&&root?.cloudId===cloudVirtualId){if(!clipboard?.nodes?.length)return alert('剪貼簿沒有文件');const active=current(),parent=active?.kind==='directory'?active:active?.parent||null;let count=0;
+ for(const {node:x} of clipboard.nodes){if(!items.includes(x)||x===parent||parent&&isChild(parent,x))continue;if(siblings(parent).some(y=>y!==x&&y.name===x.name))continue;
+ if(clipboard.cut){const oldPaths=new Map([x,...items.filter(y=>isChild(y,x))].map(y=>[y,path(y)]));x.parent=parent;for(const [y,old] of oldPaths){delete nodeDB.nodes[old];nodeDB.nodes[path(y)]=y.uuid}}
+ else{const clone=(original,p)=>{const n={id:++sequence,uuid:uuid(),name:original.name,kind:original.kind,parent:p,order:sequence,buffer:original.buffer};n.handle=n.kind==='directory'?cloudDir(n):memoryFile(n.name,original.buffer!==null?new TextEncoder().encode(original.buffer):original.handle.bytes());items.push(n);nodeDB.nodes[path(n)]=n.uuid;if(n.kind==='directory')for(const c of siblings(original))clone(c,n)};clone(x,parent)}count++}
+ if(clipboard.cut)clipboard=null;orderDirty=true;display();queueCloudSave();toast('已貼上 '+count+' 個項目');return}
+if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,uuid:uuid(),name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};nodeDB.nodes[path(newNode)]=newNode.uuid;items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,uuid:uuid(),name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};nodeDB.nodes[path(copy)]=copy.uuid;if(child.kind==='file'&&recordDB.files[child.uuid])recordDB.files[copy.uuid]=structuredClone(recordDB.files[child.uuid]);items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);else if(recordDB.files[x.uuid])recordDB.files[newNode.uuid]=structuredClone(recordDB.files[x.uuid]);await flushNodeDB();await flushRecordDB();done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();queueCloudSave();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')}
 function operateMenu(left,top){const m=document.querySelector('#context-menu');m.replaceChildren();for(const [label,fn] of [['批量選取'+(batchMode?'（結束）':''),()=>{batchMode=!batchMode;checkedIds.clear();display()}],['刪除',deleteTargets],['剪下',()=>clipTargets(true)],['複製',()=>clipTargets(false)],['貼上',pasteTargets]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().then(fn).catch(e=>alert('操作失敗：'+e.message))};m.append(b)}positionMenu(m,left,top)}
 function positionMenu(m,left,top){m.style.left=Math.max(8,Math.min(left,innerWidth-190))+'px';m.style.top=Math.max(8,Math.min(top,innerHeight-245))+'px';m.hidden=false}
+function importFiles(x){if(cloudVirtualId&&root?.cloudId===cloudVirtualId){selected=x.id;rootSelected=false;cloudImport.value='';cloudImport.click()}else alert('請使用選取本地文件功能')}
 function menu(x,left,top){
  const m=document.querySelector('#context-menu');m.replaceChildren();
  for(const [label,fn] of [
@@ -701,7 +758,7 @@ function menu(x,left,top){
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu')&&!e.target.closest('#explorer-operate'))document.querySelector('#context-menu').hidden=true});
 document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root){window.BVCreateNewDocument();return;}create('directory')};document.querySelector('#add-file').onclick=async()=>{if(!root){await openSingleFile(new File([''],'新文件.md',{type:'text/markdown'}));return}create('file')};
-sourceArea.addEventListener('input',()=>{if(virtualRoot&&!cloudVirtualId&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
+sourceArea.addEventListener('input',()=>{if(cloudVirtualId&&root?.cloudId===cloudVirtualId)queueCloudSave();if(virtualRoot&&!cloudVirtualId&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
 // Re-scan external file changes on focus and while the page is visible.
 let scanBusy=false;async function syncExternal(){if(virtualRoot||!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}}
 window.addEventListener('focus',syncExternal);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncExternal()});setInterval(()=>{if(!document.hidden)syncExternal()},12000);
