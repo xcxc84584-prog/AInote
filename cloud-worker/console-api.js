@@ -16,6 +16,10 @@ const commands=[
  {syntax:'/delete PART.FHI:<ID><revision>',description:'Delete a specified commit revision; retain at least one revision.',tags:'delete FHI part revision'},
  {syntax:'/delete PART.FHI:<ID><[1,4,7]>',description:'Delete multiple commit revisions atomically.',tags:'delete FHI part revisions batch'},
  {syntax:'/delete ID.FHI:<ID> --user=<User-ID>',description:'Admin only: hide the FHI list entry for a specified account.',tags:'delete FHI hide user',admin:true},
+ {syntax:'/check Account-List',description:'Admin only: list registered accounts.',tags:'check account user list',admin:true},
+ {syntax:'/check ALL.Account-Flow:<UserID>',description:'Admin only: run all registered Account-Flow checks.',tags:'check account flow all',admin:true},
+ {syntax:'/check PART.Account-Flow:<UserID><1>',description:'Admin only: run selected Account-Flow checks by number.',tags:'check account flow part',admin:true},
+ {syntax:'/check PART.Account-Flow:<UserID><[2,7]>',description:'Admin only: run multiple numbered Account-Flow checks.',tags:'check account flow part batch',admin:true},
  {syntax:'/admin logout',description:'End the current administrator session.',tags:'logout session',admin:true}
 ];
 async function getUser(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null}
@@ -35,6 +39,29 @@ if(/^\/admin(?:\s|$)/i.test(command)){
  const expected=await digest(env.BV_CONSOLE_ADMIN_KEY),actual=await digest(key);
  if(expected!==actual)return fail('ADM-403','Invalid administrator key',403);
  return reply({ok:true,adminToken:await issueAdmin(env.BV_CONSOLE_ADMIN_KEY,user),lines:['Administrator mode enabled for 15 minutes.','FHI commands can now access all accounts.']});
+}
+if(/^\/check\s+Account-List$/i.test(command)){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ const rows=await sql`SELECT id,email,created_at FROM bv_users ORDER BY created_at DESC LIMIT 1000`;
+ return reply({ok:true,lines:[`REGISTERED ACCOUNTS (${rows.length}${rows.length===1000?'+':''})`,...rows.map(r=>`${r.id} | ${r.email} | ${r.created_at}`)]});
+}
+const flow=command.match(/^\/check\s+(ALL|PART)\.Account-Flow:<([^<>]+)>(?:<((?:\d+)|(?:\[\s*\d+(?:\s*,\s*\d+)*\s*\]))>)?$/i);
+if(flow){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ const mode=flow[1].toUpperCase(),identifier=flow[2].trim(),part=flow[3];
+ if((mode==='ALL'&&part)||(mode==='PART'&&!part))return fail('FLOW-400','Invalid Account-Flow syntax');
+ const account=await sql`SELECT id,email FROM bv_users WHERE id::text=${identifier} OR LOWER(email)=LOWER(${identifier}) LIMIT 1`;
+ if(!account.length)return fail('FLOW-404','Account not found',404);
+ const target=account[0],checks={
+ 1:async()=>{const r=await sql`SELECT COALESCE((SELECT SUM(octet_length(p.data)) FROM bv_cloud_parts p JOIN bv_cloud_uploads u ON u.id=p.upload_id WHERE u.owner_id=${target.id}),0)::bigint AS bytes`;return `1 | Cloud storage: ${(Number(r[0].bytes)/1024).toFixed(2)} KB (${r[0].bytes} bytes; stored upload parts)`},
+ 2:async()=>{const r=await sql`SELECT COALESCE((SELECT used FROM bv_ai_usage WHERE user_id=${target.id} AND usage_day=(NOW() AT TIME ZONE 'Asia/Taipei')::date),0)::int AS used`;return `2 | Website ChatGPT key calls today (Taipei): ${r[0].used}`},
+ 3:async()=>{const r=await sql`SELECT COALESCE(SUM(request_count),0)::bigint AS total,COALESCE(MAX(request_count),0)::bigint AS peak FROM bv_account_request_seconds WHERE user_id=${target.id} AND second_at >= date_trunc('day',NOW() AT TIME ZONE 'Asia/Taipei') AT TIME ZONE 'Asia/Taipei' AND second_at < (date_trunc('day',NOW() AT TIME ZONE 'Asia/Taipei')+interval '1 day') AT TIME ZONE 'Asia/Taipei'`;return `3 | Requests today: ${r[0].total}; peak observed: ${r[0].peak} req/s (authenticated requests only)`}
+ };
+ const selected=mode==='ALL'?Object.keys(checks).map(Number):part.startsWith('[')?part.slice(1,-1).split(',').map(x=>Number(x.trim())):[Number(part)];
+ if(!selected.length||selected.length>50||selected.some(x=>!Number.isSafeInteger(x)||!checks[x])||new Set(selected).size!==selected.length)return fail('FLOW-400','Unknown, repeated, or invalid Account-Flow number',400);
+ const lines=[`ACCOUNT FLOW | ${target.email} | ${target.id}`];
+ for(const n of selected)lines.push(await checks[n]());
+ return reply({ok:true,lines});
 }
 if(command==='/check File-Hash-ID-List'){
  const rows=await sql`SELECT d.file_id,d.owner_id,d.name,d.revision FROM bv_cloud_documents d WHERE (${admin} OR d.owner_id=${user}) AND NOT EXISTS(SELECT 1 FROM bv_console_hidden_fhi h WHERE h.owner_id=d.owner_id AND h.file_id=d.file_id) ORDER BY d.updated_at DESC LIMIT 500`;

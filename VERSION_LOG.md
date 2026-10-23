@@ -1,3 +1,8 @@
+## v3.8.9.3 — Admin Account-Flow Metrics
+- Added admin account listing and extensible numbered account checks.
+- Added authenticated per-second request counter and Neon migration.
+- Added deployment instructions.
+
 # BV-Note Version Log
 
 ## v3.8.9.2 — PowerShell Console Help Search and Admin FHI Access
