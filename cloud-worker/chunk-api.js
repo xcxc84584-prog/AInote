@@ -3,7 +3,9 @@ import {neon} from '@neondatabase/serverless';
 const json=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 const idok=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
 const hex=async b=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b))).map(v=>v.toString(16).padStart(2,'0')).join('');
-const partSize=2*1024*1024,MAX=100*1024*1024;
+const partSize=256*1024,legacyPartSize=2*1024*1024,MAX=100*1024*1024;
+// Existing v3.7.8–v3.8.0 uploads retain their original 2 MiB boundaries.
+const uploadPartSize=u=>Number(u.part_count)===Math.ceil(Number(u.size_bytes)/legacyPartSize)?legacyPartSize:partSize;
 const tokenHash=async t=>hex(new TextEncoder().encode(t));
 async function owner(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const h=await tokenHash(token);const rows=await sql`SELECT s.user_id FROM bv_sessions s WHERE s.token_hash=${h} AND s.expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null}
 export async function chunkApi(req,env,path,sql){if(!path.startsWith('/api/v378/'))return null;
@@ -49,7 +51,7 @@ export async function chunkApi(req,env,path,sql){if(!path.startsWith('/api/v378/
  const up=path.match(/^\/api\/v378\/uploads\/([0-9a-f-]+)(?:\/(\d+|complete))?$/i);
  if(up&&idok(up[1])){const uploadId=up[1],rows=await sql`SELECT * FROM bv_cloud_uploads WHERE id=${uploadId} AND owner_id=${user}`;if(!rows.length)return json({error:'找不到上傳'},404);const u=rows[0];
  if(!up[2]&&method==='GET'){const parts=await sql`SELECT part_index FROM bv_cloud_parts WHERE upload_id=${uploadId} ORDER BY part_index`;return json({upload_id:uploadId,state:u.state,received:parts.map(p=>p.part_index),part_count:u.part_count})}
- if(/^\d+$/.test(up[2]||'')&&method==='PUT'){const i=Number(up[2]);if(u.state!=='uploading'||i>=u.part_count)return json({error:'上傳已完成或分片索引無效'},409);const data=await req.arrayBuffer();const expected=i===u.part_count-1?Number(u.size_bytes)-i*partSize:partSize;if(data.byteLength!==expected)return json({error:'分片長度不符'},400);const digest=await hex(data);if(digest!==req.headers.get('X-BV-SHA256'))return json({error:'SHA256 不符'},422);
+ if(/^\d+$/.test(up[2]||'')&&method==='PUT'){const i=Number(up[2]);if(u.state!=='uploading'||i>=u.part_count)return json({error:'上傳已完成或分片索引無效'},409);const data=await req.arrayBuffer();const chunkSize=uploadPartSize(u);const expected=i===u.part_count-1?Number(u.size_bytes)-i*chunkSize:chunkSize;if(data.byteLength!==expected)return json({error:'分片長度不符'},400);const digest=await hex(data);if(digest!==req.headers.get('X-BV-SHA256'))return json({error:'SHA256 不符'},422);
  const bytes=Array.from(new Uint8Array(data)).map(x=>x.toString(16).padStart(2,'0')).join('');
  await sql`INSERT INTO bv_cloud_parts(upload_id,part_index,data,sha256,byte_length) VALUES(${uploadId},${i},decode(${bytes},'hex'),${digest},${data.byteLength}) ON CONFLICT(upload_id,part_index) DO UPDATE SET data=EXCLUDED.data,sha256=EXCLUDED.sha256,byte_length=EXCLUDED.byte_length`;
  return json({ok:true,index:i})}
