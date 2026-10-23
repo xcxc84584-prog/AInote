@@ -108,7 +108,42 @@ $('cloud-zip-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('�
 $('cloud-import-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('請先以 File Hash ID 搜尋');await download(selectedCloud);msg('已下載 ZIP，請透過本地 Explorer 匯入；不會覆蓋本地檔案')});
 
 async function rawApi(path,method,body,headers={}){const token=window.BVAuth?.getToken();if(!token)throw Error('請先登入帳號');const res=await fetch(apiUrl()+path,{method,headers:{Authorization:'Bearer '+token,...headers},body});if(!res.ok){const b=await res.json().catch(()=>({}));throw Error(b.error||'HTTP '+res.status)}return res}
-async function uploadChunked(fileId,name,bytes,days,baseRevision){const hash=await shaBytes(bytes),key='bv378-upload-'+fileId+'-'+hash;let uploadId=localStorage.getItem(key);let start;try{start=await api('/api/v378/uploads','POST',{file_id:fileId,name,size_bytes:bytes.length,life_days:days,sha256:hash,...(baseRevision===undefined?{}:{base_revision:baseRevision}),...(uploadId?{upload_id:uploadId}:{})})}catch(e){if(uploadId){localStorage.removeItem(key);return uploadChunked(fileId,name,bytes,days)}throw e}uploadId=start.upload_id;localStorage.setItem(key,uploadId);const status=await api('/api/v378/uploads/'+uploadId);const done=new Set(status.received);for(let i=0;i<start.part_count;i++){if(done.has(i))continue;const chunkSize=Math.ceil(bytes.length/start.part_count)<=262144?262144:2097152,chunk=bytes.slice(i*chunkSize,(i+1)*chunkSize),digest=await shaBytes(chunk);for(let retry=0;;retry++){try{await rawApi('/api/v378/uploads/'+uploadId+'/'+i,'PUT',chunk,{'Content-Type':'application/octet-stream','X-BV-SHA256':digest});break}catch(e){if(retry>=2)throw e;await new Promise(r=>setTimeout(r,500*(retry+1)))}}progress(5+90*(i+1)/start.part_count,'上傳分片 '+(i+1)+' / '+start.part_count)}const result=await api('/api/v378/uploads/'+uploadId+'/complete','POST',{});localStorage.removeItem(key);return result}
+// v3.8.6: retries preserve the upload ID and confirm server state before declaring failure.
+const uploadPause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function uploadRetry(task,attempts=5){let last;for(let n=0;n<attempts;n++){try{return await task()}catch(e){last=e;const code=Number(String(e.message).match(/HTTP (\d{3})/)?.[1]||0);if(code>=400&&code<500&&code!==408&&code!==409&&code!==429)throw e;if(n+1<attempts)await uploadPause(Math.min(10000,650*2**n)+Math.floor(Math.random()*350))}}throw last}
+async function uploadChunked(fileId,name,bytes,days,baseRevision){
+ const hash=await shaBytes(bytes),key='bv378-upload-'+fileId+'-'+hash;
+ let uploadId=localStorage.getItem(key),start;
+ const startBody=()=>({file_id:fileId,name,size_bytes:bytes.length,life_days:days,sha256:hash,...(baseRevision===undefined?{}:{base_revision:baseRevision}),...(uploadId?{upload_id:uploadId}:{})});
+ try{start=await uploadRetry(()=>api('/api/v378/uploads','POST',startBody()))}
+ catch(e){if(!uploadId)throw e;localStorage.removeItem(key);uploadId=null;start=await uploadRetry(()=>api('/api/v378/uploads','POST',startBody()))}
+ uploadId=start.upload_id;localStorage.setItem(key,uploadId);
+ let status=await uploadRetry(()=>api('/api/v378/uploads/'+uploadId));
+ if(status.state==='complete'){localStorage.removeItem(key);return {ok:true,file_id:fileId,revision:start.revision}}
+ const done=new Set(status.received||[]),chunkSize=Math.ceil(bytes.length/start.part_count)<=262144?262144:2097152;
+ for(let i=0;i<start.part_count;i++){
+  if(done.has(i))continue;
+  const chunk=bytes.slice(i*chunkSize,(i+1)*chunkSize),digest=await shaBytes(chunk);
+  try{await uploadRetry(()=>rawApi('/api/v378/uploads/'+uploadId+'/'+i,'PUT',chunk,{'Content-Type':'application/octet-stream','X-BV-SHA256':digest}))}
+  catch(e){ // A response may have been lost after Neon committed the part.
+   const check=await uploadRetry(()=>api('/api/v378/uploads/'+uploadId)).catch(()=>null);
+   if(!check?.received?.includes(i))throw e;
+  }
+  progress(5+90*(i+1)/start.part_count,'上傳分片 '+(i+1)+' / '+start.part_count);
+ }
+ // Completion can take longer than an individual part. Never discard the resumable ID on ambiguous failures.
+ let lastError;
+ for(let attempt=0;attempt<5;attempt++){
+  try{const result=await api('/api/v378/uploads/'+uploadId+'/complete','POST',{});localStorage.removeItem(key);return result}
+  catch(e){lastError=e;
+   const check=await api('/api/v378/uploads/'+uploadId).catch(()=>null);
+   if(check?.state==='complete'){localStorage.removeItem(key);return {ok:true,file_id:fileId,revision:start.revision}}
+   if(check?.received?.length!==start.part_count&&check){throw Error('部分分片未保存，請重新提交以斷點續傳')}
+   if(attempt<4)await uploadPause(Math.min(15000,1200*2**attempt)+Math.floor(Math.random()*400));
+  }
+ }
+ throw Error('Complete 尚未確認成功；分片已保留，可再次提交續傳。'+(lastError?.message||''));
+}
 async function getChunked(id,revision){const meta=await api('/api/v378/files/'+id+'/meta'+(revision?'?revision='+encodeURIComponent(revision):''));if(meta.size_bytes>100*1024*1024)throw Error('ZIP 超過 100 MiB');const data=new Uint8Array(meta.size_bytes);let offset=0;for(let i=0;i<meta.part_count;i++){const res=await rawApi('/api/v378/files/'+id+'/parts/'+i+(revision?'?revision='+encodeURIComponent(revision):''),'GET');const bytes=new Uint8Array(await res.arrayBuffer());if(await shaBytes(bytes)!==res.headers.get('X-BV-SHA256'))throw Error('分片驗證失敗');data.set(bytes,offset);offset+=bytes.length;progress(5+90*(i+1)/meta.part_count,'取得分片 '+(i+1)+' / '+meta.part_count)}if(offset!==data.length||await shaBytes(data)!==meta.sha256)throw Error('完整 ZIP 驗證失敗');return {meta,bytes:data}}
 // v3.8.3: content-addressed incremental Cloud Root, SHA-256 verified on both directions.
 const DELTA_SIZE=256*1024;
