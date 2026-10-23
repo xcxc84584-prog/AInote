@@ -53,9 +53,11 @@ async function loadCloudRoot(saved){
  const directories=new Map();directories.set('',null);
  const addDir=key=>{if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:{kind:'directory',name},parent,kind:'directory',order:sequence,buffer:null};items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x};
  for(const entry of saved.entries){if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
+ // All imported Cloud Root folders start collapsed; no document auto-opens.
+ for(const node of items)if(node.kind==='directory')collapsed.add(node.id);
+ selected=null;rootSelected=false;rootCollapsed=false;
  rootLabel.textContent=root.name;setDocumentVisible(false);display();
- const first=items.find(x=>x.kind==='file'&&/\.(md|markdown|txt|ainote)$/i.test(x.name));
- if(first)await choose(first);else toast('雲端 Root 已載入，包含 '+items.length+' 個節點');
+ toast('雲端 Root 已載入，所有資料夾預設閉合（'+items.length+' 個節點）');
  rememberRoot();
 }
 window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{

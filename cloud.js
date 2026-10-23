@@ -112,6 +112,13 @@ async function uploadChunked(fileId,name,bytes,days,baseRevision){const hash=awa
 async function getChunked(id,revision){const meta=await api('/api/v378/files/'+id+'/meta'+(revision?'?revision='+encodeURIComponent(revision):''));if(meta.size_bytes>100*1024*1024)throw Error('ZIP 超過 100 MiB');const data=new Uint8Array(meta.size_bytes);let offset=0;for(let i=0;i<meta.part_count;i++){const res=await rawApi('/api/v378/files/'+id+'/parts/'+i+(revision?'?revision='+encodeURIComponent(revision):''),'GET');const bytes=new Uint8Array(await res.arrayBuffer());if(await shaBytes(bytes)!==res.headers.get('X-BV-SHA256'))throw Error('分片驗證失敗');data.set(bytes,offset);offset+=bytes.length;progress(5+90*(i+1)/meta.part_count,'取得分片 '+(i+1)+' / '+meta.part_count)}if(offset!==data.length||await shaBytes(data)!==meta.sha256)throw Error('完整 ZIP 驗證失敗');return {meta,bytes:data}}
 // v3.8.3: content-addressed incremental Cloud Root, SHA-256 verified on both directions.
 const DELTA_SIZE=256*1024;
+// Keep the proven 256 KiB Neon request size, but overlap three network requests.
+async function parallelChunks(items,concurrency,task){
+ let cursor=0;
+ await Promise.all(Array.from({length:Math.min(concurrency,items.length)},async()=>{
+  while(cursor<items.length){const i=cursor++;await task(items[i],i)}
+ }));
+}
 async function commitDelta(snapshot,meta){
  const entries=[],payload=new Map();let total=0;
  for(const item of snapshot.entries){
@@ -125,10 +132,11 @@ async function commitDelta(snapshot,meta){
  if(entries.length>2000)throw Error('檔案數量超過 2000');
  const all=[...payload.keys()];let missing=[];
  for(let i=0;i<all.length;i+=500){const response=await api('/api/v383/chunks/missing','POST',{hashes:all.slice(i,i+500)});missing.push(...response.missing)}
- for(let i=0;i<missing.length;i++){
-  const hash=missing[i];for(let retry=0;;retry++){try{await rawApi('/api/v383/chunks/'+hash,'PUT',payload.get(hash),{'Content-Type':'application/octet-stream'});break}catch(e){if(retry>=2)throw e;await new Promise(r=>setTimeout(r,400*(retry+1)))}}
-  progress(10+80*(i+1)/Math.max(1,missing.length),'增量上傳 '+(i+1)+' / '+missing.length);
- }
+ let uploaded=0;
+ await parallelChunks(missing,3,async hash=>{
+  for(let retry=0;;retry++){try{await rawApi('/api/v383/chunks/'+hash,'PUT',payload.get(hash),{'Content-Type':'application/octet-stream'});break}catch(e){if(retry>=2)throw e;await new Promise(r=>setTimeout(r,400*(retry+1)))}}
+  uploaded++;progress(10+80*uploaded/Math.max(1,missing.length),'增量上傳 '+uploaded+' / '+missing.length);
+ });
  const result=await api('/api/v383/files/'+snapshot.id+'/commit','POST',{base_revision:meta.revision,entries});
  msg('增量提交：'+missing.length+' 個新分片 / '+all.length+' 個不同分片');return result;
 }
@@ -141,11 +149,12 @@ async function getCloudArchive(id,revision){
  const entries=response.manifest;
  if(!Array.isArray(entries)||entries.length>2000)throw Error('雲端增量目錄無效');
  const unique=[...new Set(entries.flatMap(e=>e.chunks||[]))],cache=new Map();
- for(let i=0;i<unique.length;i++){
-  const hash=unique[i];const r=await rawApi('/api/v383/chunks/'+hash,'GET');const bytes=new Uint8Array(await r.arrayBuffer());
+ let downloaded=0;
+ await parallelChunks(unique,3,async hash=>{
+  const r=await rawApi('/api/v383/chunks/'+hash,'GET');const bytes=new Uint8Array(await r.arrayBuffer());
   if(await shaBytes(bytes)!==hash)throw Error('增量分片 SHA-256 驗證失敗');cache.set(hash,bytes);
-  progress(5+65*(i+1)/Math.max(1,unique.length),'下載增量分片 '+(i+1)+' / '+unique.length);
- }
+  downloaded++;progress(5+65*downloaded/Math.max(1,unique.length),'下載增量分片 '+downloaded+' / '+unique.length);
+ });
  for(const e of entries){if(e.dir){zip.folder(e.path);continue}
   total+=e.size;if(total>100*1024*1024)throw Error('雲端檔案超過 100 MiB');
   const data=new Uint8Array(e.size);let offset=0;for(const hash of e.chunks){const part=cache.get(hash);if(!part||offset+part.length>data.length)throw Error('增量檔案資料損壞');data.set(part,offset);offset+=part.length}
