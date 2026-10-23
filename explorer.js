@@ -52,7 +52,7 @@ async function loadCloudRoot(saved){
  nodeDB={version:1,rootId:uuid(),nodes:{}};recordDB={version:2,files:{}};
  const directories=new Map();directories.set('',null);
  const addDir=key=>{if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:{kind:'directory',name},parent,kind:'directory',order:sequence,buffer:null};items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x};
- for(const entry of saved.entries){const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
+ for(const entry of saved.entries){if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
  rootLabel.textContent=root.name;setDocumentVisible(false);display();
  const first=items.find(x=>x.kind==='file'&&/\.(md|markdown|txt|ainote)$/i.test(x.name));
  if(first)await choose(first);else toast('雲端 Root 已載入，包含 '+items.length+' 個節點');
@@ -63,8 +63,17 @@ window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{
  const key='bv378-root-'+id,existing=await cloudRead(key);
  if(existing&&!confirm('同一 Fold Hash ID 已存在 IndexedDB。是否以雲端版本 REPLACE？現有草稿將被覆蓋。'))return false;
  if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前 Explorer 有未儲存修改，是否仍要切換？'))return false;
- const safe=entries.map(e=>{if(typeof e.path!=='string'||!e.path||e.path.startsWith('/')||e.path.includes('\\')||e.path.split('/').some(v=>!v||v==='.'||v==='..'))throw Error('不安全的 ZIP 路徑');return {path:e.path,data:e.data}});
+ const safe=entries.map(e=>{if(typeof e.path!=='string'||!e.path||e.path.startsWith('/')||e.path.includes('\\')||e.path.split('/').some(v=>!v||v==='.'||v==='..'))throw Error('不安全的 ZIP 路徑');return {path:e.path,data:e.data,dir:!!e.dir}});
  const saved={id,name,entries:safe,updatedAt:Date.now()};await cloudWrite(key,saved);await loadCloudRoot(saved);return true;
+};
+window.BVCloudExportVirtualRoot=async()=>{
+ if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)throw Error('目前未選取雲端虛擬 Root');
+ const x=current();if(x?.kind==='file'&&dirty)x.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
+ const entries=[];for(const node of items.filter(n=>n.kind==='directory'))entries.push({path:path(node)+'/',dir:true});for(const node of items.filter(n=>n.kind==='file')){
+  const data=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
+  entries.push({path:path(node),data});
+ }
+ return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
 };
 window.BVCloudRestoreVirtualRoot=async(id)=>{const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true};
 // Restore without fetching from Neon; explicit action avoids unexpectedly replacing the current workspace.
@@ -78,7 +87,7 @@ singlePicker.onchange=()=>openSingleFile(singlePicker.files[0]).catch(e=>alert(e
 async function saveVirtual(){
  const x=current();if(x?.kind==='file')x.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
  if(cloudVirtualId&&root?.cloudId===cloudVirtualId){
-  const entries=[];for(const node of items.filter(n=>n.kind==='file')){
+  const entries=[];for(const node of items.filter(n=>n.kind==='directory'))entries.push({path:path(node)+'/',dir:true});for(const node of items.filter(n=>n.kind==='file')){
    const bytes=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
    entries.push({path:path(node),data:bytes});node.handle=memoryFile(node.name,bytes);node.buffer=null;
   }
