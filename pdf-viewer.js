@@ -1,6 +1,7 @@
+/* AREA A-4FC26477 START: pdf-viewer.js */
 // AREA A07 START: PDFViewer | File: pdf-viewer.js
 /* BV-Note PDF Viewer: isolated, read-only, no Markdown processing. */
-(()=>{
+(()=>{/* BLOCK B-3E60AA29DF START: AREA A-4FC26477 */
  const main=document.querySelector('.workspace main');
  const frame=document.createElement('iframe');
  frame.id='bv-pdf-viewer';frame.title='PDF 唯讀瀏覽器';
@@ -12,14 +13,16 @@
  wrap.append(frame,handle);
  main.append(wrap);
  let dragging=false,startY=0,startH=0;
- handle.addEventListener('pointerdown',e=>{dragging=true;startY=e.clientY;startH=wrap.getBoundingClientRect().height;handle.setPointerCapture(e.pointerId);e.preventDefault()});
- handle.addEventListener('pointermove',e=>{if(!dragging)return;const h=Math.max(240,Math.min(3000,startH+e.clientY-startY));wrap.style.height=h+'px'});
- const finish=()=>{if(dragging){dragging=false;try{localStorage.setItem('bv-pdf-height',String(Math.round(wrap.getBoundingClientRect().height)))}catch{}}};
+ handle.addEventListener('pointerdown',e=>{/* BLOCK B-A6F533AD67 START: AREA A-4FC26477 */dragging=true;startY=e.clientY;startH=wrap.getBoundingClientRect().height;handle.setPointerCapture(e.pointerId);e.preventDefault()/* BLOCK B-A6F533AD67 END. */});
+ handle.addEventListener('pointermove',e=>{/* BLOCK B-CA47C1F8B8 START: AREA A-4FC26477 */if(!dragging)return;const h=Math.max(240,Math.min(3000,startH+e.clientY-startY));wrap.style.height=h+'px'/* BLOCK B-CA47C1F8B8 END. */});
+ const finish=()=>{/* BLOCK B-01FE4D5D1A START: AREA A-4FC26477 */if(dragging){dragging=false;try{localStorage.setItem('bv-pdf-height',String(Math.round(wrap.getBoundingClientRect().height)))}catch{}}/* BLOCK B-01FE4D5D1A END. */};
  handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',finish);
- handle.addEventListener('keydown',e=>{if(!['ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const h=Math.max(240,Math.min(3000,wrap.getBoundingClientRect().height+(e.key==='ArrowDown'?40:-40)));wrap.style.height=h+'px';localStorage.setItem('bv-pdf-height',String(h))});
+ handle.addEventListener('keydown',e=>{/* BLOCK B-8DE612DA3F START: AREA A-4FC26477 */if(!['ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const h=Math.max(240,Math.min(3000,wrap.getBoundingClientRect().height+(e.key==='ArrowDown'?40:-40)));wrap.style.height=h+'px';localStorage.setItem('bv-pdf-height',String(h))/* BLOCK B-8DE612DA3F END. */});
  let url=null;let generation=0;
- function hide(){generation++;frame.style.display='none';wrap.style.display='none';frame.removeAttribute('src');if(url){URL.revokeObjectURL(url);url=null}}
- async function show(file){hide();if(!file||!(/\.pdf$/i.test(file.name)||file.type==='application/pdf'))throw Error('不是 PDF 文件');const n=generation;url=URL.createObjectURL(file);if(n!==generation)return;frame.src=url+'#toolbar=1&navpanes=0';frame.style.display='block';wrap.style.display='flex'}
- window.BVPdfViewer={show,hide,get active(){return frame.style.display!=='none'}};
-})();
+ function hide(){/* BLOCK B-421EBB2BAB START: AREA A-4FC26477 */generation++;frame.style.display='none';wrap.style.display='none';frame.removeAttribute('src');if(url){URL.revokeObjectURL(url);url=null}/* BLOCK B-421EBB2BAB END. */}
+ async function show(file){/* BLOCK B-FF35E972F7 START: AREA A-4FC26477 */hide();if(!file||!(/\.pdf$/i.test(file.name)||file.type==='application/pdf'))throw Error('不是 PDF 文件');const n=generation;url=URL.createObjectURL(file);if(n!==generation)return;frame.src=url+'#toolbar=1&navpanes=0';frame.style.display='block';wrap.style.display='flex'/* BLOCK B-FF35E972F7 END. */}
+ window.BVPdfViewer={show,hide,get active(){/* BLOCK B-5FF7278CA0 START: AREA A-4FC26477 */return frame.style.display!=='none'/* BLOCK B-5FF7278CA0 END. */}};
+/* BLOCK B-3E60AA29DF END. */})();
 // AREA A07 END: PDFViewer
+
+/* AREA A-4FC26477 END. */

@@ -1,4 +1,6 @@
+/* AREA A-5B9947B6 START: cloud-worker/worker.js */
 import {consoleApi} from './console-api.js';
+import {seappLogApi,reportSeappArea} from './seapp-log-api.js';
 import {report_webserver_powershell_log} from './console-log.js';
 import {authApi} from './auth.js';
 import {chunkApi} from './chunk-api.js';
@@ -8,7 +10,7 @@ import JSZip from 'jszip';
 import { neon } from '@neondatabase/serverless';
 const reply=(data,status=200,origin='')=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',...(origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{})}});
 // Apply CORS consistently to authentication responses, including 4xx/5xx.
-function withCors(response, origin) {
+function withCors(response, origin) {/* BLOCK B-A09199335D START: AREA A-5B9947B6 */
   const headers = new Headers(response.headers);
   if (origin) headers.set('Access-Control-Allow-Origin', origin);
   headers.set('Vary', 'Origin');
@@ -19,16 +21,16 @@ function withCors(response, origin) {
     statusText: response.statusText,
     headers
   });
-}
+/* BLOCK B-A09199335D END. */}
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
 const lifeDays=v=>Number.isInteger(v)&&[1,7,14,30,90].includes(v);
 const hex=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
-export default {async scheduled(event,env,ctx){ctx.waitUntil((async()=>{if(!env.DATABASE_URL)throw Error('DATABASE_URL missing');const sql=neon(env.DATABASE_URL);await sql`DELETE FROM cloud_files WHERE expires_at IS NOT NULL AND expires_at<=NOW()`;
+export default {async scheduled(event,env,ctx){/* BLOCK B-B4AE2444DD START: AREA A-5B9947B6 */ctx.waitUntil((async()=>{/* BLOCK B-A1F109136C START: AREA A-5B9947B6 */if(!env.DATABASE_URL)throw Error('DATABASE_URL missing');const sql=neon(env.DATABASE_URL);await sql`DELETE FROM cloud_files WHERE expires_at IS NOT NULL AND expires_at<=NOW()`;
 if(env.AI_UPLOADS){const listed=await env.AI_UPLOADS.list({prefix:'ai-temp/',limit:1000});const expired=listed.objects.filter(o=>o.uploaded&&Date.now()-new Date(o.uploaded).getTime()>24*3600*1000).map(o=>o.key);if(expired.length)await env.AI_UPLOADS.delete(expired)}
-await sql`DELETE FROM bv_console_guests WHERE last_seen < NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_console_ip_history WHERE seen_at < NOW()-INTERVAL '30 days'`;await sql`DELETE FROM bv_guest_request_seconds WHERE second_at < NOW()-INTERVAL '2 days'`;await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads WHERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`})())},async fetch(req,env,ctx){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Guest-ID, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count, X-BV-SHA256, X-BV-Console-Admin','Access-Control-Max-Age':'3600','Vary':'Origin'}});
+await sql`DELETE FROM bv_console_guests WHERE last_seen < NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_console_ip_history WHERE seen_at < NOW()-INTERVAL '30 days'`;await sql`DELETE FROM bv_guest_request_seconds WHERE second_at < NOW()-INTERVAL '2 days'`;await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads WHERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`/* BLOCK B-A1F109136C END. */})())/* BLOCK B-B4AE2444DD END. */},async fetch(req,env,ctx){/* BLOCK B-361BF06909 START: AREA A-5B9947B6 */const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Guest-ID, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count, X-BV-SHA256, X-BV-Console-Admin','Access-Control-Max-Age':'3600','Vary':'Origin'}});
 try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;
 // Best-effort identity/IP accounting. Guest token is a non-authorizing pseudonym.
-if(path.startsWith('/api/')&&req.method!=='OPTIONS')ctx.waitUntil((async()=>{try{
+if(path.startsWith('/api/')&&req.method!=='OPTIONS')ctx.waitUntil((async()=>{/* BLOCK B-C61977EB05 START: AREA A-5B9947B6 */try{
  const ip=(req.headers.get('CF-Connecting-IP')||'').slice(0,45);
  const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];
  let identity=null,guestNumber=null;
@@ -42,10 +44,10 @@ if(path.startsWith('/api/')&&req.method!=='OPTIONS')ctx.waitUntil((async()=>{try
  await sql`INSERT INTO bv_guest_request_seconds(guest_number,second_at,request_count) VALUES(${guestNumber},date_trunc('second',NOW()),1) ON CONFLICT(guest_number,second_at) DO UPDATE SET request_count=bv_guest_request_seconds.request_count+1`;
  }
  if(ip&&identity)await sql`INSERT INTO bv_console_ip_history(identity,ip,seen_at) VALUES(${identity},${ip},NOW())`;
- }catch(e){console.error('Console identity metrics:',e)}})());
+ }catch(e){console.error('Console identity metrics:',e)}/* BLOCK B-C61977EB05 END. */})());
 // Best-effort authenticated per-second request counter; no request bodies or tokens stored.
-if(path.startsWith('/api/') && req.method!=='OPTIONS')ctx.waitUntil((async()=>{try{const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return;const hash=await hex(token);await sql`INSERT INTO bv_account_request_seconds(user_id,second_at,request_count) SELECT user_id,date_trunc('second',NOW()),1 FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() ON CONFLICT(user_id,second_at) DO UPDATE SET request_count=bv_account_request_seconds.request_count+1`}catch(e){console.error('Account request metric failed',e)}})());
-const consoleResponse=await consoleApi(req,env,path,sql);if(consoleResponse)return withCors(consoleResponse,cors);const deltaResponse=await deltaApi(req,env,path,sql);if(deltaResponse)return withCors(deltaResponse,cors);const chunkResponse=await chunkApi(req,env,path,sql);if(chunkResponse)return withCors(chunkResponse,cors);const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
+if(path.startsWith('/api/') && req.method!=='OPTIONS')ctx.waitUntil((async()=>{/* BLOCK B-CEAEAE3D44 START: AREA A-5B9947B6 */try{const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return;const hash=await hex(token);await sql`INSERT INTO bv_account_request_seconds(user_id,second_at,request_count) SELECT user_id,date_trunc('second',NOW()),1 FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() ON CONFLICT(user_id,second_at) DO UPDATE SET request_count=bv_account_request_seconds.request_count+1`}catch(e){console.error('Account request metric failed',e)}/* BLOCK B-CEAEAE3D44 END. */})());
+const logResponse=await seappLogApi(req,env,path,sql);if(logResponse)return withCors(logResponse,cors);const consoleResponse=await consoleApi(req,env,path,sql);if(consoleResponse)return withCors(consoleResponse,cors);const deltaResponse=await deltaApi(req,env,path,sql);if(deltaResponse)return withCors(deltaResponse,cors);const chunkResponse=await chunkApi(req,env,path,sql);if(chunkResponse)return withCors(chunkResponse,cors);const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
 let match;
 if(path==='/api/projects'&&req.method==='POST'){const b=await req.json();if(typeof b.name!=='string'||!b.name.trim()||b.name.length>150)throw Error('專案名稱無效');const id=crypto.randomUUID();await sql`INSERT INTO projects(id,name) VALUES(${id},${b.name.trim()})`;return reply({project_id:id},201,cors)}
 if(path==='/api/health'&&req.method==='GET')return reply({ok:true},200,cors);
@@ -69,5 +71,7 @@ if(typeof content!=='string'||new TextEncoder().encode(content).length>1024*1024
 if((match=path.match(/^\/api\/files\/([^/]+)$/))&&req.method==='DELETE'){const id=match[1];if(!uuid(id))return reply({error:'ID 無效'},400,cors);const rows=await sql`DELETE FROM cloud_files WHERE file_id=${id} RETURNING file_id`;return rows.length?reply({deleted:true,file_id:id},200,cors):reply({error:'找不到文件'},404,cors)}
 if((match=path.match(/^\/api\/files\/([^/]+)$/))&&req.method==='GET'){const id=match[1];if(!uuid(id))throw Error('ID 無效');const q=new URL(req.url).searchParams.get('revision');const f=await sql`SELECT name,revision FROM cloud_files WHERE file_id=${id} AND (expires_at IS NULL OR expires_at>NOW())`;if(!f.length)return reply({error:'找不到文件'},404,cors);const rev=q?Number(q):f[0].revision;if(!Number.isInteger(rev)||rev<1)throw Error('版本號無效');const rows=await sql`SELECT content,sha256,created_at FROM commits WHERE file_id=${id} AND revision=${rev}`;if(!rows.length)return reply({error:'找不到版本'},404,cors);return reply({file_id:id,name:f[0].name,revision:rev,...rows[0]},200,cors)}
 return reply({error:'找不到 API 路由'},404,cors);
-}catch(e){console.error('Cloud API error',e);return reply({error:e.message==='Unexpected end of JSON input'?'JSON 格式錯誤':String(e.message||'服務發生錯誤').slice(0,200)},400,cors)}}};
+}catch(e){console.error('Cloud API error',e);if(env.DATABASE_URL)ctx.waitUntil(reportSeappArea(neon(env.DATABASE_URL),{trace_id:crypto.randomUUID(),behavior_id:'BH-API',condition_id:'C-API-ERROR',step_id:'S-API-ERROR',area_id:'A-CLOUD-API',success:0,error_id:'SEAPP-API-001',message:String(e.message||'Cloud error').slice(0,160),file_path:'cloud-worker/worker.js',function_name:'fetch',suggestion:'Inspect Worker routing and input validation'}).catch(()=>{}));return reply({error:e.message==='Unexpected end of JSON input'?'JSON 格式錯誤':String(e.message||'服務發生錯誤').slice(0,200)},400,cors)}/* BLOCK B-361BF06909 END. */}};
 // AREA A11 END: CloudAPI
+
+/* AREA A-5B9947B6 END. */

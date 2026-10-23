@@ -1,0 +1,4337 @@
+{
+  "blocks": [
+    {
+      "id": "B-BEC8428B61",
+      "name": "anonymous",
+      "area": "A-9C0072F2",
+      "file": "mermaid-support.js",
+      "line": 4,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-83CAA2E301",
+      "name": "fallback",
+      "area": "A-9C0072F2",
+      "file": "mermaid-support.js",
+      "line": 8,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-77A312DE53",
+      "name": "anonymous",
+      "area": "A-9C0072F2",
+      "file": "mermaid-support.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E19C6B9F87",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 3,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-106A3C4514",
+      "name": "showPopup",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 11,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-EB90074BF4",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 11,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-66109493B0",
+      "name": "selectionAnchor",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 12,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-DEEC7F36BA",
+      "name": "saveRecords",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 16,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6AAB45165C",
+      "name": "readRecords",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 29,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-ABAA9E213E",
+      "name": "reconcile",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 30,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BE362D2FCD",
+      "name": "addMark",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 31,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-667824FFB3",
+      "name": "hideMarkFloat",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 42,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9728E9608D",
+      "name": "showMarkFloat",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 43,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F01610D0CD",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 52,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-06DC43FF76",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 59,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C62220D08D",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 61,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E036182E42",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 66,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6E08E85149",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 67,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9A05B79098",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 68,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-680855BD77",
+      "name": "downloadMarkList",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 69,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-44AF0166BD",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 73,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-55DD33FCA5",
+      "name": "renderMarks",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 77,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-13E1B31416",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 84,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-09F766445D",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 85,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5582C6A5D3",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 85,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7D114A1E02",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 91,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C5566CF8E9",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 92,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4E7507F960",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 93,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5336934BD2",
+      "name": "getSelected",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 98,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BD2D52ED00",
+      "name": "button",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 99,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-5B79FA3ED2",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 99,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-137E94266F",
+      "name": "showMenu",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 100,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E255302F92",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 100,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-238EB0A909",
+      "name": "locate",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 101,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-1BE99B0A1E",
+      "name": "resolveMarkOffset",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 112,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-AAA7D4B501",
+      "name": "renderPanel",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 118,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-58A24A720D",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 118,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F107C43CB9",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 118,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-91B6E952A4",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 119,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D5CC37DA4A",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 119,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-81298AB033",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 119,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-1D332FCFDB",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8514BA15EE",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-FA26E44B9B",
+      "name": "actions",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-83D42D5232",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-536303930E",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7A2C2F8CFA",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-65C45A9EDB",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 120,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-527C258B4F",
+      "name": "decorate",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 121,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-63C0089A24",
+      "name": "wrapText",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 124,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FDD3D3DD2D",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 144,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-BB11886D8A",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 145,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7FDEF4F4CC",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 146,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6B8068D6F2",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 147,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-36CA2C3FA8",
+      "name": "rememberSelection",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 151,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-61E7B7CE63",
+      "name": "imageMarkdown",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 161,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-7CBB04B3DA",
+      "name": "insertSelectedImage",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 162,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BD5532637E",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 166,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C78D432EA4",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 179,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A276FECD4B",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 181,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6BE25E5A35",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 184,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-1ED1A26E00",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 187,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-136F78D897",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 189,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-80A141E30C",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 196,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-000CFD49D5",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 206,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5962B3823F",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 212,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-96F5A55177",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 219,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F040BDBCD5",
+      "name": "anonymous",
+      "area": "A-DC1909B7",
+      "file": "toc.js",
+      "line": 230,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5ED7BFF7C4",
+      "name": "anonymous",
+      "area": "A-DE1077ED",
+      "file": "ui-v3518.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-AF0451525E",
+      "name": "anonymous",
+      "area": "A-DE1077ED",
+      "file": "ui-v3518.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-29BC12BA22",
+      "name": "inline",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 5,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A916E1B853",
+      "name": "hold",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 6,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-59B737A186",
+      "name": "markdownToHTML",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 15,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B9F2D948A0",
+      "name": "texToMathML",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 41,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A1B7DC8E3A",
+      "name": "group",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 43,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-69A043610C",
+      "name": "atom",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 44,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-92B83AA39A",
+      "name": "strip",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 45,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-DEFCE947D2",
+      "name": "wrap",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 45,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6470427D42",
+      "name": "parse",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 46,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-662E815686",
+      "name": "renderMathElements",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 49,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B5CD205FBB",
+      "name": "anonymous",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 49,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-16A9388A15",
+      "name": "svgDataImages",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 57,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4DD30D8A7C",
+      "name": "anonymous",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 59,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-452F9CD4A1",
+      "name": "anonymous",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 70,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7F73891728",
+      "name": "parseDocument",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 80,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6D5E239E71",
+      "name": "anonymous",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 84,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0D6DAFF0A5",
+      "name": "protectMath",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 91,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D14E16EEA2",
+      "name": "anonymous",
+      "area": "A-99D75600",
+      "file": "renderer.js",
+      "line": 102,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C681CA29D7",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 3,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6267D82679",
+      "name": "draftStore",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4A7D37C1FF",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 10,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2029A9C501",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 14,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-200C498312",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 17,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-227B588F70",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 18,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D17A6547FF",
+      "name": "virtualFile",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 22,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-24C9E033DE",
+      "name": "getFile",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 24,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-50B4AE4096",
+      "name": "createWritable",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 25,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-90C179CB56",
+      "name": "write",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 25,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-3ACDBB4026",
+      "name": "close",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 25,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-8D881CAAE7",
+      "name": "openSingleFile",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 27,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-948B4F6507",
+      "name": "cloudDB",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 45,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-521DC3AC69",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 45,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-07C6B3E5B9",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 45,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-DA76AD161E",
+      "name": "cloudRead",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 46,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4657B2A34C",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 46,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A77F2033C7",
+      "name": "cloudWrite",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 47,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-246AAE9FCB",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 47,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-45F194B75D",
+      "name": "memoryFile",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 48,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-97AA4567EC",
+      "name": "getFile",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 48,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-6BE354EAF2",
+      "name": "createWritable",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 48,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-EB05E7E345",
+      "name": "write",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 48,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-96FC6EE372",
+      "name": "close",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 48,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-C92CB4E9FE",
+      "name": "bytes",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 48,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-E34F726A6E",
+      "name": "cloudDir",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 50,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E484864D2F",
+      "name": "entries",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 51,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-BEA929C9DF",
+      "name": "getFileHandle",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 52,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-B8D2E303F5",
+      "name": "getDirectoryHandle",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 53,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-9B93CDEDCC",
+      "name": "removeEntry",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 54,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-0F5A5C9E6D",
+      "name": "queueCloudSave",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 57,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-5898DF5703",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 57,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7667D6DE5D",
+      "name": "loadCloudRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 58,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-377FE82FD6",
+      "name": "addDir",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 63,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5A063C7F29",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 72,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-471772DF34",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 77,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6C8D776EC8",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 88,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9C9ADE08B8",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 97,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7CA8CEE5BB",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 100,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-880BBCE340",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CB29A6CBC6",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 107,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9D860A2C34",
+      "name": "ensureDir",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 110,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-3D15A8F236",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 115,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-26AC44A1E1",
+      "name": "saveVirtual",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 124,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-AA56E4411D",
+      "name": "writeJSON",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 151,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-14E7D87CA9",
+      "name": "flushRecordDB",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 152,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-DC70EA256C",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 152,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B2A32B9CD3",
+      "name": "flushNodeDB",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 153,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6507D369C4",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 153,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E1F5CED091",
+      "name": "canonicalRecordKey",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 154,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-8A7F2239B0",
+      "name": "loadNodeDB",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 155,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-EC86773141",
+      "name": "loadRecordDB",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 165,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4359164BA3",
+      "name": "resolveRecordId",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 177,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F95D77AC7F",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 179,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-09E97CD129",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 179,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C4F09400ED",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 181,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5DDC6E6A4C",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 182,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-84918F2C0E",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 183,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B0EABC8574",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 185,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-018C899637",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 186,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4622D18037",
+      "name": "captureRecordPaths",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 187,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E0A475AE3E",
+      "name": "relocateRecords",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 188,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B75E74F8FE",
+      "name": "normalizeOrders",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 195,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0D2D34BB51",
+      "name": "loadOrders",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 196,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-92E3090C2B",
+      "name": "saveOrders",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 197,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-992430933E",
+      "name": "walk",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 197,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F811CB37C5",
+      "name": "setSider",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 201,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F3FFFA3FD4",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 208,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7C9E0FF680",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 209,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6671261713",
+      "name": "stopDrag",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 210,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F95EFFADCB",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 212,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C4F779996C",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 212,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-7C682DE530",
+      "name": "setDocumentVisible",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 218,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-5CD77D2183",
+      "name": "refreshUnsaved",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 219,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E0FB9CE775",
+      "name": "switchMode",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 226,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F9507E5AB7",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 227,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-AC437041CD",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 233,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-20FE486753",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 246,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-1BC373A733",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 274,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E1FB361D8A",
+      "name": "current",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 275,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C537FF3D7A",
+      "name": "path",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 276,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-03B1BF283F",
+      "name": "siblings",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 277,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-DE8438BDAB",
+      "name": "scan",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 278,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-7F20F2F351",
+      "name": "renameRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 279,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-DE362462B5",
+      "name": "copyVerify",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 301,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6465C14776",
+      "name": "snapshotRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 315,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-90DFDA6E57",
+      "name": "rememberRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 323,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-46FC5B1B7B",
+      "name": "activateRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 327,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E605760B00",
+      "name": "renderOtherRoots",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 344,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BFA94A92AE",
+      "name": "drawInactive",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 353,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4B80143376",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 356,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-750698DC3F",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 359,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F75291C6FB",
+      "name": "reorderRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 368,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A52A5688FA",
+      "name": "enableRootOrdering",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 374,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B282B0EC9C",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 380,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B238E0EEAC",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 381,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F5F8876CBE",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 383,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A5A7D55063",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 384,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-14EA70EB51",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 386,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-867316B9C2",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 386,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-56B4C1ECFE",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 387,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-69DBF16437",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 388,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-1EE655F4C6",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 389,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5C29B82EFF",
+      "name": "openRootFromHandle",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 398,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9373222183",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 399,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-DEE881986C",
+      "name": "importFiles",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 410,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-59D503DCC0",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 415,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-45CF103403",
+      "name": "zipCRC",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 430,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6E063F9D3D",
+      "name": "makeZip",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 431,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-81CC6C25B6",
+      "name": "exportNode",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 441,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-078D27FE78",
+      "name": "collect",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 443,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-29EB4A4697",
+      "name": "rootMenu",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 448,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D59476608A",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 451,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C9B5A8C634",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 458,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9669E80AD5",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 459,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5CDD2C831E",
+      "name": "display",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 460,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-7C4CFA0ABF",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 469,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E26E92CE06",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 470,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-280DA73CD4",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 471,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-FBDBB57E01",
+      "name": "draw",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 474,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C513D90AE9",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 474,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D5CF445255",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 475,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CBC58DCFED",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 475,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-965BA24F07",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 475,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9B02BC130C",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 478,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C7155B6F2F",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 482,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-249E9695AE",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 486,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-368BCCF08A",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 489,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0904BE65F4",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 490,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B1F3C84D21",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 491,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4E8B497299",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 492,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2880378987",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 492,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-17747FA877",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 492,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-58255ABDCE",
+      "name": "readingKey",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 499,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-5580F8E186",
+      "name": "rememberReadingPosition",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 500,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-7E87888BD5",
+      "name": "restoreReadingPosition",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 505,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-8FAC6FC3B9",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 510,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-432A977287",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 513,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8DA52281B0",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 516,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C09DBAE911",
+      "name": "choose",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 521,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-19C714B4C6",
+      "name": "saveAll",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 547,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-1EC982FAE8",
+      "name": "openRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 548,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A11F0A0A3D",
+      "name": "closeRoot",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 557,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D9663A5614",
+      "name": "dirOf",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 567,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9277220E37",
+      "name": "normalizeNewFileName",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 568,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D977979554",
+      "name": "createCloudNode",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 572,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-3DAFFD6699",
+      "name": "create",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 601,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E75B84D613",
+      "name": "inlineName",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 602,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-34F585E353",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 602,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B6FFC15AA9",
+      "name": "done",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 602,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-16BC483B49",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 602,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5BECC5E944",
+      "name": "copyNode",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 603,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F7BEC6FA05",
+      "name": "isChild",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 614,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-93163E0358",
+      "name": "rebindDescendants",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 617,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A5A0BD81B7",
+      "name": "cloudRemove",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 625,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C6DA3CBC19",
+      "name": "removeNode",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 632,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D50E61107F",
+      "name": "rename",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 648,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-2779ACA58E",
+      "name": "move",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 672,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F5B1E0B8A7",
+      "name": "moveWithPicker",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 704,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E2B588A48D",
+      "name": "targets",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 731,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D3B94F62B8",
+      "name": "resetBatch",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 732,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-CCF464CA2B",
+      "name": "deleteTargets",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 733,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B86D2BA43F",
+      "name": "clipTargets",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 734,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-409DBBEDB2",
+      "name": "pasteTargets",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 735,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-CDEEE1D8B6",
+      "name": "clone",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 738,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-350BF31E5F",
+      "name": "cloneChildren",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 740,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-753B7697EE",
+      "name": "operateMenu",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 741,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-EAE57E4C83",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 741,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-FA191A3785",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 741,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-30BF3B6CE6",
+      "name": "positionMenu",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 742,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9243EE32A8",
+      "name": "importFiles",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 743,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-561584BD68",
+      "name": "menu",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 744,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C76B14FC8E",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 751,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-379AFD131B",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 752,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-EEB9F54AEE",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 755,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E27789ED1D",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 759,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C4B19B196D",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 760,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2CE02FFE98",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 760,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8D2D4FC881",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 760,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5F5D9AD345",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 761,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D713771C34",
+      "name": "syncExternal",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 763,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-180A138B31",
+      "name": "walk",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 763,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-2154D05999",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 764,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E738FF279B",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 764,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CFB7CC84F7",
+      "name": "anonymous",
+      "area": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "line": 766,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0538952312",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 3,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-94BCA46384",
+      "name": "msg",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 4,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E99E3059B3",
+      "name": "apiUrl",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 8,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-956A4C24EE",
+      "name": "api",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-506B8EBD76",
+      "name": "show",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 10,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BEC2EC1039",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 11,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9FA7114C33",
+      "name": "progress",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 13,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0C4C3D8EF1",
+      "name": "run",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 14,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-2D3B0705F0",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 14,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9A09C5C3F8",
+      "name": "life",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 15,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0FA4625464",
+      "name": "showCreatePanel",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 16,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C49E6EED74",
+      "name": "el",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 18,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FB447ACCBB",
+      "name": "renderFiles",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 19,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4E30C734D8",
+      "name": "upsert",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 20,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F555AA4E83",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 21,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0FAC26308F",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 22,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CF94C4C855",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 23,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0C3A2490A8",
+      "name": "autoSearch",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 25,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A41B6A2FBB",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 26,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A77AAA87D7",
+      "name": "history",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 27,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-EB27108C58",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 27,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-3C6A986DFB",
+      "name": "saveBlob",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 28,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-CA4AF9FCAE",
+      "name": "bytesToBase64",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 29,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-FBB2EA6F7E",
+      "name": "zipFolder",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 31,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FFFE3D0C30",
+      "name": "walk",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 31,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C1C6031F8D",
+      "name": "zipManifest",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 33,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-02094695E7",
+      "name": "localSnapshot",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 34,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-3CCDF13D6E",
+      "name": "walk",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 34,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0B94EF4F09",
+      "name": "buildIncremental",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 35,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D320D7E967",
+      "name": "readHashInfo",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 36,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-12CA210476",
+      "name": "readHashId",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 37,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D1292809E5",
+      "name": "writeHashId",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 39,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-1303AEEE2B",
+      "name": "getCloud",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 40,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C5D3CD2A63",
+      "name": "download",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 41,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C9A81C76F9",
+      "name": "removeFile",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 65,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6A9CFB9425",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 66,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8512D08941",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 67,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-DF0B6A667F",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 68,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0C84501AC3",
+      "name": "updateCommitButton",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 69,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D7F487C745",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 70,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2A58141C1B",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 90,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6CC81BC787",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 91,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6212A356C6",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 92,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-1492515DE1",
+      "name": "closeCloudMenu",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9D515819CC",
+      "name": "positionCloudMenu",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E2EA6A97D1",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-47F3893F40",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2E98C3589E",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-18AA16C25B",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8B922A69EA",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-126C9012C7",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4D6ED6E16B",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 107,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A6D3355F9E",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 108,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9F68BA37AE",
+      "name": "rawApi",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 110,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-8A1655B8A2",
+      "name": "uploadRetry",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 113,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F01BB43AA8",
+      "name": "uploadChunked",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 114,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-354E7F1DB3",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 125,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9732B4C3D2",
+      "name": "getChunked",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 144,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C330278073",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 148,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-351A546879",
+      "name": "parallelChunks",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 162,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-93E0BB9892",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 164,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6D033C3A40",
+      "name": "commitDelta",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 168,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BDE1F8E670",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 182,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-15750876FC",
+      "name": "getCloudArchive",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 189,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A2E9BF0897",
+      "name": "anonymous",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 199,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-23118B012B",
+      "name": "editCloud",
+      "area": "A-92173C99",
+      "file": "cloud.js",
+      "line": 213,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-05240EDBE1",
+      "name": "anonymous",
+      "area": "A-B86E051F",
+      "file": "cloud-config.js",
+      "line": 9,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-DDA96DEE61",
+      "name": "anonymous",
+      "area": "A-B86E051F",
+      "file": "cloud-config.js",
+      "line": 9,
+      "kind": "FunctionExpression"
+    },
+    {
+      "id": "B-C0BDFDF50B",
+      "name": "anonymous",
+      "area": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6A294A7CB9",
+      "name": "protect",
+      "area": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "line": 4,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-84F29D379A",
+      "name": "anonymous",
+      "area": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "line": 13,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-EC4F0BA2D2",
+      "name": "anonymous",
+      "area": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "line": 14,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CB8E7BEA52",
+      "name": "anonymous",
+      "area": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E0155562AB",
+      "name": "init",
+      "area": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "line": 17,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D50AEEE082",
+      "name": "anonymous",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CE542248D2",
+      "name": "mode",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-5452A08CF4",
+      "name": "update",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A6B3322561",
+      "name": "anonymous",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8C2E91FF29",
+      "name": "go",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-93BD43A43D",
+      "name": "anonymous",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-880C78E73F",
+      "name": "anonymous",
+      "area": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4FFB13172D",
+      "name": "anonymous",
+      "area": "A-399333BE",
+      "file": "ai-composer-toggle-v375.js",
+      "line": 2,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-81369F112A",
+      "name": "apply",
+      "area": "A-399333BE",
+      "file": "ai-composer-toggle-v375.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-76C92F125D",
+      "name": "anonymous",
+      "area": "A-399333BE",
+      "file": "ai-composer-toggle-v375.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-3E60AA29DF",
+      "name": "anonymous",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 3,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A6F533AD67",
+      "name": "anonymous",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CA47C1F8B8",
+      "name": "anonymous",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 16,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-01FE4D5D1A",
+      "name": "finish",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 17,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8DE612DA3F",
+      "name": "anonymous",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 19,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-421EBB2BAB",
+      "name": "hide",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 21,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FF35E972F7",
+      "name": "show",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 22,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-5FF7278CA0",
+      "name": "active",
+      "area": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "line": 23,
+      "kind": "GetAccessor"
+    },
+    {
+      "id": "B-4953ED418D",
+      "name": "markdownFromEditor",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 6,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A7C1B1D486",
+      "name": "renderRaw",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 7,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A98A8F65EE",
+      "name": "updateRawFromVisual",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 8,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-2C8028A457",
+      "name": "status",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 13,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4A8421DAC0",
+      "name": "setName",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 13,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4F45B9D030",
+      "name": "changed",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 13,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B9193D5624",
+      "name": "safeHTML",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 15,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-1A376AAB2D",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 18,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F1D08273DF",
+      "name": "renderLooseMath",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 22,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D12B86DDCA",
+      "name": "insert",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 39,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A52EA9F449",
+      "name": "normalizeCopiedMath",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 43,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-3CFFCF3F46",
+      "name": "richOrMarkdown",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 69,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D1733B7DD1",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 77,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A061A62387",
+      "name": "images",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 78,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-3491DF5CBD",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 79,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6132128972",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 80,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2F6C36C497",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 80,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5A9A0F2B7C",
+      "name": "openFile",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 81,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F17519D079",
+      "name": "htmlToMarkdown",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 82,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-D0C65AF4AB",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 83,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F7EA5CD6CB",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 84,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F45CBF933C",
+      "name": "download",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 85,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-2D3A54EAC3",
+      "name": "save",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 86,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-94CB977F07",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 106,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-56095B70C8",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 110,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0E34447FCD",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 111,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-94592FE6D9",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 113,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5F74F1DFA7",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 126,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-16C8F1658E",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 127,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2F293D2E6C",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 128,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-97F6AEFC48",
+      "name": "hasPendingMath",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 134,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B23D9E3950",
+      "name": "renderSplitDisplayMath",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 144,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-326B0E234E",
+      "name": "refreshMathNow",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 160,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9FCD566336",
+      "name": "scheduleMathRender",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 169,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0225AB97AE",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 173,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5524CEE771",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 182,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-46ACB6BD9C",
+      "name": "position",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 186,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B976575A36",
+      "name": "close",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 194,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6C29A2EDED",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 195,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A4828CC074",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 196,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A4DA7E5725",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 197,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-137A0A304E",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 198,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CE97CE3E1A",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 200,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CE6C0E7F12",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 201,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-282A196E80",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 202,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B29B37864A",
+      "name": "anonymous",
+      "area": "A-4A68969E",
+      "file": "app.js",
+      "line": 207,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-13C2926818",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 1,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6EC115E4DA",
+      "name": "request",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 2,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BDDEFE320D",
+      "name": "update",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 3,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-F590136D58",
+      "name": "refresh",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 4,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-CB7A88356E",
+      "name": "show",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 5,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E2E85C838C",
+      "name": "setPasswordPanel",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 7,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A86CE0DA32",
+      "name": "switchMode",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-ABB346B3BF",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 22,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6FE8013F7F",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 25,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2F89809CDE",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 26,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-713538E534",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 27,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5BE650BE34",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 28,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F4DDE90B3B",
+      "name": "googleSignIn",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 54,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-94585B8752",
+      "name": "renderGoogleButton",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 59,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-EB08C60DD8",
+      "name": "retry",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 63,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-983C2674D0",
+      "name": "anonymous",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 67,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E89FEFE8C2",
+      "name": "clearTransientInputs",
+      "area": "A-455629A1",
+      "file": "auth-ui.js",
+      "line": 69,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E54F5EAA88",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 3,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-63618951E3",
+      "name": "persist",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 5,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B6E24B5681",
+      "name": "notice",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 6,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-43CB01E99F",
+      "name": "sidebar",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 7,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-ACEE08FCFA",
+      "name": "saveBeforeSwitch",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 8,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-354A5AADF0",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 8,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8A8650A8E7",
+      "name": "enter",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0D7B98D2E2",
+      "name": "back",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 10,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-8320E7182A",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 11,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-99B2B5AD3E",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 11,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-04C51250A7",
+      "name": "current",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 13,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-284BB13D16",
+      "name": "numberFor",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 14,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-391086A95C",
+      "name": "renderTree",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A1F1728379",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-3CB3862899",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F83EBBE21A",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-AB40064CAA",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-67CB5E7BBE",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F507268D37",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-31E4E13470",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-1E63DE1E54",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2F8CCCEEB2",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-E292506A75",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-8F8F547B9F",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-90AB02C075",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-DC288B54F5",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-C88C47D3CF",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 15,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-551F3ECF48",
+      "name": "reorder",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 16,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-4D19D369A9",
+      "name": "hideContext",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 17,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-A6E10C0B6C",
+      "name": "showContext",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 17,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-243F78A2AE",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 18,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-3E04FFBC81",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 19,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-AAE428B54E",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 20,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0D56BEE018",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 21,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-38EF877747",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 22,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-EBBBE7F3F1",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 22,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-360EB23ED8",
+      "name": "deleteBlock",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 23,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-ADF348275A",
+      "name": "renderMarkdown",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 24,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-08B4498D93",
+      "name": "renderThread",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 25,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6960E7212F",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 25,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-5CC3927F73",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 25,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-4B30F0F9D2",
+      "name": "createChat",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 26,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-31839F4D07",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 27,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-6F0E7D6C0F",
+      "name": "exportMarkdown",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 28,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-0A891A5172",
+      "name": "download",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 29,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BE531A0AF0",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 30,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A7876713CE",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 30,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D4C107E10F",
+      "name": "positionMenu",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 31,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-046E46CA4F",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 32,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2C5AFDBC2B",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 33,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A8D585C623",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 34,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-015B55C180",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 34,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9540362BC6",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 44,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-3B6698F95D",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 45,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-2EA10F8BA5",
+      "name": "extractedText",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 46,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-E8D9616129",
+      "name": "showAttachments",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 47,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FD27D930C0",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 47,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F9F2CC0A89",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 47,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-F813CD8C51",
+      "name": "uploadSiteAttachment",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 49,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6904B0103D",
+      "name": "asDataURL",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 73,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FD431A1449",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 73,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-D398D7B48C",
+      "name": "send",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 74,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C16400D34F",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 99,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A7E449966A",
+      "name": "anonymous",
+      "area": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "line": 100,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-BD4EB095CD",
+      "name": "fetch",
+      "area": "A-D1666F64",
+      "file": "ai-byok-worker/worker.js",
+      "line": 5,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-266C0E3838",
+      "name": "anonymous",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-9087B5B6FD",
+      "name": "line",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0E07C8D857",
+      "name": "token",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9A3A2ACF50",
+      "name": "base",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-548EA6696B",
+      "name": "refresh",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-15537A7529",
+      "name": "anonymous",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0A55C8BD8C",
+      "name": "anonymous",
+      "area": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "line": 1,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-0785D4FE9C",
+      "name": "report_webserver_powershell_log",
+      "area": "A-EC9F6700",
+      "file": "cloud-worker/console-log.js",
+      "line": 3,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C37C4BFD1F",
+      "name": "owner",
+      "area": "A-72B8CE0F",
+      "file": "cloud-worker/chunk-api.js",
+      "line": 10,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-115EF87E66",
+      "name": "chunkApi",
+      "area": "A-72B8CE0F",
+      "file": "cloud-worker/chunk-api.js",
+      "line": 11,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-2BA1DB9902",
+      "name": "who",
+      "area": "A-3717F8F5",
+      "file": "cloud-worker/delta-api.js",
+      "line": 7,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6EB0E53F5C",
+      "name": "deltaApi",
+      "area": "A-3717F8F5",
+      "file": "cloud-worker/delta-api.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-C92F012D59",
+      "name": "fetch",
+      "area": "A-6C39DBD4",
+      "file": "cloud-worker/crypto-test.js",
+      "line": 2,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-21D3550CFE",
+      "name": "digest",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 4,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-BFFA99F508",
+      "name": "b64",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 6,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-229696DC43",
+      "name": "signature",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 7,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-8100AC6864",
+      "name": "issueAdmin",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 8,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-AC4C3A1C91",
+      "name": "isAdmin",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 9,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-111FF81BE8",
+      "name": "getUser",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 29,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-827669D378",
+      "name": "fail",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 30,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-ED6CE69634",
+      "name": "consoleApi",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 31,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-9CD27A117F",
+      "name": "1",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 60,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-59F2CC4C86",
+      "name": "2",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 61,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-B59621727B",
+      "name": "3",
+      "area": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "line": 62,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-A09199335D",
+      "name": "withCors",
+      "area": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "line": 11,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-B4AE2444DD",
+      "name": "scheduled",
+      "area": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "line": 26,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-A1F109136C",
+      "name": "anonymous",
+      "area": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "line": 26,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-361BF06909",
+      "name": "fetch",
+      "area": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "line": 28,
+      "kind": "MethodDeclaration"
+    },
+    {
+      "id": "B-C61977EB05",
+      "name": "anonymous",
+      "area": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "line": 31,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-CEAEAE3D44",
+      "name": "anonymous",
+      "area": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "line": 47,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-52477918CA",
+      "name": "newUUID",
+      "area": "A-10DFC911",
+      "file": "cloud-worker/auth.js",
+      "line": 7,
+      "kind": "ArrowFunction"
+    },
+    {
+      "id": "B-41B11002C4",
+      "name": "derive",
+      "area": "A-10DFC911",
+      "file": "cloud-worker/auth.js",
+      "line": 14,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-6522910D62",
+      "name": "current",
+      "area": "A-10DFC911",
+      "file": "cloud-worker/auth.js",
+      "line": 20,
+      "kind": "FunctionDeclaration"
+    },
+    {
+      "id": "B-FD088C1E97",
+      "name": "authApi",
+      "area": "A-10DFC911",
+      "file": "cloud-worker/auth.js",
+      "line": 21,
+      "kind": "FunctionDeclaration"
+    }
+  ],
+  "areas": [
+    {
+      "id": "A-9C0072F2",
+      "file": "mermaid-support.js",
+      "blocks": 3
+    },
+    {
+      "id": "A-DC1909B7",
+      "file": "toc.js",
+      "blocks": 65
+    },
+    {
+      "id": "A-DE1077ED",
+      "file": "ui-v3518.js",
+      "blocks": 2
+    },
+    {
+      "id": "A-99D75600",
+      "file": "renderer.js",
+      "blocks": 18
+    },
+    {
+      "id": "A-6A7FC0B1",
+      "file": "explorer.js",
+      "blocks": 185
+    },
+    {
+      "id": "A-92173C99",
+      "file": "cloud.js",
+      "blocks": 66
+    },
+    {
+      "id": "A-B86E051F",
+      "file": "cloud-config.js",
+      "blocks": 2
+    },
+    {
+      "id": "A-DDD7CA3C",
+      "file": "autofill-guard-v376.js",
+      "blocks": 6
+    },
+    {
+      "id": "A-20FFE1FF",
+      "file": "unified-ui.js",
+      "blocks": 7
+    },
+    {
+      "id": "A-399333BE",
+      "file": "ai-composer-toggle-v375.js",
+      "blocks": 3
+    },
+    {
+      "id": "A-4FC26477",
+      "file": "pdf-viewer.js",
+      "blocks": 8
+    },
+    {
+      "id": "A-4A68969E",
+      "file": "app.js",
+      "blocks": 46
+    },
+    {
+      "id": "A-455629A1",
+      "file": "auth-ui.js",
+      "blocks": 17
+    },
+    {
+      "id": "A-21E5CD51",
+      "file": "ai-chat-ui.js",
+      "blocks": 64
+    },
+    {
+      "id": "A-D1666F64",
+      "file": "ai-byok-worker/worker.js",
+      "blocks": 1
+    },
+    {
+      "id": "A-C772DE17",
+      "file": "powershell/terminal.js",
+      "blocks": 7
+    },
+    {
+      "id": "A-EC9F6700",
+      "file": "cloud-worker/console-log.js",
+      "blocks": 1
+    },
+    {
+      "id": "A-72B8CE0F",
+      "file": "cloud-worker/chunk-api.js",
+      "blocks": 2
+    },
+    {
+      "id": "A-3717F8F5",
+      "file": "cloud-worker/delta-api.js",
+      "blocks": 2
+    },
+    {
+      "id": "A-6C39DBD4",
+      "file": "cloud-worker/crypto-test.js",
+      "blocks": 1
+    },
+    {
+      "id": "A-C4C8C9D5",
+      "file": "cloud-worker/console-api.js",
+      "blocks": 11
+    },
+    {
+      "id": "A-5B9947B6",
+      "file": "cloud-worker/worker.js",
+      "blocks": 6
+    },
+    {
+      "id": "A-10DFC911",
+      "file": "cloud-worker/auth.js",
+      "blocks": 4
+    }
+  ]
+}

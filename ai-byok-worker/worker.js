@@ -1,8 +1,9 @@
+/* AREA A-D1666F64 START: ai-byok-worker/worker.js */
 // AREA A10 START: BYOKProxy | File: ai-byok-worker/worker.js
 // sEAPP AREA AIRequestProxy: BYOK relay. Never persist or log user API keys.
 const MAX_BODY = 12000000;
 export default {
-  async fetch(request, env) {
+  async fetch(request, env) {/* BLOCK B-BD4EB095CD START: AREA A-D1666F64 */
     const origin = request.headers.get('Origin') || '';
     const allowed = (env.ALLOWED_ORIGINS || '').split(',').map(x => x.trim()).filter(Boolean);
     const cors = allowed.includes(origin) ? {
@@ -40,6 +41,8 @@ export default {
       console.error('BV_BYOK_UPSTREAM_FAILURE', { type, message: message.replace(/sk-[A-Za-z0-9_-]+/g, '[REDACTED]') });
       return reply({error:{message:'Upstream request failed',code:'OPENAI_UPSTREAM_FETCH_ERROR',type}},502);
     }
-  }
+  /* BLOCK B-BD4EB095CD END. */}
 };
 // AREA A10 END: BYOKProxy
+
+/* AREA A-D1666F64 END. */

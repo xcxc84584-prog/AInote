@@ -1,5 +1,6 @@
+/* AREA A-6C39DBD4 START: cloud-worker/crypto-test.js */
 ﻿export default {
-  async fetch() {
+  async fetch() {/* BLOCK B-C92F012D59 START: AREA A-6C39DBD4 */
     try {
       const encoder = new TextEncoder();
 
@@ -33,5 +34,7 @@
         message: e.message
       });
     }
-  }
+  /* BLOCK B-C92F012D59 END. */}
 };
+
+/* AREA A-6C39DBD4 END. */
