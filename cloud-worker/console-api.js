@@ -4,7 +4,7 @@ const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a
 async function digest(s){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
 const enc=new TextEncoder();
 function b64(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
-async function signature(secret,payload){const key=await crypto.subtle.importKey('raw',enc.encode(secret),'HMAC',false,['sign']);return b64(new Uint8Array(await crypto.subtle.sign('HMAC',key,enc.encode(payload))))}
+async function signature(secret,payload){const key=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(new Uint8Array(await crypto.subtle.sign('HMAC',key,enc.encode(payload))))}
 async function issueAdmin(secret,user){const payload=b64(enc.encode(JSON.stringify({user,exp:Date.now()+15*60*1000})));return payload+'.'+await signature(secret,payload)}
 async function isAdmin(req,env,user){const token=req.headers.get('X-BV-Console-Admin')||'';if(!env.BV_CONSOLE_ADMIN_KEY||!token.includes('.'))return false;const [payload,sig]=token.split('.');if(!payload||!sig||sig!==await signature(env.BV_CONSOLE_ADMIN_KEY,payload))return false;try{const obj=JSON.parse(atob(payload.replace(/-/g,'+').replace(/_/g,'/')));return obj.user===user&&Number.isFinite(obj.exp)&&obj.exp>Date.now()}catch{return false}}
 const commands=[
