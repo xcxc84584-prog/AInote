@@ -63,7 +63,15 @@ window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{
  const key='bv378-root-'+id,existing=await cloudRead(key);
  if(existing&&!confirm('同一 Fold Hash ID 已存在 IndexedDB。是否以雲端版本 REPLACE？現有草稿將被覆蓋。'))return false;
  if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前 Explorer 有未儲存修改，是否仍要切換？'))return false;
- const safe=entries.map(e=>{if(typeof e.path!=='string'||!e.path||e.path.startsWith('/')||e.path.includes('\\')||e.path.split('/').some(v=>!v||v==='.'||v==='..'))throw Error('不安全的 ZIP 路徑');return {path:e.path,data:e.data,dir:!!e.dir}});
+ const safe=entries.map(e=>{
+  if(typeof e.path!=='string'||!e.path||e.path.includes('\0'))throw Error('不安全的 ZIP 路徑');
+  const dir=!!e.dir,raw=e.path.replace(/\\/g,'/');
+  if(raw.startsWith('/')||/^[A-Za-z]:/.test(raw))throw Error('不安全的 ZIP 路徑：'+e.path);
+  const clean=dir?raw.replace(/\/+$/,''):raw;
+  const segments=clean.split('/');
+  if(!clean||segments.some(v=>!v||v==='.'||v==='..'))throw Error('不安全的 ZIP 路徑：'+e.path);
+  return {path:clean+(dir?'/':''),data:e.data,dir};
+ });
  const saved={id,name,entries:safe,updatedAt:Date.now()};await cloudWrite(key,saved);await loadCloudRoot(saved);return true;
 };
 window.BVCloudExportVirtualRoot=async()=>{
