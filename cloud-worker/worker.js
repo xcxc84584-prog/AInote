@@ -1,4 +1,5 @@
 import {authApi} from './auth.js';
+import {chunkApi} from './chunk-api.js';
 // AREA A11 START: CloudAPI | File: cloud-worker/worker.js
 import JSZip from 'jszip';
 import { neon } from '@neondatabase/serverless';
@@ -8,6 +9,7 @@ function withCors(response, origin) {
   const headers = new Headers(response.headers);
   if (origin) headers.set('Access-Control-Allow-Origin', origin);
   headers.set('Vary', 'Origin');
+  headers.set('Access-Control-Expose-Headers','X-BV-SHA256');
   headers.set('Cache-Control', 'no-store');
   return new Response(response.body, {
     status: response.status,
@@ -20,8 +22,8 @@ const lifeDays=v=>Number.isInteger(v)&&[1,7,14,30,90].includes(v);
 const hex=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 export default {async scheduled(event,env,ctx){ctx.waitUntil((async()=>{if(!env.DATABASE_URL)throw Error('DATABASE_URL missing');const sql=neon(env.DATABASE_URL);await sql`DELETE FROM cloud_files WHERE expires_at IS NOT NULL AND expires_at<=NOW()`;
 if(env.AI_UPLOADS){const listed=await env.AI_UPLOADS.list({prefix:'ai-temp/',limit:1000});const expired=listed.objects.filter(o=>o.uploaded&&Date.now()-new Date(o.uploaded).getTime()>24*3600*1000).map(o=>o.key);if(expired.length)await env.AI_UPLOADS.delete(expired)}
-await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`})())},async fetch(req,env){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count','Access-Control-Max-Age':'3600','Vary':'Origin'}});
-try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
+await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads WHERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`})())},async fetch(req,env){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count','Access-Control-Max-Age':'3600','Vary':'Origin'}});
+try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;const chunkResponse=await chunkApi(req,env,path,sql);if(chunkResponse)return withCors(chunkResponse,cors);const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
 let match;
 if(path==='/api/projects'&&req.method==='POST'){const b=await req.json();if(typeof b.name!=='string'||!b.name.trim()||b.name.length>150)throw Error('專案名稱無效');const id=crypto.randomUUID();await sql`INSERT INTO projects(id,name) VALUES(${id},${b.name.trim()})`;return reply({project_id:id},201,cors)}
 if(path==='/api/health'&&req.method==='GET')return reply({ok:true},200,cors);

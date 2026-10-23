@@ -38,6 +38,19 @@ async function openSingleFile(file){
  await choose(x);dirty=true;refreshUnsaved();display();
  toast('單檔已匯入 IndexedDB 草稿；按 Save 才會寫入本地');
 }
+
+// v3.7.8 cloud ZIP virtual root: in-memory directory handles; drafts are persisted to IndexedDB.
+window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{
+ const key='bv378-root-'+id;const existing=await new Promise((resolve,reject)=>{const r=indexedDB.open('bv-note-cloud-roots-v378',1);r.onupgradeneeded=()=>r.result.createObjectStore('roots');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction('roots');const q=tx.objectStore('roots').get(key);q.onsuccess=()=>{resolve(q.result);db.close()};q.onerror=()=>reject(q.error)}});
+ if(existing&&!confirm('同一 Fold Hash ID 已存在 IndexedDB，是否 REPLACE？請先確認目前編輯已儲存。'))return;
+ if(dirty&&!confirm('目前 Explorer 有未儲存的修改，是否仍要切換？'))return;
+ const saved={id,name,entries:entries.map(e=>({path:e.path,data:e.data})),updatedAt:Date.now()};
+ await new Promise((resolve,reject)=>{const r=indexedDB.open('bv-note-cloud-roots-v378',1);r.onupgradeneeded=()=>r.result.createObjectStore('roots');r.onsuccess=()=>{const db=r.result,tx=db.transaction('roots','readwrite');tx.objectStore('roots').put(saved,key);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)};r.onerror=()=>reject(r.error)});
+ // Select the first editable text file; the complete ZIP is retained in IndexedDB.
+ const entry=entries.find(e=>/\.(md|markdown|txt)$/i.test(e.path));if(!entry){alert('ZIP 已存至 IndexedDB，但沒有可預覽的 MD/TXT 文件');return}
+ await openSingleFile(new File([entry.data],entry.path.split('/').pop(),{type:'text/plain'}));
+ root.name=name.replace(/\.zip$/i,'')+'（Cloud）';rootLabel.textContent=root.name;
+};
 const singlePicker=document.createElement('input');singlePicker.type='file';
 singlePicker.accept='.md,.markdown,.txt';singlePicker.hidden=true;document.body.append(singlePicker);
 document.querySelector('#root-import-file').onclick=()=>{singlePicker.value='';singlePicker.click()};
