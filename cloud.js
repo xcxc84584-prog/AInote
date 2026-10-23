@@ -35,56 +35,74 @@ async function readHashId(handle){return (await readHashInfo(handle)).id}
 async function writeHashId(handle,id,lifeDays,expiresAt){const h=await handle.getFileHandle('filehashid.txt',{create:true});const w=await h.createWritable();await w.write(JSON.stringify({file_hash_id:id,life_days:lifeDays,expires_at:expiresAt},null,2)+'\n');await w.close()}
 async function getCloud(id,rev){return api('/api/files/'+encodeURIComponent(id)+(rev?'?revision='+encodeURIComponent(rev):''))}
 async function download(id,rev){
- progress(20,'下載雲端 ZIP…');
- if(!window.JSZip)throw Error('JSZip 尚未載入，無法附加 filehashid.txt');
- let f;try{const v=await getChunked(id,rev);f={file_id:id,name:v.meta.name,revision:v.meta.revision,content:bytesToBase64(v.bytes)}}catch(e){if(e.message.includes('驗證失敗'))throw e;f=await getCloud(id,rev)}
- if(!validId(f.file_id)||f.file_id.toLowerCase()!==id.toLowerCase())throw Error('雲端回傳的 File ID 不一致');
- const original=base64ToBytes(f.content);
- // Validate the original archive before adding metadata; never silently overwrite user files.
+ progress(10,'讀取分片 ZIP…');
+ if(!window.JSZip)throw Error('JSZip 尚未載入');
+ // v3.8.0: do not convert the whole archive to base64; large files otherwise
+ // require multiple simultaneous copies and can fail on browser memory limits.
+ const {meta,bytes:original}=await getChunked(id,rev);
+ if(meta.file_id.toLowerCase()!==id.toLowerCase())throw Error('雲端回傳 File ID 不一致');
  const zip=await JSZip.loadAsync(original,{checkCRC32:true});
- if(zip.file('filehashid.txt'))throw Error('雲端 ZIP 已包含 filehashid.txt；為避免覆寫原有識別資料，已取消下載');
- progress(48,'正在計算各文件 SHA-256…');
+ if(zip.file('filehashid.txt'))throw Error('ZIP 已包含 filehashid.txt，為避免覆蓋而停止下載');
  const entries=[];
  for(const [path,item] of Object.entries(zip.files)){
   if(item.dir)continue;
-  if(path==='filehashid.txt')continue;
-  const bytes=await item.async('uint8array');
-  entries.push({path,cloud_file_id:f.file_id,sha256:await shaBytes(bytes)});
+  if(path.startsWith('/')||path.includes('\\')||path.split('/').some(x=>x==='..'||x==='.')||path.includes('\0'))throw Error('ZIP 路徑不安全');
+  const data=await item.async('uint8array');
+  entries.push({path,cloud_file_id:id,sha256:await shaBytes(data)});
  }
  entries.sort((a,b)=>a.path.localeCompare(b.path));
- let meta;try{meta=await api('/api/v378/files/'+encodeURIComponent(id)+'/meta')}catch{meta=await api('/api/files/'+encodeURIComponent(id)+'/meta')}
- const manifest={version:'1.0',hash_algorithm:'SHA-256',file_hash_id:f.file_id,cloud_file_id:f.file_id,revision:f.revision,life_days:meta.life_days,expires_at:meta.expires_at,source_zip_sha256:await shaBytes(original),files:entries};
+ const manifest={version:'1.0',hash_algorithm:'SHA-256',file_hash_id:id,cloud_file_id:id,revision:meta.revision,life_days:meta.life_days,expires_at:meta.expires_at,source_zip_sha256:meta.sha256,files:entries};
  zip.file('filehashid.txt',JSON.stringify(manifest,null,2)+'\n');
- progress(80,'正在封裝 filehashid.txt…');
- const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
- const name=f.name.endsWith('.zip')?f.name:f.name+'.zip';
- saveBlob(name,new Blob([bytes],{type:'application/zip'}));
- msg('已下載 ZIP（包含 filehashid.txt 與 '+entries.length+' 筆文件 SHA-256）：'+name);
+ progress(82,'封裝 ZIP 與識別檔…');
+ const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}},m=>progress(82+m.percent*.17,'封裝 '+Math.round(m.percent)+'%'));
+ const name=meta.name.endsWith('.zip')?meta.name:meta.name+'.zip';
+ saveBlob(name,blob);msg('已下載完整 ZIP：'+name+'（Revision #'+meta.revision+'）');
 }
 async function removeFile(id){if(!confirm('永久刪除此雲端 ZIP 及所有 Commit 紀錄？不可復原。'))return;progress(35,'刪除雲端檔案…');await api('/api/v378/files/'+id,'DELETE');files=files.filter(f=>f.file_id!==id);if(selectedCloud===id){selectedCloud=null;$('cloud-history').textContent='雲端專案已刪除'}renderFiles(files);msg('雲端 ZIP 已刪除，本地 Fold 不受影響')}
 $('cloud-create-button').onclick=()=>{try{window.BVCloudFolderHandle();showCreatePanel()}catch(e){msg('錯誤：'+e.message)}};
 $('cloud-create-cancel').onclick=()=>{$('cloud-create-panel').hidden=true};
 $('cloud-create-confirm').onclick=()=>run(async()=>{const folder=window.BVCloudFolderHandle(),days=life();const old=await readHashId(folder.handle);if(validId(old)&&!confirm('目前 Root 已有 filehashid.txt（'+old+'）。是否建立新的雲端專案並覆蓋原有 Hash ID？\n取消將保留原有檔案。'))return;const zip=await zipFolder(folder.handle);const id=crypto.randomUUID();progress(73,'建立雲端專案…');progress(83,'上傳 Fold ZIP…');const uploaded=await uploadChunked(id,folder.name+'.zip',zip.bytes,days);const created=await api('/api/v378/files/'+id+'/meta');progress(92,'保存 filehashid.txt…');try{await writeHashId(folder.handle,id,days,created.expires_at)}catch(e){throw Error('雲端建立成功，但寫入 filehashid.txt 失敗；請記錄 File Hash ID：'+id+'。'+e.message)}$('cloud-create-panel').hidden=true;selectedCloud=id;lastSubmittedId=id;lastSubmittedHash=zip.hash;updateCommitButton(true);upsert(await api('/api/v378/files/'+id+'/meta'));msg('雲端 Fold 已建立；保存 '+days+' 天，截止 '+created.expires_at+'；File Hash ID：'+id)});
 function updateCommitButton(){const b=$('cloud-commit-button');if(!b)return;b.textContent='Commit';b.classList.add('cloud-commit-ready');b.classList.remove('cloud-commit-submitted');b.disabled=false}
-$('cloud-commit-button').onclick=()=>run(async()=>{const root=window.BVCloudRootHandle();const id=await readHashId(root.handle);if(!validId(id))throw Error('Root 中沒有有效的 filehashid.txt，請先選取 Root 建立雲端專案');const meta=await api('/api/v378/files/'+id+'/meta');$('cloud-commit-target').textContent='Root：'+root.name+'｜File Hash ID：'+id+'｜目前到期：'+(meta.expires_at||'未設定');$('cloud-commit-life').hidden=true;$('cloud-commit-panel').hidden=false;msg('請在頁面中選擇提交模式')});
+$('cloud-commit-button').onclick=()=>run(async()=>{
+ const snapshot=window.BVCloudExportVirtualRoot?await window.BVCloudExportVirtualRoot().catch(()=>null):null;
+ if(snapshot){
+  const meta=await api('/api/v378/files/'+snapshot.id+'/meta');
+  if(!confirm('提交目前 IndexedDB Cloud Root 至 Revision #'+(meta.revision+1)+'？'))return;
+  if(!window.JSZip)throw Error('JSZip 尚未載入');
+  const zip=new JSZip();for(const entry of snapshot.entries){if(entry.dir)zip.folder(entry.path);else zip.file(entry.path,entry.data)}
+  const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}},m=>progress(m.percent*.3,'打包 Cloud Root '+Math.round(m.percent)+'%'));
+  if(bytes.length>100*1024*1024)throw Error('ZIP 超過 100 MiB');
+  await uploadChunked(snapshot.id,snapshot.name,bytes,meta.life_days,meta.revision);
+  const updated=await api('/api/v378/files/'+snapshot.id+'/meta');upsert(updated);selectedCloud=snapshot.id;
+  msg('Cloud Root 提交成功，Revision #'+updated.revision+'；沒有寫入本地資料夾');return;
+ }
+ const root=window.BVCloudRootHandle();const id=await readHashId(root.handle);
+ if(!validId(id))throw Error('目前本地 Root 沒有有效的 filehashid.txt，請先建立雲端專案');
+ const meta=await api('/api/v378/files/'+id+'/meta');
+ $('cloud-commit-target').textContent='Root：'+root.name+'｜File Hash ID：'+id+'｜目前到期：'+(meta.expires_at||'未設定');
+ // Chunked storage supports full snapshots; incremental mode is not compatible.
+ const full=document.querySelector('input[name="cloud-commit-mode"][value="full"]');if(full)full.checked=true;
+ document.querySelectorAll('input[name="cloud-commit-mode"]').forEach(x=>x.disabled=x.value!=='full');
+ $('cloud-commit-life').hidden=false;$('cloud-commit-panel').hidden=false;
+ msg('本地 Root：將以分片方式提交完整 ZIP');
+});
 document.querySelectorAll('input[name="cloud-commit-mode"]').forEach(x=>x.addEventListener('change',()=>{$('cloud-commit-life').hidden=document.querySelector('input[name="cloud-commit-mode"]:checked').value!=='full'}));
 $('cloud-commit-cancel').onclick=()=>{$('cloud-commit-panel').hidden=true;msg('已取消提交')};
-$('cloud-commit-confirm').onclick=()=>run(async()=>{const root=window.BVCloudRootHandle(),id=await readHashId(root.handle);if(!validId(id))throw Error('Root 缺少有效 File Hash ID');const mode=document.querySelector('input[name="cloud-commit-mode"]:checked').value;let remote;try{remote=await api('/api/v378/files/'+id+'/meta')}catch{remote=await api('/api/files/'+id+'/meta')}let payload={name:root.name+'.zip',base_revision:remote.revision,mode};if(mode==='incremental'&&remote.part_count)throw Error('Neon 分片版本請選擇完整提交；增量提交尚未支援');if(mode==='incremental'){const previous=await getCloud(id);if(previous.revision!==remote.revision)throw Error('雲端版本已變動，請重新比較');const diff=await buildIncremental(root.handle,previous.content);if(diff.unchanged){updateCommitButton(true);$('cloud-commit-panel').hidden=true;msg('SHA-256 比對完成：所有檔案未修改，無需提交');return}payload.changes=diff.changes;payload.deleted=diff.deleted;progress(70,'只上傳 '+diff.changedCount+' 個新增／修改檔案與 '+diff.deletedCount+' 筆刪除紀錄…')}else{const zip=await zipFolder(root.handle);payload.content=zip.content;payload.life_days=Number($('cloud-commit-life-days').value)}const result=remote.part_count&&mode==='full'?await (async()=>{await uploadChunked(id,payload.name,zip.bytes,payload.life_days,remote.revision);return api('/api/v378/files/'+id+'/meta')})():await api('/api/files/'+id+'/commit','POST',payload);progress(91,'確認雲端提交…');if(mode==='full')await writeHashId(root.handle,id,result.life_days,result.expires_at);lastSubmittedId=id;lastSubmittedHash=null;updateCommitButton(true);$('cloud-commit-panel').hidden=true;upsert(await api('/api/v378/files/'+id+'/meta'));msg(result.unchanged?'內容未改變，無需新版本':'提交成功，版本 #'+result.revision+'；到期 '+result.expires_at)});
-const cloudMenu=$('cloud-operations'),cloudTrigger=$('cloud-other-button');function closeCloudMenu(){cloudMenu.hidden=true;cloudTrigger.setAttribute('aria-expanded','false')}function positionCloudMenu(){const r=cloudTrigger.getBoundingClientRect(),w=cloudMenu.offsetWidth||225,h=cloudMenu.offsetHeight||100,pad=8;cloudMenu.style.left=Math.max(pad,Math.min(window.innerWidth-w-pad,r.right-w))+'px';const below=r.bottom+6;cloudMenu.style.top=(below+h+pad<=window.innerHeight?below:Math.max(pad,r.top-h-6))+'px'}cloudTrigger.addEventListener('click',e=>{e.stopPropagation();if(!cloudMenu.hidden){closeCloudMenu();return}cloudMenu.hidden=false;cloudTrigger.setAttribute('aria-expanded','true');positionCloudMenu()});document.addEventListener('pointerdown',e=>{if(!cloudMenu.hidden&&!cloudMenu.contains(e.target)&&!cloudTrigger.contains(e.target))closeCloudMenu()});cloudMenu.addEventListener('click',e=>{if(e.target.closest('button'))closeCloudMenu()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCloudMenu()});window.addEventListener('resize',()=>{if(!cloudMenu.hidden)positionCloudMenu()});window.addEventListener('scroll',()=>{if(!cloudMenu.hidden)positionCloudMenu()},true);
-const cloudVirtualCommit=document.createElement('button');cloudVirtualCommit.textContent='提交 Cloud Root';cloudVirtualCommit.title='將目前 IndexedDB 虛擬 Root 打包為 ZIP 並建立 Neon 新版本';
-$('cloud-commit-button').after(cloudVirtualCommit);
-cloudVirtualCommit.onclick=()=>run(async()=>{
- const snapshot=await window.BVCloudExportVirtualRoot?.();if(!snapshot)throw Error('無法讀取虛擬 Root');
- if(!window.JSZip)throw Error('JSZip 尚未載入');
- const meta=await api('/api/v378/files/'+snapshot.id+'/meta');
- if(!confirm('將目前 Cloud Root 的 '+snapshot.entries.length+' 個節點提交為 Revision #'+(meta.revision+1)+'？'))return;
- const zip=new JSZip();for(const entry of snapshot.entries){if(entry.dir)zip.folder(entry.path);else zip.file(entry.path,entry.data)}
- const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}},m=>progress(m.percent*.3,'打包虛擬 Root '+Math.round(m.percent)+'%'));
- if(bytes.length>100*1024*1024)throw Error('壓縮 ZIP 超過 100 MiB');
- await uploadChunked(snapshot.id,snapshot.name,bytes,meta.life_days,meta.revision);
- const updated=await api('/api/v378/files/'+snapshot.id+'/meta');upsert(updated);selectedCloud=snapshot.id;
- msg('Cloud Root 已提交至 Neon，Revision #'+updated.revision+'；未寫入本地資料夾');
+$('cloud-commit-confirm').onclick=()=>run(async()=>{
+ const root=window.BVCloudRootHandle(),id=await readHashId(root.handle);
+ if(!validId(id))throw Error('Root 缺少有效 File Hash ID');
+ const meta=await api('/api/v378/files/'+id+'/meta');
+ const zip=await zipFolder(root.handle);
+ const days=Number($('cloud-commit-life-days').value);
+ if(!lifeOptions.includes(days))throw Error('保存期限無效');
+ await uploadChunked(id,meta.name,zip.bytes,days,meta.revision);
+ const updated=await api('/api/v378/files/'+id+'/meta');
+ await writeHashId(root.handle,id,updated.life_days,updated.expires_at);
+ lastSubmittedId=id;lastSubmittedHash=zip.hash;updateCommitButton();
+ $('cloud-commit-panel').hidden=true;upsert(updated);
+ msg('本地 Root 提交成功，Revision #'+updated.revision);
 });
+const cloudMenu=$('cloud-operations'),cloudTrigger=$('cloud-other-button');function closeCloudMenu(){cloudMenu.hidden=true;cloudTrigger.setAttribute('aria-expanded','false')}function positionCloudMenu(){const r=cloudTrigger.getBoundingClientRect(),w=cloudMenu.offsetWidth||225,h=cloudMenu.offsetHeight||100,pad=8;cloudMenu.style.left=Math.max(pad,Math.min(window.innerWidth-w-pad,r.right-w))+'px';const below=r.bottom+6;cloudMenu.style.top=(below+h+pad<=window.innerHeight?below:Math.max(pad,r.top-h-6))+'px'}cloudTrigger.addEventListener('click',e=>{e.stopPropagation();if(!cloudMenu.hidden){closeCloudMenu();return}cloudMenu.hidden=false;cloudTrigger.setAttribute('aria-expanded','true');positionCloudMenu()});document.addEventListener('pointerdown',e=>{if(!cloudMenu.hidden&&!cloudMenu.contains(e.target)&&!cloudTrigger.contains(e.target))closeCloudMenu()});cloudMenu.addEventListener('click',e=>{if(e.target.closest('button'))closeCloudMenu()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCloudMenu()});window.addEventListener('resize',()=>{if(!cloudMenu.hidden)positionCloudMenu()});window.addEventListener('scroll',()=>{if(!cloudMenu.hidden)positionCloudMenu()},true);
 $('cloud-zip-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('請先以 File Hash ID 搜尋');await download(selectedCloud)});
 $('cloud-import-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('請先以 File Hash ID 搜尋');await download(selectedCloud);msg('已下載 ZIP，請透過本地 Explorer 匯入；不會覆蓋本地檔案')});
 

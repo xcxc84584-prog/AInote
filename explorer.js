@@ -76,10 +76,6 @@ window.BVCloudExportVirtualRoot=async()=>{
  return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
 };
 window.BVCloudRestoreVirtualRoot=async(id)=>{const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true};
-// Restore without fetching from Neon; explicit action avoids unexpectedly replacing the current workspace.
-const cloudRestoreButton=document.createElement('button');cloudRestoreButton.textContent='還原 Cloud Root';cloudRestoreButton.title='從 IndexedDB 還原已載入的 Cloud ZIP';
-cloudRestoreButton.onclick=async()=>{try{const id=prompt('輸入要還原的 Fold Hash ID');if(id)await window.BVCloudRestoreVirtualRoot(id.trim())}catch(e){alert(e.message)}};
-document.querySelector('#root-import-file')?.after(cloudRestoreButton);
 const singlePicker=document.createElement('input');singlePicker.type='file';
 singlePicker.accept='.md,.markdown,.txt';singlePicker.hidden=true;document.body.append(singlePicker);
 document.querySelector('#root-import-file').onclick=()=>{singlePicker.value='';singlePicker.click()};
