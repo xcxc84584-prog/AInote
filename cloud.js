@@ -21,7 +21,10 @@ function upsert(f){files=[...files.filter(x=>x.file_id!==f.file_id),f];renderFil
 $('cloud-search-button').onclick=()=>run(async()=>{const id=$('cloud-search-input').value.trim();if(!id){const listing=await api('/api/v378/files');files=listing.files;renderFiles(files);msg('已列出帳號名下 '+files.length+' 筆 Neon 分片文件');return}if(!validId(id))throw Error('只能使用完整 File Hash ID（UUID）搜尋');progress(35,'查詢雲端資料…');let f;try{f=await api('/api/v378/files/'+encodeURIComponent(id)+'/meta')}catch{f=await api('/api/files/'+encodeURIComponent(id)+'/meta')}upsert(f);selectedCloud=id;msg('找到專案：'+f.name)});
 $('cloud-search-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('cloud-search-button').click()});
 window.addEventListener('focus',()=>{if(page==='cloud'&&window.BVAuth?.getToken()&&!$('cloud-search-input').value.trim())$('cloud-search-button').click()});
-async function history(id){selectedCloud=id;progress(25,'讀取提交歷史…');const result=await api('/api/v378/files/'+encodeURIComponent(id)+'/history');const panel=$('cloud-history');panel.replaceChildren();panel.append(el('h4',result.name+'｜'+id));for(const row of result.commits){const div=el('div',`#${row.revision} · ${row.created_at} · ${row.mode} · ${row.sha256.slice(0,12)}… `);div.className='cloud-history-row';const b=el('button','下載此版本');b.onclick=()=>run(()=>download(id,row.revision));div.append(b);const del=el('button','刪除紀錄');del.className='cloud-delete-revision';del.disabled=result.commits.length<=1;del.title=del.disabled?'最後一筆提交不可單獨刪除':'';del.onclick=()=>run(async()=>{if(!confirm('永久刪除版本 #'+row.revision+'？無法復原。'))return;await api('/api/v378/files/'+id+'/history/'+row.revision,'DELETE');upsert(await api('/api/v378/files/'+id+'/meta'));await history(id);msg('已刪除版本 #'+row.revision)});div.append(del);panel.append(div)}if(!result.commits.length)panel.append(el('p','尚無提交紀錄'));msg('已載入提交歷史')}
+// A page refresh performs one empty account search as soon as authentication is restored.
+let initialSearchToken=null;const autoSearch=()=>{const token=window.BVAuth?.getToken();if(token&&token!==initialSearchToken){initialSearchToken=token;$('cloud-search-input').value='';$('cloud-search-button').click()}else if(!token)initialSearchToken=null};
+window.addEventListener('load',autoSearch);window.addEventListener('bv-auth-changed',autoSearch);setTimeout(autoSearch,0);let autoSearchAttempts=0;const authReadyPoll=setInterval(()=>{autoSearch();if(initialSearchToken||++autoSearchAttempts>=60)clearInterval(authReadyPoll)},500);
+async function history(id){selectedCloud=id;progress(25,'讀取提交歷史…');const result=await api('/api/v378/files/'+encodeURIComponent(id)+'/history');const panel=$('cloud-history');panel.replaceChildren();panel.append(el('h4',result.name+'｜'+id));for(const row of result.commits){const div=el('div',`#${row.revision} · ${row.created_at} · ${row.mode} · ${(row.sha256||'').slice(0,12)}… `);div.className='cloud-history-row';const b=el('button','下載此版本');b.onclick=()=>run(()=>download(id,row.revision));div.append(b);const del=el('button','刪除紀錄');del.className='cloud-delete-revision';del.disabled=result.commits.length<=1;del.title=del.disabled?'最後一筆提交不可單獨刪除':'';del.onclick=()=>run(async()=>{if(!confirm('永久刪除版本 #'+row.revision+'？無法復原。'))return;await api('/api/v378/files/'+id+'/history/'+row.revision,'DELETE');upsert(await api('/api/v378/files/'+id+'/meta'));await history(id);msg('已刪除版本 #'+row.revision)});div.append(del);panel.append(div)}if(!result.commits.length)panel.append(el('p','尚無提交紀錄'));msg('已載入提交歷史')}
 function saveBlob(name,blob){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
 const bytesToBase64=bytes=>{let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(binary)};
 const base64ToBytes=str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0));
@@ -40,7 +43,7 @@ async function download(id,rev){
  if(!window.JSZip)throw Error('JSZip 尚未載入');
  // v3.8.0: do not convert the whole archive to base64; large files otherwise
  // require multiple simultaneous copies and can fail on browser memory limits.
- const {meta,bytes:original}=await getChunked(id,rev);
+ const {meta,bytes:original}=await getCloudArchive(id,rev);
  if(meta.file_id.toLowerCase()!==id.toLowerCase())throw Error('雲端回傳 File ID 不一致');
  const zip=await JSZip.loadAsync(original,{checkCRC32:true});
  if(zip.file('filehashid.txt'))throw Error('ZIP 已包含 filehashid.txt，為避免覆蓋而停止下載');
@@ -70,13 +73,9 @@ $('cloud-commit-button').onclick=()=>run(async()=>{
  if(snapshot){
   const meta=await api('/api/v378/files/'+snapshot.id+'/meta');
   if(!confirm('提交目前 IndexedDB Cloud Root 至 Revision #'+(meta.revision+1)+'？'))return;
-  if(!window.JSZip)throw Error('JSZip 尚未載入');
-  const zip=new JSZip();for(const entry of snapshot.entries){if(entry.dir)zip.folder(entry.path);else zip.file(entry.path,entry.data)}
-  const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}},m=>progress(m.percent*.3,'打包 Cloud Root '+Math.round(m.percent)+'%'));
-  if(bytes.length>100*1024*1024)throw Error('ZIP 超過 100 MiB');
-  await uploadChunked(snapshot.id,snapshot.name,bytes,meta.life_days,meta.revision);
+  await commitDelta(snapshot,meta);
   const updated=await api('/api/v378/files/'+snapshot.id+'/meta');upsert(updated);selectedCloud=snapshot.id;
-  msg('Cloud Root 提交成功，Revision #'+updated.revision+'；沒有寫入本地資料夾');return;
+  msg('Cloud Root 增量提交成功，Revision #'+updated.revision+'；僅上傳變更分片');return;
  }
  const root=window.BVCloudRootHandle();const id=await readHashId(root.handle);
  if(!validId(id))throw Error('目前本地 Root 沒有有效的 filehashid.txt，請先建立雲端專案');
@@ -111,7 +110,52 @@ $('cloud-import-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error
 async function rawApi(path,method,body,headers={}){const token=window.BVAuth?.getToken();if(!token)throw Error('請先登入帳號');const res=await fetch(apiUrl()+path,{method,headers:{Authorization:'Bearer '+token,...headers},body});if(!res.ok){const b=await res.json().catch(()=>({}));throw Error(b.error||'HTTP '+res.status)}return res}
 async function uploadChunked(fileId,name,bytes,days,baseRevision){const hash=await shaBytes(bytes),key='bv378-upload-'+fileId+'-'+hash;let uploadId=localStorage.getItem(key);let start;try{start=await api('/api/v378/uploads','POST',{file_id:fileId,name,size_bytes:bytes.length,life_days:days,sha256:hash,...(baseRevision===undefined?{}:{base_revision:baseRevision}),...(uploadId?{upload_id:uploadId}:{})})}catch(e){if(uploadId){localStorage.removeItem(key);return uploadChunked(fileId,name,bytes,days)}throw e}uploadId=start.upload_id;localStorage.setItem(key,uploadId);const status=await api('/api/v378/uploads/'+uploadId);const done=new Set(status.received);for(let i=0;i<start.part_count;i++){if(done.has(i))continue;const chunkSize=Math.ceil(bytes.length/start.part_count)<=262144?262144:2097152,chunk=bytes.slice(i*chunkSize,(i+1)*chunkSize),digest=await shaBytes(chunk);for(let retry=0;;retry++){try{await rawApi('/api/v378/uploads/'+uploadId+'/'+i,'PUT',chunk,{'Content-Type':'application/octet-stream','X-BV-SHA256':digest});break}catch(e){if(retry>=2)throw e;await new Promise(r=>setTimeout(r,500*(retry+1)))}}progress(5+90*(i+1)/start.part_count,'上傳分片 '+(i+1)+' / '+start.part_count)}const result=await api('/api/v378/uploads/'+uploadId+'/complete','POST',{});localStorage.removeItem(key);return result}
 async function getChunked(id,revision){const meta=await api('/api/v378/files/'+id+'/meta'+(revision?'?revision='+encodeURIComponent(revision):''));if(meta.size_bytes>100*1024*1024)throw Error('ZIP 超過 100 MiB');const data=new Uint8Array(meta.size_bytes);let offset=0;for(let i=0;i<meta.part_count;i++){const res=await rawApi('/api/v378/files/'+id+'/parts/'+i+(revision?'?revision='+encodeURIComponent(revision):''),'GET');const bytes=new Uint8Array(await res.arrayBuffer());if(await shaBytes(bytes)!==res.headers.get('X-BV-SHA256'))throw Error('分片驗證失敗');data.set(bytes,offset);offset+=bytes.length;progress(5+90*(i+1)/meta.part_count,'取得分片 '+(i+1)+' / '+meta.part_count)}if(offset!==data.length||await shaBytes(data)!==meta.sha256)throw Error('完整 ZIP 驗證失敗');return {meta,bytes:data}}
-async function editCloud(id){const {meta,bytes}=await getChunked(id);if(!window.JSZip)throw Error('JSZip 未載入');const zip=await JSZip.loadAsync(bytes,{checkCRC32:true});const entries=[];let total=0;for(const [path,item] of Object.entries(zip.files)){if(item.dir){entries.push({path,dir:true});continue}if(path.startsWith('/')||path.includes('\\')||path.split('/').some(p=>p==='..'||p==='.')||path.includes('\0'))throw Error('ZIP 含不安全路徑');const data=await item.async('uint8array');total+=data.length;if(total>1100*1024*1024||entries.length>=1000)throw Error('解壓縮大小或檔案數超過限制');entries.push({path,data})}const opened=await window.BVCloudOpenVirtualRoot?.(id,meta.name,entries);if(opened===false){msg('已取消雲端 Root REPLACE');return}show('editor');msg('已將完整雲端 ZIP 目錄載入 IndexedDB，不會寫入本地資料夾')}
+// v3.8.3: content-addressed incremental Cloud Root, SHA-256 verified on both directions.
+const DELTA_SIZE=256*1024;
+async function commitDelta(snapshot,meta){
+ const entries=[],payload=new Map();let total=0;
+ for(const item of snapshot.entries){
+  if(item.dir){entries.push({path:item.path,dir:true});continue}
+  const data=item.data instanceof Uint8Array?item.data:new Uint8Array(item.data);
+  total+=data.length;if(total>100*1024*1024)throw Error('Cloud Root 超過 100 MiB');
+  const hashes=[];
+  for(let off=0;off<data.length;off+=DELTA_SIZE){const bytes=data.slice(off,off+DELTA_SIZE),h=await shaBytes(bytes);hashes.push(h);if(!payload.has(h))payload.set(h,bytes)}
+  entries.push({path:item.path,size:data.length,chunks:hashes});
+ }
+ if(entries.length>2000)throw Error('檔案數量超過 2000');
+ const all=[...payload.keys()];let missing=[];
+ for(let i=0;i<all.length;i+=500){const response=await api('/api/v383/chunks/missing','POST',{hashes:all.slice(i,i+500)});missing.push(...response.missing)}
+ for(let i=0;i<missing.length;i++){
+  const hash=missing[i];for(let retry=0;;retry++){try{await rawApi('/api/v383/chunks/'+hash,'PUT',payload.get(hash),{'Content-Type':'application/octet-stream'});break}catch(e){if(retry>=2)throw e;await new Promise(r=>setTimeout(r,400*(retry+1)))}}
+  progress(10+80*(i+1)/Math.max(1,missing.length),'增量上傳 '+(i+1)+' / '+missing.length);
+ }
+ const result=await api('/api/v383/files/'+snapshot.id+'/commit','POST',{base_revision:meta.revision,entries});
+ msg('增量提交：'+missing.length+' 個新分片 / '+all.length+' 個不同分片');return result;
+}
+async function getCloudArchive(id,revision){
+ let response;
+ try{response=await api('/api/v383/files/'+id+'/manifest'+(revision?'?revision='+encodeURIComponent(revision):''))}
+ catch(e){if(/不是增量格式/.test(e.message))return getChunked(id,revision);throw e}
+ if(!window.JSZip)throw Error('JSZip 尚未載入');
+ const zip=new JSZip();let total=0;
+ const entries=response.manifest;
+ if(!Array.isArray(entries)||entries.length>2000)throw Error('雲端增量目錄無效');
+ const unique=[...new Set(entries.flatMap(e=>e.chunks||[]))],cache=new Map();
+ for(let i=0;i<unique.length;i++){
+  const hash=unique[i];const r=await rawApi('/api/v383/chunks/'+hash,'GET');const bytes=new Uint8Array(await r.arrayBuffer());
+  if(await shaBytes(bytes)!==hash)throw Error('增量分片 SHA-256 驗證失敗');cache.set(hash,bytes);
+  progress(5+65*(i+1)/Math.max(1,unique.length),'下載增量分片 '+(i+1)+' / '+unique.length);
+ }
+ for(const e of entries){if(e.dir){zip.folder(e.path);continue}
+  total+=e.size;if(total>100*1024*1024)throw Error('雲端檔案超過 100 MiB');
+  const data=new Uint8Array(e.size);let offset=0;for(const hash of e.chunks){const part=cache.get(hash);if(!part||offset+part.length>data.length)throw Error('增量檔案資料損壞');data.set(part,offset);offset+=part.length}
+  if(offset!==e.size)throw Error('增量檔案大小驗證失敗');zip.file(e.path,data)
+ }
+ const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}},m=>progress(70+m.percent*.28,'重建 ZIP '+Math.round(m.percent)+'%'));
+ const meta=await api('/api/v378/files/'+id+'/meta').catch(()=>({file_id:id,name:response.name,revision:response.revision,life_days:1,expires_at:null}));
+ return {meta:{...meta,revision:response.revision,sha256:await shaBytes(bytes)},bytes};
+}
+async function editCloud(id){const {meta,bytes}=await getCloudArchive(id);if(!window.JSZip)throw Error('JSZip 未載入');const zip=await JSZip.loadAsync(bytes,{checkCRC32:true});const entries=[];let total=0;for(const [path,item] of Object.entries(zip.files)){if(item.dir){entries.push({path,dir:true});continue}if(path.startsWith('/')||path.includes('\\')||path.split('/').some(p=>p==='..'||p==='.')||path.includes('\0'))throw Error('ZIP 含不安全路徑');const data=await item.async('uint8array');total+=data.length;if(total>1100*1024*1024||entries.length>=1000)throw Error('解壓縮大小或檔案數超過限制');entries.push({path,data})}const opened=await window.BVCloudOpenVirtualRoot?.(id,meta.name,entries);if(opened===false){msg('已取消雲端 Root REPLACE');return}show('editor');msg('已將完整雲端 ZIP 目錄載入 IndexedDB，不會寫入本地資料夾')}
 renderFiles([]);
 })();
 // AREA A08 END: CloudClient
