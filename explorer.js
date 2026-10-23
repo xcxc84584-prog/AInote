@@ -537,7 +537,36 @@ function normalizeNewFileName(name){
  const trimmed=name.trim();
  return /\.[^./\\]+$/.test(trimmed)?trimmed:trimmed+'.md';
 }
-async function create(kind,forceRoot=false){if(virtualRoot)return alert('單一文件 Root 不允許新增子 Fold/File');if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});nodeDB={version:1,rootId:uuid(),nodes:{}};await flushNodeDB();rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=(forceRoot||rootSelected)?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,uuid:uuid(),name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);nodeDB.nodes[path(x)]=x.uuid;await flushNodeDB();orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
+async function createCloudNode(kind,forceRoot=false){
+ if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)throw Error('目前未選取 Cloud Root');
+ const active=current();
+ const parent=(forceRoot||rootSelected)?null:(active?.kind==='directory'?active:active?.parent||null);
+ let name=await inlineName('Cloud Root 新增 '+(kind==='file'?'File':'Fold'),kind==='file'?'新文件.md':'新資料夾');
+ if(!name)return;
+ if(kind==='file')name=normalizeNewFileName(name);
+ if(!name||name==='.'||name==='..'||/[\\/\x00-\x1f]/.test(name))throw Error('名稱無效');
+ if(siblings(parent).some(n=>n.name===name))throw Error('同一層已存在相同名稱的 File/Fold');
+ // Preserve the unsaved editor buffer before changing the selected node.
+ if(active?.kind==='file'&&dirty)active.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
+ const handle=kind==='file'?memoryFile(name,new Uint8Array(0)):{kind:'directory',name};
+ const node={id:++sequence,uuid:uuid(),name,handle,parent,kind,order:sequence,buffer:null};
+ items.push(node);nodeDB.nodes[path(node)]=node.uuid;
+ // Persist the full Cloud Root snapshot in IndexedDB; no local filesystem writes.
+ const entries=[];
+ for(const item of items.filter(n=>n.kind==='directory'))entries.push({path:path(item)+'/',dir:true});
+ for(const item of items.filter(n=>n.kind==='file')){
+  const bytes=item.buffer!==null?new TextEncoder().encode(item.buffer):item.handle.bytes();
+  entries.push({path:path(item),data:bytes});
+ }
+ await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
+ orderDirty=true;
+ if(parent)collapsed.delete(parent.id);
+ display();
+ if(kind==='file')await choose(node);
+ else {selected=node.id;rootSelected=false;display()}
+ rememberRoot();toast('Cloud Root 已新增 '+(kind==='file'?'File':'Fold')+'：'+path(node)+'（已存 IndexedDB，尚未 Commit）');
+}
+async function create(kind,forceRoot=false){if(virtualRoot){if(cloudVirtualId&&root?.cloudId===cloudVirtualId){try{await createCloudNode(kind,forceRoot)}catch(e){alert('新增失敗：'+e.message)}return}return alert('單一文件 Root 不允許新增子 Fold/File')};if(!root){if(kind!=='directory')return alert('請先選取本地文件夾');const nm=await inlineName('建立 Root 文件夾','MyNotes');if(!nm)return;if(/[\\/]/.test(nm)||nm==='.'||nm==='..')return alert('名稱無效');if(!window.showDirectoryPicker)return alert('瀏覽器不支援本地資料夾選取');try{const parent=await showDirectoryPicker({mode:'readwrite'});root=await parent.getDirectoryHandle(nm,{create:true});nodeDB={version:1,rootId:uuid(),nodes:{}};await flushNodeDB();rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();rootLabel.textContent=root.name;orderDirty=false;setDocumentVisible(false);display();toast('已建立 Root '+nm)}catch(err){if(err.name!=='AbortError')alert('建立 Root 失敗：'+err.message)}return;}const p=(forceRoot||rootSelected)?null:(current()?.kind==='directory'?current():current()?.parent||null);let nm=await inlineName('新增 '+kind,kind==='file'?'新文件.md':'新資料夾');if(!nm)return;if(kind==='file')nm=normalizeNewFileName(nm);if(nm.includes('/')||nm.includes('\\')||nm==='.'||nm==='..')return alert('名稱無效');try{const h=kind==='file'?await dirOf(p).getFileHandle(nm,{create:true}):await dirOf(p).getDirectoryHandle(nm,{create:true});const x={id:++sequence,uuid:uuid(),name:nm,handle:h,parent:p,kind,order:sequence,buffer:kind==='file'?'':null};items.push(x);nodeDB.nodes[path(x)]=x.uuid;await flushNodeDB();orderDirty=true;display();if(kind==='file')await choose(x)}catch(e){alert(e.message)}}
 function inlineName(title,value){return new Promise(resolve=>{const box=document.querySelector('#inline-name');box.replaceChildren();const lab=document.createElement('label');lab.textContent=title;const inp=document.createElement('input');inp.type='text';inp.name='bv_explorer_node_rename';inp.autocomplete='off';inp.setAttribute('data-bv-no-autofill','1');inp.value=value;const ok=document.createElement('button');ok.textContent='確認';const cancel=document.createElement('button');cancel.textContent='取消';box.append(lab,inp,ok,cancel);box.hidden=false;inp.focus();inp.select();const done=v=>{box.hidden=true;resolve(v)};ok.onclick=()=>done(inp.value.trim());cancel.onclick=()=>done(null);inp.onkeydown=e=>{if(e.key==='Enter')done(inp.value.trim());if(e.key==='Escape')done(null)}})}
 async function copyNode(x,target,name){
  if(x.kind==='file'){
