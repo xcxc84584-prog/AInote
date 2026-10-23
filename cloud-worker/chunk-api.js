@@ -8,6 +8,29 @@ async function owner(sql,req){const token=(req.headers.get('Authorization')||'')
 export async function chunkApi(req,env,path,sql){if(!path.startsWith('/api/v378/'))return null;
  try{const user=await owner(sql,req);if(!user)return json({error:'需要登入'},401);
  const method=req.method;
+ const fmatch=path.match(/^\/api\/v378\/files\/([0-9a-f-]+)(?:\/(history)(?:\/(\d+))?)?$/i);
+ if(fmatch&&idok(fmatch[1])&&(method==='DELETE'||fmatch[2]==='history')){
+  const fid=fmatch[1];const own=await sql`SELECT file_id,name,revision FROM bv_cloud_documents WHERE file_id=${fid} AND owner_id=${user}`;
+  if(!own.length)return json({error:'文件不存在或無權限'},404);
+  if(fmatch[2]==='history'&&method==='GET'){
+   const revisions=await sql`SELECT revision,sha256,completed_at AS created_at,'full' AS mode,size_bytes FROM bv_cloud_uploads WHERE file_id=${fid} AND owner_id=${user} AND state='complete' ORDER BY revision DESC LIMIT 100`;
+   return json({name:own[0].name,commits:revisions});
+  }
+  if(fmatch[2]==='history'&&method==='DELETE'&&fmatch[3]){
+   const rev=Number(fmatch[3]);if(!Number.isSafeInteger(rev)||rev<1)return json({error:'版本無效'},400);
+   const count=await sql`SELECT COUNT(*)::int AS n FROM bv_cloud_uploads WHERE file_id=${fid} AND owner_id=${user} AND state='complete'`;
+   if(count[0].n<=1)return json({error:'最後一個版本不能單獨刪除'},409);
+   const removed=await sql`DELETE FROM bv_cloud_uploads WHERE file_id=${fid} AND owner_id=${user} AND revision=${rev} AND state='complete' RETURNING revision`;
+   if(!removed.length)return json({error:'版本不存在'},404);
+   const latest=await sql`SELECT MAX(revision)::int AS revision FROM bv_cloud_uploads WHERE file_id=${fid} AND owner_id=${user} AND state='complete'`;
+   await sql`UPDATE bv_cloud_documents SET revision=${latest[0].revision},updated_at=NOW() WHERE file_id=${fid} AND owner_id=${user}`;
+   return json({deleted:true,revision:latest[0].revision});
+  }
+  if(!fmatch[2]&&method==='DELETE'){
+   const removed=await sql`DELETE FROM bv_cloud_documents WHERE file_id=${fid} AND owner_id=${user} RETURNING file_id`;
+   return json({deleted:!!removed.length,file_id:fid});
+  }
+ }
  if(path==='/api/v378/files'&&method==='GET'){const rows=await sql`SELECT file_id,name,revision,life_days,expires_at FROM bv_cloud_documents WHERE owner_id=${user} AND expires_at>NOW() ORDER BY updated_at DESC LIMIT 200`;return json({files:rows})}
  if(path==='/api/v378/uploads'&&method==='POST'){
  const b=await req.json();if(!idok(b.file_id)||typeof b.name!=='string'||!b.name.trim()||b.name.length>240||!Number.isSafeInteger(b.size_bytes)||b.size_bytes<1||b.size_bytes>MAX||!Number.isInteger(b.life_days)||![1,7,14,30,90].includes(b.life_days)||!/^[a-f0-9]{64}$/i.test(b.sha256))return json({error:'上傳資料無效或超過 50 MiB'},400);
@@ -33,7 +56,7 @@ export async function chunkApi(req,env,path,sql){if(!path.startsWith('/api/v378/
  await sql`UPDATE bv_cloud_uploads SET state='complete',completed_at=NOW() WHERE id=${uploadId} AND owner_id=${user}`;await sql`UPDATE bv_cloud_documents SET revision=${u.revision},updated_at=NOW() WHERE file_id=${u.file_id} AND owner_id=${user}`;return json({ok:true,file_id:u.file_id,revision:u.revision})}
  }
  const file=path.match(/^\/api\/v378\/files\/([0-9a-f-]+)(?:\/(meta|parts\/\d+))?$/i);
- if(file&&idok(file[1])&&method==='GET'){const rows=await sql`SELECT * FROM bv_cloud_documents WHERE file_id=${file[1]} AND owner_id=${user} AND expires_at>NOW()`;if(!rows.length)return json({error:'文件不存在或無權限'},404);const d=rows[0];const u=await sql`SELECT * FROM bv_cloud_uploads WHERE file_id=${d.file_id} AND owner_id=${user} AND state='complete' ORDER BY revision DESC LIMIT 1`;if(!u.length)return json({error:'文件尚未完成上傳'},409);const v=u[0];if(!file[2]||file[2]==='meta')return json({file_id:d.file_id,name:d.name,revision:v.revision,part_count:v.part_count,size_bytes:Number(v.size_bytes),sha256:v.sha256,life_days:d.life_days,expires_at:d.expires_at});const i=Number(file[2].split('/')[1]);if(!Number.isInteger(i)||i<0||i>=v.part_count)return json({error:'分片不存在'},404);const chunks=await sql`SELECT encode(data,'hex') AS hex,sha256 FROM bv_cloud_parts WHERE upload_id=${v.id} AND part_index=${i}`;if(!chunks.length)return json({error:'分片不存在'},404);const str=chunks[0].hex,bytes=new Uint8Array(str.length/2);for(let j=0;j<str.length;j+=2)bytes[j/2]=parseInt(str.slice(j,j+2),16);return new Response(bytes,{headers:{'Content-Type':'application/octet-stream','X-BV-SHA256':chunks[0].sha256,'Cache-Control':'no-store'}})}
+ if(file&&idok(file[1])&&method==='GET'){const rows=await sql`SELECT * FROM bv_cloud_documents WHERE file_id=${file[1]} AND owner_id=${user} AND expires_at>NOW()`;if(!rows.length)return json({error:'文件不存在或無權限'},404);const d=rows[0];const requested=new URL(req.url).searchParams.get('revision');const rev=requested===null?null:Number(requested);if(requested!==null&&(!Number.isSafeInteger(rev)||rev<1))return json({error:'版本無效'},400);const u=await sql`SELECT * FROM bv_cloud_uploads WHERE file_id=${d.file_id} AND owner_id=${user} AND state='complete' AND (${rev}::integer IS NULL OR revision=${rev}) ORDER BY revision DESC LIMIT 1`;if(!u.length)return json({error:'文件尚未完成上傳'},409);const v=u[0];if(!file[2]||file[2]==='meta')return json({file_id:d.file_id,name:d.name,revision:v.revision,part_count:v.part_count,size_bytes:Number(v.size_bytes),sha256:v.sha256,life_days:d.life_days,expires_at:d.expires_at});const i=Number(file[2].split('/')[1]);if(!Number.isInteger(i)||i<0||i>=v.part_count)return json({error:'分片不存在'},404);const chunks=await sql`SELECT encode(data,'hex') AS hex,sha256 FROM bv_cloud_parts WHERE upload_id=${v.id} AND part_index=${i}`;if(!chunks.length)return json({error:'分片不存在'},404);const str=chunks[0].hex,bytes=new Uint8Array(str.length/2);for(let j=0;j<str.length;j+=2)bytes[j/2]=parseInt(str.slice(j,j+2),16);return new Response(bytes,{headers:{'Content-Type':'application/octet-stream','X-BV-SHA256':chunks[0].sha256,'Cache-Control':'no-store'}})}
  return json({error:'未知分片 API'},404)
  }catch(e){console.error('v378 API',e);return json({error:'雲端操作失敗，請查看 Worker 日誌'},500)}
 }

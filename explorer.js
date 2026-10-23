@@ -29,7 +29,7 @@ async function openSingleFile(file){
  if(!file||!/\.(md|markdown|txt)$/i.test(file.name)){alert('單檔匯入支援 MD、Markdown、TXT');return}
  if(dirty&&!confirm('目前文件尚未儲存，仍要切換？'))return;
  const content=await file.text(),name=file.name;
- virtualRoot=true;root={name:name.replace(/\.[^.]+$/,'')+' Root',kind:'directory'};
+ cloudVirtualId=null;virtualRoot=true;root={name:name.replace(/\.[^.]+$/,'')+' Root',kind:'directory'};
  rootSelected=false;rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();
  const x={id:++sequence,uuid:uuid(),name,handle:virtualFile(name,content),parent:null,kind:'file',order:1,buffer:content};
  items.push(x);nodeDB={version:1,rootId:uuid(),nodes:{[name]:x.uuid}};
@@ -39,33 +39,56 @@ async function openSingleFile(file){
  toast('單檔已匯入 IndexedDB 草稿；按 Save 才會寫入本地');
 }
 
-// v3.7.8 cloud ZIP virtual root: in-memory directory handles; drafts are persisted to IndexedDB.
+// v3.7.8.1: full Cloud ZIP tree, kept only in IndexedDB (no filesystem writes).
+let cloudVirtualId=null;
+const CLOUD_DB='bv-note-cloud-roots-v378';
+function cloudDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(CLOUD_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains('roots'))r.result.createObjectStore('roots')};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function cloudRead(key){const db=await cloudDB();try{return await new Promise((resolve,reject)=>{const q=db.transaction('roots').objectStore('roots').get(key);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}finally{db.close()}}
+async function cloudWrite(key,value){const db=await cloudDB();try{await new Promise((resolve,reject)=>{const tx=db.transaction('roots','readwrite');tx.objectStore('roots').put(value,key);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)})}finally{db.close()}}
+function memoryFile(name,bytes){let data=bytes instanceof Uint8Array?bytes:new Uint8Array(bytes);return {kind:'file',name,async getFile(){return new File([data],name)},async createWritable(){let next=data;return {async write(v){next=new Uint8Array(await new Blob([v]).arrayBuffer())},async close(){data=next}}},bytes(){return data}}}
+async function loadCloudRoot(saved){
+ rememberRoot();virtualRoot=true;cloudVirtualId=saved.id;root={name:saved.name.replace(/\.zip$/i,'')+'（Cloud）',kind:'directory',cloudId:saved.id};
+ rootSelected=false;rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();dirty=false;
+ nodeDB={version:1,rootId:uuid(),nodes:{}};recordDB={version:2,files:{}};
+ const directories=new Map();directories.set('',null);
+ const addDir=key=>{if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:{kind:'directory',name},parent,kind:'directory',order:sequence,buffer:null};items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x};
+ for(const entry of saved.entries){const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
+ rootLabel.textContent=root.name;setDocumentVisible(false);display();
+ const first=items.find(x=>x.kind==='file'&&/\.(md|markdown|txt|ainote)$/i.test(x.name));
+ if(first)await choose(first);else toast('雲端 Root 已載入，包含 '+items.length+' 個節點');
+ rememberRoot();
+}
 window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{
- const key='bv378-root-'+id;const existing=await new Promise((resolve,reject)=>{const r=indexedDB.open('bv-note-cloud-roots-v378',1);r.onupgradeneeded=()=>r.result.createObjectStore('roots');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction('roots');const q=tx.objectStore('roots').get(key);q.onsuccess=()=>{resolve(q.result);db.close()};q.onerror=()=>reject(q.error)}});
- if(existing&&!confirm('同一 Fold Hash ID 已存在 IndexedDB，是否 REPLACE？請先確認目前編輯已儲存。'))return;
- if(dirty&&!confirm('目前 Explorer 有未儲存的修改，是否仍要切換？'))return;
- const saved={id,name,entries:entries.map(e=>({path:e.path,data:e.data})),updatedAt:Date.now()};
- await new Promise((resolve,reject)=>{const r=indexedDB.open('bv-note-cloud-roots-v378',1);r.onupgradeneeded=()=>r.result.createObjectStore('roots');r.onsuccess=()=>{const db=r.result,tx=db.transaction('roots','readwrite');tx.objectStore('roots').put(saved,key);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)};r.onerror=()=>reject(r.error)});
- // Select the first editable text file; the complete ZIP is retained in IndexedDB.
- const entry=entries.find(e=>/\.(md|markdown|txt)$/i.test(e.path));if(!entry){alert('ZIP 已存至 IndexedDB，但沒有可預覽的 MD/TXT 文件');return}
- await openSingleFile(new File([entry.data],entry.path.split('/').pop(),{type:'text/plain'}));
- root.name=name.replace(/\.zip$/i,'')+'（Cloud）';rootLabel.textContent=root.name;
+ if(!/^[0-9a-f-]{36}$/i.test(id))throw Error('Cloud ID 無效');
+ const key='bv378-root-'+id,existing=await cloudRead(key);
+ if(existing&&!confirm('同一 Fold Hash ID 已存在 IndexedDB。是否以雲端版本 REPLACE？現有草稿將被覆蓋。'))return false;
+ if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前 Explorer 有未儲存修改，是否仍要切換？'))return false;
+ const safe=entries.map(e=>{if(typeof e.path!=='string'||!e.path||e.path.startsWith('/')||e.path.includes('\\')||e.path.split('/').some(v=>!v||v==='.'||v==='..'))throw Error('不安全的 ZIP 路徑');return {path:e.path,data:e.data}});
+ const saved={id,name,entries:safe,updatedAt:Date.now()};await cloudWrite(key,saved);await loadCloudRoot(saved);return true;
 };
+window.BVCloudRestoreVirtualRoot=async(id)=>{const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true};
+// Restore without fetching from Neon; explicit action avoids unexpectedly replacing the current workspace.
+const cloudRestoreButton=document.createElement('button');cloudRestoreButton.textContent='還原 Cloud Root';cloudRestoreButton.title='從 IndexedDB 還原已載入的 Cloud ZIP';
+cloudRestoreButton.onclick=async()=>{try{const id=prompt('輸入要還原的 Fold Hash ID');if(id)await window.BVCloudRestoreVirtualRoot(id.trim())}catch(e){alert(e.message)}};
+document.querySelector('#root-import-file')?.after(cloudRestoreButton);
 const singlePicker=document.createElement('input');singlePicker.type='file';
 singlePicker.accept='.md,.markdown,.txt';singlePicker.hidden=true;document.body.append(singlePicker);
 document.querySelector('#root-import-file').onclick=()=>{singlePicker.value='';singlePicker.click()};
 singlePicker.onchange=()=>openSingleFile(singlePicker.files[0]).catch(e=>alert(e.message));
 async function saveVirtual(){
- const x=current();if(!x)return;
- const content=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
- await draftStore({id:x.uuid,name:x.name,rootName:root.name,content,updatedAt:Date.now()});
- if(!window.showSaveFilePicker){
-  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));a.download=x.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
- }else{
-  try{const dest=await showSaveFilePicker({suggestedName:x.name,types:[{description:'Markdown / Text',accept:{'text/plain':['.md','.markdown','.txt']}}]});
-   const writer=await dest.createWritable();await writer.write(content);await writer.close();
-  }catch(err){if(err.name==='AbortError')return;throw err}
+ const x=current();if(x?.kind==='file')x.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
+ if(cloudVirtualId&&root?.cloudId===cloudVirtualId){
+  const entries=[];for(const node of items.filter(n=>n.kind==='file')){
+   const bytes=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
+   entries.push({path:path(node),data:bytes});node.handle=memoryFile(node.name,bytes);node.buffer=null;
+  }
+  await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
+  dirty=false;refreshUnsaved();rememberRoot();toast('已將完整 Cloud Root 草稿儲存至 IndexedDB（未寫入本地資料夾）');return;
  }
+ if(!x)return;const content=x.buffer??(sourceArea.style.display==='none'?rawMarkdown:sourceArea.value);
+ await draftStore({id:x.uuid,name:x.name,rootName:root.name,content,updatedAt:Date.now()});
+ if(!window.showSaveFilePicker){const url=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=x.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),2000)}
+ else{try{const dest=await showSaveFilePicker({suggestedName:x.name,types:[{description:'Markdown / Text',accept:{'text/plain':['.md','.markdown','.txt']}}]});const writer=await dest.createWritable();await writer.write(content);await writer.close()}catch(err){if(err.name==='AbortError')return;throw err}}
  x.handle=virtualFile(x.name,content);x.buffer=null;dirty=false;refreshUnsaved();toast('已儲存本地文件：'+x.name);
 }
 
@@ -259,7 +282,7 @@ async function activateRoot(target){
  try{
   rememberRoot();
   root=target.root;items=target.items;selected=target.selected;sequence=target.sequence;
-  orderDirty=target.orderDirty;virtualRoot=target.virtualRoot;
+  orderDirty=target.orderDirty;virtualRoot=target.virtualRoot;cloudVirtualId=target.root.cloudId||null;
   rootSelected=target.rootSelected;rootCollapsed=target.rootCollapsed;
   collapsed.clear();for(const id of target.collapsed)collapsed.add(id);
   nodeDB=target.nodeDB;recordDB=target.recordDB;recordWrite=target.recordWrite;nodeWrite=target.nodeWrite;
@@ -324,7 +347,7 @@ function enableRootOrdering(){
 }
 // AREA ROOT ORDER END
 // AREA MULTIROOT END
-async function openRootFromHandle(d){virtualRoot=false;
+async function openRootFromHandle(d){virtualRoot=false;cloudVirtualId=null;
  const previousSession=(()=>{try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')}catch{return null}})();
  root=d;rootSelected=false;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;
  items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadNodeDB();await loadOrders();await loadRecordDB();
@@ -488,7 +511,7 @@ async function closeRoot(){
  if((dirty||orderDirty||items.some(x=>x.buffer!==null))&&!confirm('此 Root 有未儲存修改，仍要關閉？'))return;
  const old=root;const next=rootWorkspaces.find(w=>w.root!==old);
  rootWorkspaces.splice(rootWorkspaces.findIndex(w=>w.root===old),1);
- root=null;virtualRoot=false;selected=null;items=[];sequence=0;orderDirty=false;
+ root=null;virtualRoot=false;cloudVirtualId=null;selected=null;items=[];sequence=0;orderDirty=false;
  rootSelected=false;rootCollapsed=false;collapsed.clear();resetBatch();dirty=false;
  rawMarkdown='';setName('未命名.md');setDocumentVisible(false);
  if(next)await activateRoot(next);else{rootLabel.textContent='尚未選取 Root';switchMode('edit');display()}
@@ -633,7 +656,7 @@ function menu(x,left,top){
 }
 document.addEventListener('click',e=>{if(!e.target.closest('#context-menu')&&!e.target.closest('#explorer-operate'))document.querySelector('#context-menu').hidden=true});
 document.querySelector('#explorer-operate').onclick=e=>{e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{if(!root){window.BVCreateNewDocument();return;}create('directory')};document.querySelector('#add-file').onclick=async()=>{if(!root){await openSingleFile(new File([''],'新文件.md',{type:'text/markdown'}));return}create('file')};
-sourceArea.addEventListener('input',()=>{if(virtualRoot&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
+sourceArea.addEventListener('input',()=>{if(virtualRoot&&!cloudVirtualId&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}});
 // Re-scan external file changes on focus and while the page is visible.
 let scanBusy=false;async function syncExternal(){if(virtualRoot||!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}}
 window.addEventListener('focus',syncExternal);document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncExternal()});setInterval(()=>{if(!document.hidden)syncExternal()},12000);

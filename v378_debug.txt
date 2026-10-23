@@ -1,0 +1,372 @@
+﻿
+  cloud-worker\worker.js:2:import {chunkApi} from './chunk-api.js';
+  cloud-worker\worker.js:3:// AREA A11 START: CloudAPI | File: cloud-worker/worker.js
+> cloud-worker\worker.js:4:import JSZip from 'jszip';
+  cloud-worker\worker.js:5:import { neon } from '@neondatabase/serverless';
+  cloud-worker\worker.js:6:const reply=(data,status=200,origin='')=>new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/
+json; charset=utf-8','Cache-Control':'no-store',...(origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{})}});
+  cloud-worker\worker.js:7:// Apply CORS consistently to authentication responses, including 4xx/5xx.
+  cloud-worker\worker.js:21:const lifeDays=v=>Number.isInteger(v)&&[1,7,14,30,90].includes(v);
+  cloud-worker\worker.js:22:const hex=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=
+>x.toString(16).padStart(2,'0')).join('');
+> cloud-worker\worker.js:23:export default {async scheduled(event,env,ctx){ctx.waitUntil((async()=>{if(!env.DATABASE_URL)throw Error('DATABASE_URL 
+missing');const sql=neon(env.DATABASE_URL);await sql`DELETE FROM cloud_files WHERE expires_at IS NOT NULL AND expires_at<=NOW()`;
+> cloud-worker\worker.js:24:if(env.AI_UPLOADS){const listed=await env.AI_UPLOADS.list({prefix:'ai-temp/',limit:1000});const expired=listed.objects.
+filter(o=>o.uploaded&&Date.now()-new Date(o.uploaded).getTime()>24*3600*1000).map(o=>o.key);if(expired.length)await env.AI_UPLOADS.delete(expired)}
+> cloud-worker\worker.js:25:await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads W
+HERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`})())},async fetch(req,env){const origin=req.headers.get('Origin')||'',allowed=env.
+ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTION
+S')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PAT
+CH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count, X-BV-SHA256','Acc
+ess-Control-Max-Age':'3600','Vary':'Origin'}});
+  cloud-worker\worker.js:26:try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=
+new URL(req.url).pathname;const chunkResponse=await chunkApi(req,env,path,sql);if(chunkResponse)return withCors(chunkResponse,cors);const authRespo
+nse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
+  cloud-worker\worker.js:27:let match;
+  cloud-worker\worker.js:28:if(path==='/api/projects'&&req.method==='POST'){const b=await req.json();if(typeof b.name!=='string'||!b.name.trim()||b
+.name.length>150)throw Error('專案名稱無效');const id=crypto.randomUUID();await sql`INSERT INTO projects(id,name) VALUES(${id},${b.name.trim()})`;return 
+reply({project_id:id},201,cors)}
+  cloud-worker\worker.js:30:if((match=path.match(/^\/api\/files\/([^/]+)\/meta$/))&&req.method==='GET'){const id=match[1];if(!uuid(id))return reply
+({error:'File Hash ID 格式無效'},400,cors);const rows=await sql`SELECT file_id,project_id,name,revision,last_commit,life_days,expires_at FROM cloud_fil
+es WHERE file_id=${id} AND (expires_at IS NULL OR expires_at>NOW())`;return rows.length?reply(rows[0],200,cors):reply({error:'找不到 File Hash ID'},40
+4,cors)}
+  cloud-worker\worker.js:31:if(path==='/api/files'&&req.method==='POST'){const b=await req.json();if(!uuid(b.file_id)||!uuid(b.project_id))throw Er
+ror('無效的文件或專案 ID');if(typeof b.name!=='string'||!b.name.trim()||b.name.length>240)throw Error('文件名稱無效');if(typeof b.content!=='string'||new TextEnc
+oder().encode(b.content).length>1024*1024)throw Error('單檔上限為 1 MiB');if(!lifeDays(b.life_days))throw Error('請設定 1/7/14/30/90 天保存期限');const digest=a
+wait hex(b.content);const expire=new Date(Date.now()+b.life_days*86400000).toISOString();await sql`INSERT INTO cloud_files(file_id,project_id,name,
+revision,last_commit,life_days,expires_at) VALUES(${b.file_id},${b.project_id},${b.name},1,NOW(),${b.life_days},${expire})`;await sql`INSERT INTO c
+ommits(file_id,revision,mode,content,sha256) VALUES(${b.file_id},1,'initial',${b.content},${digest})`;return reply({file_id:b.file_id,revision:1,li
+fe_days:b.life_days,expires_at:expire},201,cors)}
+> cloud-worker\worker.js:32:if((match=path.match(/^\/api\/files\/([^/]+)\/history$/))&&req.method==='GET'){const id=match[1];if(!uuid(id))throw Err
+or('ID 無效');const f=await sql`SELECT name FROM cloud_files WHERE file_id=${id} AND (expires_at IS NULL OR expires_at>NOW())`;if(!f.length)return re
+ply({error:'找不到文件'},404,cors);const commits=await sql`SELECT revision,mode,sha256,created_at FROM commits WHERE file_id=${id} ORDER BY revision DES
+C LIMIT 100`;return reply({name:f[0].name,commits},200,cors)}
+> cloud-worker\worker.js:33:if((match=path.match(/^\/api\/files\/([^/]+)\/history\/(\d+)$/))&&req.method==='DELETE'){const id=match[1],rev=Number(m
+atch[2]);if(!uuid(id)||!Number.isSafeInteger(rev)||rev<1)return reply({error:'ID 或版本號無效'},400,cors);const rows=await sql`WITH existing AS (SELECT r
+evision FROM commits WHERE file_id=${id}), guard AS (SELECT COUNT(*)::int AS count FROM existing), deleted AS (DELETE FROM commits WHERE file_id=${
+id} AND revision=${rev} AND (SELECT count FROM guard)>1 RETURNING revision), updated AS (UPDATE cloud_files SET revision=(SELECT MAX(revision) FROM
+ commits WHERE file_id=${id} AND revision<>${rev}),last_commit=NOW() WHERE file_id=${id} AND EXISTS(SELECT 1 FROM deleted) RETURNING revision) SELE
+CT (SELECT count FROM guard) AS total,(SELECT COUNT(*)::int FROM deleted) AS removed,(SELECT revision FROM updated) AS revision`;const r=rows[0];if
+(!r?.total)return reply({error:'找不到文件或提交紀錄'},404,cors);if(r.total<=1)return reply({error:'最後一筆提交不可單獨刪除，請刪除整個雲端專案'},409,cors);if(!r.removed)return r
+eply({error:'找不到該版本'},404,cors);return reply({deleted:true,revision:r.revision},200,cors)}
+  cloud-worker\worker.js:34:if((match=path.match(/^\/api\/files\/([^/]+)\/commit$/))&&req.method==='POST'){const id=match[1];if(!uuid(id))throw Err
+or('ID 無效');const b=await req.json();if(!['full','incremental'].includes(b.mode)||!Number.isInteger(b.base_revision)||(b.mode==='full'&&typeof b.co
+ntent!=='string'))throw Error('Commit 資料無效');let content=b.content;
+  cloud-worker\worker.js:35:if(b.mode==='incremental'){
+> cloud-worker\worker.js:36:if(!b.changes||typeof b.changes!=='object'||Array.isArray(b.changes)||!Array.isArray(b.deleted))throw Error('增量資料無效');
+  cloud-worker\worker.js:37:const prev=await sql`SELECT content FROM commits WHERE file_id=${id} AND revision=${b.base_revision}`;
+  cloud-worker\worker.js:38:if(!prev.length)return reply({error:'找不到基礎版本'},409,cors);
+> cloud-worker\worker.js:39:const zip=await JSZip.loadAsync(Uint8Array.from(atob(prev[0].content),c=>c.charCodeAt(0)));
+  cloud-worker\worker.js:40:const safe=p=>typeof p==='string'&&p.length>0&&p.length<512&&!p.startsWith('/')&&!p.includes('\\')&&!p.split('/').some(
+x=>x==='..'||x==='.'||!x);
+> cloud-worker\worker.js:41:for(const p of b.deleted){if(!safe(p))throw Error('刪除路徑不合法');zip.remove(p)}
+  cloud-worker\worker.js:42:for(const [p,value] of Object.entries(b.changes)){if(!safe(p)||typeof value!=='string')throw Error('修改檔案資料不合法');zip.fil
+e(p,Uint8Array.from(atob(value),c=>c.charCodeAt(0)),{date:new Date('2000-01-01T00:00:00Z')})}
+  cloud-worker\worker.js:43:const bytes=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}});
+  cloud-worker\worker.js:44:let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));content=btoa(
+binary);
+  cloud-worker\worker.js:45:}
+  cloud-worker\worker.js:46:if(typeof content!=='string'||new TextEncoder().encode(content).length>1024*1024)throw Error('重建 ZIP 超過 1 MiB 上限');cons
+t digest=await hex(content);const name=String(b.name||'').slice(0,240);const current=await sql`SELECT revision,life_days,expires_at FROM cloud_file
+s WHERE file_id=${id} AND (expires_at IS NULL OR expires_at>NOW())`;if(!current.length)return reply({error:'找不到文件'},404,cors);if(b.mode==='full'&&!
+lifeDays(b.life_days))throw Error('完整提交必須選擇保存期限');if(current[0].revision!==b.base_revision)return reply({error:'雲端版本已改變，請重新整理後比較'},409,cors);const 
+old=await sql`SELECT sha256 FROM commits WHERE file_id=${id} AND revision=${b.base_revision}`;if(old[0]?.sha256===digest)return reply({unchanged:tr
+ue,revision:b.base_revision,life_days:current[0].life_days,expires_at:current[0].expires_at},200,cors);const days=b.mode==='full'?b.life_days:curre
+nt[0].life_days;const expiry=b.mode==='full'?new Date(Date.now()+days*86400000).toISOString():current[0].expires_at;const changed=await sql`UPDATE 
+cloud_files SET revision=revision+1,name=${name},last_commit=NOW(),life_days=${days},expires_at=${expiry} WHERE file_id=${id} AND revision=${b.base
+_revision} RETURNING revision`;if(!changed.length)return reply({error:'版本衝突'},409,cors);await sql`INSERT INTO commits(file_id,revision,mode,content
+,sha256) VALUES(${id},${changed[0].revision},${b.mode},${content},${digest})`;return reply({revision:changed[0].revision,life_days:days,expires_at:
+expiry},200,cors)}
+> cloud-worker\worker.js:47:if((match=path.match(/^\/api\/files\/([^/]+)$/))&&req.method==='DELETE'){const id=match[1];if(!uuid(id))return reply({e
+rror:'ID 無效'},400,cors);const rows=await sql`DELETE FROM cloud_files WHERE file_id=${id} RETURNING file_id`;return rows.length?reply({deleted:true,
+file_id:id},200,cors):reply({error:'找不到文件'},404,cors)}
+  cloud-worker\worker.js:48:if((match=path.match(/^\/api\/files\/([^/]+)$/))&&req.method==='GET'){const id=match[1];if(!uuid(id))throw Error('ID 無效
+');const q=new URL(req.url).searchParams.get('revision');const f=await sql`SELECT name,revision FROM cloud_files WHERE file_id=${id} AND (expires_a
+t IS NULL OR expires_at>NOW())`;if(!f.length)return reply({error:'找不到文件'},404,cors);const rev=q?Number(q):f[0].revision;if(!Number.isInteger(rev)||
+rev<1)throw Error('版本號無效');const rows=await sql`SELECT content,sha256,created_at FROM commits WHERE file_id=${id} AND revision=${rev}`;if(!rows.len
+gth)return reply({error:'找不到版本'},404,cors);return reply({file_id:id,name:f[0].name,revision:rev,...rows[0]},200,cors)}
+  cloud-worker\worker.js:49:return reply({error:'找不到 API 路由'},404,cors);
+  cloud-worker\worker.js:50:}catch(e){console.error('Cloud API error',e);return reply({error:e.message==='Unexpected end of JSON input'?'JSON 格式錯誤'
+:String(e.message||'服務發生錯誤').slice(0,200)},400,cors)}}};
+  cloud-worker\auth.js:83:  const users=await sql`UPDATE bv_users SET password_salt=${salt},password_hash=${hash} WHERE email=${email} AND password
+_hash NOT LIKE ${PASSWORD_SCHEME+'%'} RETURNING id`;
+  cloud-worker\auth.js:84:  if(!users.length)return bad('此帳號已遷移或不存在',409);
+> cloud-worker\auth.js:85:  await sql`DELETE FROM bv_sessions WHERE user_id=${users[0].id}`;
+  cloud-worker\auth.js:86:  return json({ok:true,message:'遷移完成，請使用新密碼登入'});
+  cloud-worker\auth.js:87: }
+  cloud-worker\auth.js:88: // Email registration: verify mailbox ownership before creating any user.
+  cloud-worker\auth.js:102:  phase='email-signup-send';
+  cloud-worker\auth.js:103:  const sent=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+env.RESEND_API_
+KEY,'Content-Type':'application/json'},body:JSON.stringify({from:env.MIGRATION_FROM_EMAIL,to:[email],subject:'BV-Note Gmail 註冊驗證碼',text:'您的 BV-Note
+ 註冊驗證碼為：'+code+'\n10 分鐘內有效。若非本人操作請忽略。'})});
+> cloud-worker\auth.js:104:  if(!sent.ok){console.error('AUTH_SIGNUP_EMAIL_ERROR',sent.status);await sql`DELETE FROM bv_auth_email_verifications WH
+ERE id=${challenge}`;return bad('驗證郵件暫時無法寄送',503)}
+  cloud-worker\auth.js:105:  return json({ok:true,challenge_id:challenge,message:'驗證碼已寄出，10 分鐘內有效'});
+  cloud-worker\auth.js:106: }
+  cloud-worker\auth.js:107: if(path==='/api/auth/register/email/complete'&&req.method==='POST'){
+  cloud-worker\auth.js:147: }
+  cloud-worker\auth.js:148: const user=await current(sql,req);if(!user)return bad('請先登入或重新登入',401);
+> cloud-worker\auth.js:149: if(path==='/api/auth/logout'&&req.method==='POST'){await sql`DELETE FROM bv_sessions WHERE id=${user.session_id}`;retur
+n json({ok:true});}
+  cloud-worker\auth.js:150: if(path==='/api/auth/me'&&req.method==='GET'){
+  cloud-worker\auth.js:151:  const day=dateTW();const rows=await sql`SELECT used FROM bv_ai_usage WHERE user_id=${user.id} AND usage_day=${day}::da
+te`;
+  cloud-worker\auth.js:152:  return json({email:user.email,limit:100,used:rows[0]?.used||0,remaining:100-(rows[0]?.used||0),day});
+  cloud-worker\auth.js:171:   WHERE bv_ai_usage.used<100 RETURNING used
+  cloud-worker\auth.js:172:  ) SELECT (SELECT COUNT(*)::int FROM claim) AS claimed,(SELECT COUNT(*)::int FROM charge) AS charged`;
+> cloud-worker\auth.js:173:  if(result[0]?.claimed&&!result[0]?.charged){await sql`DELETE FROM bv_ai_chunks WHERE user_id=${user.id} AND upload_id=
+${id} AND part_index=${part}`;return fail('AI-LIMIT-001','今日 AI 額度不足',429)}
+  cloud-worker\auth.js:174:  if(!result[0]?.claimed){const old=await sql`SELECT bytes,part_count FROM bv_ai_chunks WHERE user_id=${user.id} AND upl
+oad_id=${id} AND part_index=${part}`;if(Number(old[0]?.bytes)!==bytes||Number(old[0]?.part_count)!==count)return fail('AI-UPLOAD-003','重複分片參數不一致',4
+09)}
+  cloud-worker\auth.js:175:  return json({ok:true,part,charged:result[0]?.claimed?1:0,mode:'local-manifest'});
+  cloud-worker\auth.js:176: }
+  cloud.js:17:
+  cloud.js:18:function el(tag,text){const n=document.createElement(tag);n.textContent=text;return n}
+> cloud.js:19:function renderFiles(rows){const body=$('cloud-file-table').querySelector('tbody');body.replaceChildren();for(const f of rows){const 
+tr=el('tr','');for(const val of [f.name,String(f.revision||0)])tr.append(el('td',val));const td=el('td','');for(const [title,cb] of [['歷史',()=>hist
+ory(f.file_id)],['編輯',()=>editCloud(f.file_id)],['下載',()=>download(f.file_id)],['刪除',()=>removeFile(f.file_id)]]){const b=el('button',title);b.oncl
+ick=()=>run(cb);td.append(b)}tr.append(td);body.append(tr)}if(!rows.length){const tr=el('tr','');const td=el('td','請輸入完整 File Hash ID 搜尋；不提供雲端文件列表。
+');td.colSpan=3;tr.append(td);body.append(tr)}}
+  cloud.js:20:function upsert(f){files=[...files.filter(x=>x.file_id!==f.file_id),f];renderFiles(files)}
+> cloud.js:21:$('cloud-search-button').onclick=()=>run(async()=>{const id=$('cloud-search-input').value.trim();if(!id){const listing=await api('/ap
+i/v378/files');files=listing.files;renderFiles(files);msg('已列出帳號名下 '+files.length+' 筆 Neon 分片文件');return}if(!validId(id))throw Error('只能使用完整 File H
+ash ID（UUID）搜尋');progress(35,'查詢雲端資料…');let f;try{f=await api('/api/v378/files/'+encodeURIComponent(id)+'/meta')}catch{f=await api('/api/files/'+en
+codeURIComponent(id)+'/meta')}upsert(f);selectedCloud=id;msg('找到專案：'+f.name)});
+  cloud.js:22:$('cloud-search-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('cloud-search-button').click()});
+> cloud.js:23:async function history(id){selectedCloud=id;progress(25,'讀取提交歷史…');const result=await api('/api/files/'+encodeURIComponent(id)+'/hist
+ory');const panel=$('cloud-history');panel.replaceChildren();panel.append(el('h4',result.name+'｜'+id));for(const row of result.commits){const div=e
+l('div',`#${row.revision} · ${row.created_at} · ${row.mode} · ${row.sha256.slice(0,12)}… `);div.className='cloud-history-row';const b=el('button','
+下載此版本');b.onclick=()=>run(()=>download(id,row.revision));div.append(b);const del=el('button','刪除紀錄');del.className='cloud-delete-revision';del.disa
+bled=result.commits.length<=1;del.title=del.disabled?'最後一筆提交不可單獨刪除':'';del.onclick=()=>run(async()=>{if(!confirm('永久刪除版本 #'+row.revision+'？無法復原。'))
+return;await api('/api/files/'+id+'/history/'+row.revision,'DELETE');upsert(await api('/api/v378/files/'+id+'/meta'));await history(id);msg('已刪除版本 
+#'+row.revision)});div.append(del);panel.append(div)}if(!result.commits.length)panel.append(el('p','尚無提交紀錄'));msg('已載入提交歷史')}
+  cloud.js:24:function saveBlob(name,blob){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;docum
+ent.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000)}
+  cloud.js:25:const bytesToBase64=bytes=>{let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192))
+;return btoa(binary)};
+  cloud.js:26:const base64ToBytes=str=>Uint8Array.from(atob(str),c=>c.charCodeAt(0));
+> cloud.js:27:async function zipFolder(handle){progress(12,'正在掃描本地 Fold…');if(!window.JSZip)throw Error('JSZip 尚未載入');const zip=new JSZip();let cou
+nt=0;async function walk(dir,prefix){for await(const [name,child] of dir.entries()){if(name==='filehashid.txt'||name==='.git'||name==='node_modules
+')continue;if(child.kind==='directory'){zip.file(prefix+name+'/',null,{dir:true,date:new Date('2000-01-01T00:00:00Z')});await walk(child,prefix+nam
+e+'/')}else{const file=await child.getFile();zip.file(prefix+name,await file.arrayBuffer(),{date:new Date('2000-01-01T00:00:00Z')});count++}}}await
+ walk(handle,'');progress(35,'正在壓縮 ZIP…');const blob=await zip.generateAsync({type:'uint8array',compression:'DEFLATE',compressionOptions:{level:6}}
+,m=>progress(35+m.percent*.35,'壓縮 ZIP：'+Math.round(m.percent)+'%'));const data=bytesToBase64(blob);if(blob.byteLength>50*1024*1024)throw Error('ZIP
+ 超過 50 MiB 上限');return {bytes:blob,content:data,count,hash:await crypto.subtle.digest('SHA-256',blob).then(a=>Array.from(new Uint8Array(a)).map(x=>
+x.toString(16).padStart(2,'0')).join(''))}}
+  cloud.js:28:const shaBytes=async bytes=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))).map(v=>v.toString(16).padStart(2,
+'0')).join('');
+  cloud.js:29:async function zipManifest(zip){const out={};for(const [path,item] of Object.entries(zip.files)){if(item.dir)continue;out[path]=await
+ shaBytes(await item.async('uint8array'))}return out}
+  cloud.js:30:async function localSnapshot(handle){const entries={};async function walk(dir,prefix){for await(const [name,child] of dir.entries()){
+if(name==='filehashid.txt'||name==='.git'||name==='node_modules')continue;const path=prefix+name;if(child.kind==='directory')await walk(child,path+
+'/');else{const bytes=new Uint8Array(await(await child.getFile()).arrayBuffer());entries[path]={hash:await shaBytes(bytes),bytes}}}}await walk(hand
+le,'');return entries}
+> cloud.js:31:async function buildIncremental(handle,remoteContent){progress(15,'讀取雲端版本 Hash…');const baseline=await JSZip.loadAsync(base64ToBytes(
+remoteContent));const old=await zipManifest(baseline);progress(32,'比較本地檔案 SHA-256…');const now=await localSnapshot(handle);const changes={},deleted
+=[];for(const [path,item] of Object.entries(now))if(old[path]!==item.hash)changes[path]=bytesToBase64(item.bytes);for(const path of Object.keys(old
+))if(!now[path])deleted.push(path);return {changes,deleted,changedCount:Object.keys(changes).length,deletedCount:deleted.length,unchanged:Object.ke
+ys(changes).length===0&&deleted.length===0}}
+  cloud.js:32:async function readHashInfo(handle){try{const h=await handle.getFileHandle('filehashid.txt');const t=(await(await h.getFile()).text()
+).trim();try{const j=JSON.parse(t);return {id:j.file_hash_id||j.file_id||'',expires_at:j.expires_at||null,life_days:j.life_days||null}}catch{return
+ {id:t,expires_at:null,life_days:null}}}catch(e){if(e.name==='NotFoundError')return {id:'',expires_at:null,life_days:null};throw e}}
+  cloud.js:33:async function readHashId(handle){return (await readHashInfo(handle)).id}
+  cloud.js:34:
+  cloud.js:37:async function download(id,rev){
+  cloud.js:38: progress(20,'下載雲端 ZIP…');
+> cloud.js:39: if(!window.JSZip)throw Error('JSZip 尚未載入，無法附加 filehashid.txt');
+  cloud.js:40: let f;try{if(rev)throw Error('legacy revision');const v=await getChunked(id);f={file_id:id,name:v.meta.name,revision:v.meta.revision
+,content:bytesToBase64(v.bytes)}}catch(e){if(!rev&&e.message.includes('驗證失敗'))throw e;f=await getCloud(id,rev)}
+  cloud.js:41: if(!validId(f.file_id)||f.file_id.toLowerCase()!==id.toLowerCase())throw Error('雲端回傳的 File ID 不一致');
+  cloud.js:42: const original=base64ToBytes(f.content);
+  cloud.js:43: // Validate the original archive before adding metadata; never silently overwrite user files.
+> cloud.js:44: const zip=await JSZip.loadAsync(original,{checkCRC32:true});
+  cloud.js:45: if(zip.file('filehashid.txt'))throw Error('雲端 ZIP 已包含 filehashid.txt；為避免覆寫原有識別資料，已取消下載');
+  cloud.js:46: progress(48,'正在計算各文件 SHA-256…');
+  cloud.js:47: const entries=[];
+  cloud.js:53: }
+  cloud.js:54: entries.sort((a,b)=>a.path.localeCompare(b.path));
+> cloud.js:55: let meta;try{meta=await api('/api/v378/files/'+encodeURIComponent(id)+'/meta')}catch{meta=await api('/api/files/'+encodeURIComponent
+(id)+'/meta')}
+  cloud.js:56: const manifest={version:'1.0',hash_algorithm:'SHA-256',file_hash_id:f.file_id,cloud_file_id:f.file_id,revision:f.revision,life_days:
+meta.life_days,expires_at:meta.expires_at,source_zip_sha256:await shaBytes(original),files:entries};
+  cloud.js:57: zip.file('filehashid.txt',JSON.stringify(manifest,null,2)+'\n');
+  cloud.js:58: progress(80,'正在封裝 filehashid.txt…');
+  cloud.js:62: msg('已下載 ZIP（包含 filehashid.txt 與 '+entries.length+' 筆文件 SHA-256）：'+name);
+  cloud.js:63:}
+> cloud.js:64:async function removeFile(id){if(!confirm('永久刪除此雲端 ZIP 及所有 Commit 紀錄？不可復原。'))return;progress(35,'刪除雲端檔案…');await api('/api/files/'+id
+,'DELETE');files=files.filter(f=>f.file_id!==id);if(selectedCloud===id){selectedCloud=null;$('cloud-history').textContent='雲端專案已刪除'}renderFiles(fil
+es);msg('雲端 ZIP 已刪除，本地 Fold 不受影響')}
+  cloud.js:65:$('cloud-create-button').onclick=()=>{try{window.BVCloudFolderHandle();showCreatePanel()}catch(e){msg('錯誤：'+e.message)}};
+  cloud.js:66:$('cloud-create-cancel').onclick=()=>{$('cloud-create-panel').hidden=true};
+> cloud.js:67:$('cloud-create-confirm').onclick=()=>run(async()=>{const folder=window.BVCloudFolderHandle(),days=life();const old=await readHashId(
+folder.handle);if(validId(old)&&!confirm('目前 Root 已有 filehashid.txt（'+old+'）。是否建立新的雲端專案並覆蓋原有 Hash ID？\n取消將保留原有檔案。'))return;const zip=await zipFolde
+r(folder.handle);const id=crypto.randomUUID();progress(73,'建立雲端專案…');progress(83,'上傳 Fold ZIP…');const uploaded=await uploadChunked(id,folder.name+
+'.zip',zip.bytes,days);const created=await api('/api/v378/files/'+id+'/meta');progress(92,'保存 filehashid.txt…');try{await writeHashId(folder.handle
+,id,days,created.expires_at)}catch(e){throw Error('雲端建立成功，但寫入 filehashid.txt 失敗；請記錄 File Hash ID：'+id+'。'+e.message)}$('cloud-create-panel').hidden
+=true;selectedCloud=id;lastSubmittedId=id;lastSubmittedHash=zip.hash;updateCommitButton(true);upsert(await api('/api/v378/files/'+id+'/meta'));msg(
+'雲端 Fold 已建立；保存 '+days+' 天，截止 '+created.expires_at+'；File Hash ID：'+id)});
+  cloud.js:68:function updateCommitButton(){const b=$('cloud-commit-button');if(!b)return;b.textContent='Commit';b.classList.add('cloud-commit-read
+y');b.classList.remove('cloud-commit-submitted');b.disabled=false}
+> cloud.js:69:$('cloud-commit-button').onclick=()=>run(async()=>{const root=window.BVCloudRootHandle();const id=await readHashId(root.handle);if(!v
+alidId(id))throw Error('Root 中沒有有效的 filehashid.txt，請先選取 Root 建立雲端專案');const meta=await api('/api/v378/files/'+id+'/meta');$('cloud-commit-target').
+textContent='Root：'+root.name+'｜File Hash ID：'+id+'｜目前到期：'+(meta.expires_at||'未設定');$('cloud-commit-life').hidden=true;$('cloud-commit-panel').hidd
+en=false;msg('請在頁面中選擇提交模式')});
+  cloud.js:70:document.querySelectorAll('input[name="cloud-commit-mode"]').forEach(x=>x.addEventListener('change',()=>{$('cloud-commit-life').hidde
+n=document.querySelector('input[name="cloud-commit-mode"]:checked').value!=='full'}));
+  cloud.js:71:$('cloud-commit-cancel').onclick=()=>{$('cloud-commit-panel').hidden=true;msg('已取消提交')};
+> cloud.js:72:$('cloud-commit-confirm').onclick=()=>run(async()=>{const root=window.BVCloudRootHandle(),id=await readHashId(root.handle);if(!validI
+d(id))throw Error('Root 缺少有效 File Hash ID');const mode=document.querySelector('input[name="cloud-commit-mode"]:checked').value;let remote;try{remot
+e=await api('/api/v378/files/'+id+'/meta')}catch{remote=await api('/api/files/'+id+'/meta')}let payload={name:root.name+'.zip',base_revision:remote
+.revision,mode};if(mode==='incremental'&&remote.part_count)throw Error('Neon 分片版本請選擇完整提交；增量提交尚未支援');if(mode==='incremental'){const previous=await g
+etCloud(id);if(previous.revision!==remote.revision)throw Error('雲端版本已變動，請重新比較');const diff=await buildIncremental(root.handle,previous.content);if(
+diff.unchanged){updateCommitButton(true);$('cloud-commit-panel').hidden=true;msg('SHA-256 比對完成：所有檔案未修改，無需提交');return}payload.changes=diff.changes;p
+ayload.deleted=diff.deleted;progress(70,'只上傳 '+diff.changedCount+' 個新增／修改檔案與 '+diff.deletedCount+' 筆刪除紀錄…')}else{const zip=await zipFolder(root.han
+dle);payload.content=zip.content;payload.life_days=Number($('cloud-commit-life-days').value)}const result=remote.part_count&&mode==='full'?await (a
+sync()=>{await uploadChunked(id,payload.name,zip.bytes,payload.life_days);return api('/api/v378/files/'+id+'/meta')})():await api('/api/files/'+id+
+'/commit','POST',payload);progress(91,'確認雲端提交…');if(mode==='full')await writeHashId(root.handle,id,result.life_days,result.expires_at);lastSubmitte
+dId=id;lastSubmittedHash=null;updateCommitButton(true);$('cloud-commit-panel').hidden=true;upsert(await api('/api/v378/files/'+id+'/meta'));msg(res
+ult.unchanged?'內容未改變，無需新版本':'提交成功，版本 #'+result.revision+'；到期 '+result.expires_at)});
+  cloud.js:73:const cloudMenu=$('cloud-operations'),cloudTrigger=$('cloud-other-button');function closeCloudMenu(){cloudMenu.hidden=true;cloudTrigg
+er.setAttribute('aria-expanded','false')}function positionCloudMenu(){const r=cloudTrigger.getBoundingClientRect(),w=cloudMenu.offsetWidth||225,h=c
+loudMenu.offsetHeight||100,pad=8;cloudMenu.style.left=Math.max(pad,Math.min(window.innerWidth-w-pad,r.right-w))+'px';const below=r.bottom+6;cloudMe
+nu.style.top=(below+h+pad<=window.innerHeight?below:Math.max(pad,r.top-h-6))+'px'}cloudTrigger.addEventListener('click',e=>{e.stopPropagation();if(
+!cloudMenu.hidden){closeCloudMenu();return}cloudMenu.hidden=false;cloudTrigger.setAttribute('aria-expanded','true');positionCloudMenu()});document.
+addEventListener('pointerdown',e=>{if(!cloudMenu.hidden&&!cloudMenu.contains(e.target)&&!cloudTrigger.contains(e.target))closeCloudMenu()});cloudMe
+nu.addEventListener('click',e=>{if(e.target.closest('button'))closeCloudMenu()});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeC
+loudMenu()});window.addEventListener('resize',()=>{if(!cloudMenu.hidden)positionCloudMenu()});window.addEventListener('scroll',()=>{if(!cloudMenu.h
+idden)positionCloudMenu()},true);
+  cloud.js:74:$('cloud-zip-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('請先以 File Hash ID 搜尋');await download(selectedCloud)});
+  cloud.js:75:$('cloud-import-button').onclick=()=>run(async()=>{if(!selectedCloud)throw Error('請先以 File Hash ID 搜尋');await download(selectedCloud)
+;msg('已下載 ZIP，請透過本地 Explorer 匯入；不會覆蓋本地檔案')});
+  cloud.js:76:
+  cloud.js:77:async function rawApi(path,method,body,headers={}){const token=window.BVAuth?.getToken();if(!token)throw Error('請先登入帳號');const res=aw
+ait fetch(apiUrl()+path,{method,headers:{Authorization:'Bearer '+token,...headers},body});if(!res.ok){const b=await res.json().catch(()=>({}));thro
+w Error(b.error||'HTTP '+res.status)}return res}
+> cloud.js:78:async function uploadChunked(fileId,name,bytes,days){const hash=await shaBytes(bytes),key='bv378-upload-'+fileId+'-'+hash;let uploadI
+d=localStorage.getItem(key);let start;try{start=await api('/api/v378/uploads','POST',{file_id:fileId,name,size_bytes:bytes.length,life_days:days,sh
+a256:hash,...(uploadId?{upload_id:uploadId}:{})})}catch(e){if(uploadId){localStorage.removeItem(key);return uploadChunked(fileId,name,bytes,days)}t
+hrow e}uploadId=start.upload_id;localStorage.setItem(key,uploadId);const status=await api('/api/v378/uploads/'+uploadId);const done=new Set(status.
+received);for(let i=0;i<start.part_count;i++){if(done.has(i))continue;const chunk=bytes.slice(i*2097152,(i+1)*2097152),digest=await shaBytes(chunk)
+;for(let retry=0;;retry++){try{await rawApi('/api/v378/uploads/'+uploadId+'/'+i,'PUT',chunk,{'Content-Type':'application/octet-stream','X-BV-SHA256
+':digest});break}catch(e){if(retry>=2)throw e;await new Promise(r=>setTimeout(r,500*(retry+1)))}}progress(5+90*(i+1)/start.part_count,'上傳分片 '+(i+1)
++' / '+start.part_count)}const result=await api('/api/v378/uploads/'+uploadId+'/complete','POST',{});localStorage.removeItem(key);return result}
+> cloud.js:79:async function getChunked(id){const meta=await api('/api/v378/files/'+id+'/meta');if(meta.size_bytes>50*1024*1024)throw Error('ZIP 超過
+ 50 MiB');const data=new Uint8Array(meta.size_bytes);let offset=0;for(let i=0;i<meta.part_count;i++){const res=await rawApi('/api/v378/files/'+id+'
+/parts/'+i,'GET');const bytes=new Uint8Array(await res.arrayBuffer());if(await shaBytes(bytes)!==res.headers.get('X-BV-SHA256'))throw Error('分片驗證失敗
+');data.set(bytes,offset);offset+=bytes.length;progress(5+90*(i+1)/meta.part_count,'取得分片 '+(i+1)+' / '+meta.part_count)}if(offset!==data.length||aw
+ait shaBytes(data)!==meta.sha256)throw Error('完整 ZIP 驗證失敗');return {meta,bytes:data}}
+> cloud.js:80:async function editCloud(id){const {meta,bytes}=await getChunked(id);if(!window.JSZip)throw Error('JSZip 未載入');const zip=await JSZip.
+loadAsync(bytes,{checkCRC32:true});const entries=[];let total=0;for(const [path,item] of Object.entries(zip.files)){if(item.dir)continue;if(path.st
+artsWith('/')||path.includes('\\')||path.split('/').some(p=>p==='..'||p==='.')||path.includes('\0'))throw Error('ZIP 含不安全路徑');const data=await item
+.async('uint8array');total+=data.length;if(total>150*1024*1024||entries.length>=1000)throw Error('解壓縮大小或檔案數超過限制');entries.push({path,data})}await w
+indow.BVCloudOpenVirtualRoot?.(id,meta.name,entries);show('editor');msg('已將雲端 ZIP 載入 IndexedDB 虛擬 Root，不會寫入本地資料夾')}
+  cloud.js:81:renderFiles([]);
+  cloud.js:82:})();
+  cloud.js:83:// AREA A08 END: CloudClient
+  explorer.js:4:const aside=document.querySelector('#explorer'),tree=document.querySelector('#tree'),rootLabel=document.querySelector('#root-label'
+);
+  explorer.js:5:let root=null,selected=null,items=[],sequence=0,orderDirty=false;
+> explorer.js:6:// Virtual single-file root: all changes remain in IndexedDB until explicit Save.
+  explorer.js:7:let virtualRoot=false;
+  explorer.js:8:const DRAFT_DB='bv-note-single-file-drafts-v1';
+  explorer.js:9:function draftStore(value){
+  explorer.js:10: return new Promise((resolve,reject)=>{
+> explorer.js:11:  const request=indexedDB.open(DRAFT_DB,1);
+  explorer.js:12:  request.onupgradeneeded=()=>request.result.createObjectStore('drafts',{keyPath:'id'});
+  explorer.js:13:  request.onerror=()=>reject(request.error);
+  explorer.js:14:  request.onsuccess=()=>{
+  explorer.js:37: await draftStore({id:x.uuid,name,rootName:root.name,content,updatedAt:Date.now()});
+  explorer.js:38: await choose(x);dirty=true;refreshUnsaved();display();
+> explorer.js:39: toast('單檔已匯入 IndexedDB 草稿；按 Save 才會寫入本地');
+  explorer.js:40:}
+  explorer.js:41:
+> explorer.js:42:// v3.7.8 cloud ZIP virtual root: in-memory directory handles; drafts are persisted to IndexedDB.
+  explorer.js:43:window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{
+> explorer.js:44: const key='bv378-root-'+id;const existing=await new Promise((resolve,reject)=>{const r=indexedDB.open('bv-note-cloud-roots-v378',
+1);r.onupgradeneeded=()=>r.result.createObjectStore('roots');r.onerror=()=>reject(r.error);r.onsuccess=()=>{const db=r.result,tx=db.transaction('ro
+ots');const q=tx.objectStore('roots').get(key);q.onsuccess=()=>{resolve(q.result);db.close()};q.onerror=()=>reject(q.error)}});
+> explorer.js:45: if(existing&&!confirm('同一 Fold Hash ID 已存在 IndexedDB，是否 REPLACE？請先確認目前編輯已儲存。'))return;
+  explorer.js:46: if(dirty&&!confirm('目前 Explorer 有未儲存的修改，是否仍要切換？'))return;
+  explorer.js:47: const saved={id,name,entries:entries.map(e=>({path:e.path,data:e.data})),updatedAt:Date.now()};
+> explorer.js:48: await new Promise((resolve,reject)=>{const r=indexedDB.open('bv-note-cloud-roots-v378',1);r.onupgradeneeded=()=>r.result.createOb
+jectStore('roots');r.onsuccess=()=>{const db=r.result,tx=db.transaction('roots','readwrite');tx.objectStore('roots').put(saved,key);tx.oncomplete=(
+)=>{db.close();resolve()};tx.onerror=()=>reject(tx.error)};r.onerror=()=>reject(r.error)});
+> explorer.js:49: // Select the first editable text file; the complete ZIP is retained in IndexedDB.
+> explorer.js:50: const entry=entries.find(e=>/\.(md|markdown|txt)$/i.test(e.path));if(!entry){alert('ZIP 已存至 IndexedDB，但沒有可預覽的 MD/TXT 文件');return}
+  explorer.js:51: await openSingleFile(new File([entry.data],entry.path.split('/').pop(),{type:'text/plain'}));
+  explorer.js:52: root.name=name.replace(/\.zip$/i,'')+'（Cloud）';rootLabel.textContent=root.name;
+  explorer.js:53:};
+  explorer.js:91: const existing=new Set();const used=new Set([nodeDB.rootId]);
+  explorer.js:92: for(const x of items){const key=path(x);existing.add(key);let id=nodeDB.nodes[key];if(!id||used.has(id)){id=uuid();changed=true}u
+sed.add(id);x.uuid=id;if(nodeDB.nodes[key]!==id){nodeDB.nodes[key]=id;changed=true}}
+> explorer.js:93: for(const key of Object.keys(nodeDB.nodes))if(!existing.has(key)){delete nodeDB.nodes[key];changed=true}
+  explorer.js:94: if(changed)await flushNodeDB();
+  explorer.js:95:}
+  explorer.js:96:async function loadRecordDB(){
+  explorer.js:118:async function relocateRecords(snapshot,copy=false){
+  explorer.js:119: if(!root||!snapshot?.length)return;
+> explorer.js:120: for(const entry of snapshot){const x=entry.node,from=entry.old,to=path(x);if(copy){const previous=x.uuid;x.uuid=uuid();if(x.kind
+==='file'&&recordDB.files[previous])recordDB.files[x.uuid]=structuredClone(recordDB.files[previous]);}else if(readingPositions.has(from)){readingPo
+sitions.set(to,readingPositions.get(from));readingPositions.delete(from)}
+> explorer.js:121:  delete nodeDB.nodes[from];nodeDB.nodes[to]=x.uuid;
+  explorer.js:122: }
+  explorer.js:123: await flushNodeDB();await flushRecordDB();
+  explorer.js:124:}
+  explorer.js:402: tree.append(rootRow);
+  explorer.js:403: const draw=(parent,level)=>{siblings(parent).forEach((x,i)=>{if(explorerQuery&&!matches.has(x.id))return;const row=document.crea
+teElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset
+.id=x.id;
+> explorer.js:404:const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.
+id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);if(batchMode){const cb=d
+ocument.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.na
+me);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node
+,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()};row.append(cb)}row.onclick=()=>{if(x.kind==='directory'){selected=x.
+id;rootSelected=false;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)};row.oncontextmenu=e=>{e.preventDefault();e.stopProp
+agation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)};
+  explorer.js:405:// Long-press on mobile opens the same menu as desktop right-click.
+  explorer.js:406:let pressTimer=null,startX=0,startY=0,suppressClick=false;
+  explorer.js:407:row.addEventListener('touchstart',e=>{
+  explorer.js:529: const removed=[x,...items.filter(y=>isChild(y,x))];
+  explorer.js:530: await parent.removeEntry(x.name,{recursive:x.kind==='directory'});
+> explorer.js:531: for(const node of removed){delete nodeDB.nodes[path(node)];delete recordDB.files[node.uuid]}
+  explorer.js:532: await flushNodeDB();await flushRecordDB();
+  explorer.js:533: items=items.filter(y=>y!==x&&!isChild(y,x));
+> explorer.js:534: for(const id of [...checkedIds])if(!items.some(y=>y.id===id))checkedIds.delete(id);
+  explorer.js:535: if(selected&&!items.some(y=>y.id===selected)){
+  explorer.js:536:  selected=null;handle=null;rawMarkdown='';setName('未命名.md');setDocumentVisible(false);switchMode('edit');
+  explorer.js:537: }
+  explorer.js:612:function targets(){const ids=batchMode&&checkedIds.size?[...checkedIds]:selected?[selected]:[];const nodes=ids.map(id=>items.find
+(x=>x.id===id)).filter(Boolean);return nodes.filter(x=>!nodes.some(y=>y!==x&&y.kind==='directory'&&isChild(x,y)));}
+  explorer.js:613:function resetBatch(){batchMode=false;checkedIds.clear();display()}
+> explorer.js:614:async function deleteTargets(){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');if(!confirm('確定刪除 '+nodes.length
++' 個項目及其子項目？此操作無法復原。'))return;let errors=[];for(const x of nodes){try{await removeNode(x)}catch(e){errors.push(x.name+'：'+e.message)}}if(errors.len
+gth)alert('部分刪除失敗：\n'+errors.join('\n'));else toast('已刪除 '+nodes.length+' 個項目');resetBatch()}
+  explorer.js:615:function clipTargets(cut){const nodes=targets();if(!nodes.length)return alert('請先選取文件或資料夾');clipboard={nodes:nodes.map(x=>({node:
+x,name:x.name,kind:x.kind})),cut};toast((cut?'已剪下 ':'已複製 ')+nodes.length+' 個項目，請選擇目的資料夾後貼上')}
+  explorer.js:616:async function pasteTargets(){if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=c
+ur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const 
+entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild
+(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of
+ dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecor
+ds?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=n
+ewHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;do
+ne.push(x)}else{const newNode={id:++sequence,uuid:uuid(),name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};nodeD
+B.nodes[path(newNode)]=newNode.uuid;items.push(newNode);async function cloneChildren(oldP,newP){for(const child of siblings(oldP)){const h=child.ki
+nd==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,uuid:uuid()
+,name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};nodeDB.nodes[path(copy)]=copy.uuid;if(child.kind==='file'&&record
+DB.files[child.uuid])recordDB.files[copy.uuid]=structuredClone(recordDB.files[child.uuid]);items.push(copy);if(child.kind==='directory')await clone
+Children(child,copy)}}if(x.kind==='directory')await cloneChildren(x,newNode);else if(recordDB.files[x.uuid])recordDB.files[newNode.uuid]=structured
+Clone(recordDB.files[x.uuid]);await flushNodeDB();await flushRecordDB();done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.mess
+age)}}if(clipboard.cut&&!failures.length)clipboard=null;display();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.
+length+' 個項目')}
+> explorer.js:617:function operateMenu(left,top){const m=document.querySelector('#context-menu');m.replaceChildren();for(const [label,fn] of [['批量選
+取'+(batchMode?'（結束）':''),()=>{batchMode=!batchMode;checkedIds.clear();display()}],['刪除',deleteTargets],['剪下',()=>clipTargets(true)],['複製',()=>clipT
+argets(false)],['貼上',pasteTargets]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{m.hidden=true;Promise.resolve().th
+en(fn).catch(e=>alert('操作失敗：'+e.message))};m.append(b)}positionMenu(m,left,top)}
+  explorer.js:618:function positionMenu(m,left,top){m.style.left=Math.max(8,Math.min(left,innerWidth-190))+'px';m.style.top=Math.max(8,Math.min(top
+,innerHeight-245))+'px';m.hidden=false}
+  explorer.js:619:function menu(x,left,top){
+  explorer.js:620: const m=document.querySelector('#context-menu');m.replaceChildren();
+
+
