@@ -1,0 +1,14 @@
+/* Compact, single-action Q/A block header. Keep the app's original controls mounted. */
+body.ai-active .ai-ui-block.bv39127-card .ai-ui-block-head{display:flex;align-items:flex-start;flex-wrap:nowrap;gap:8px;min-width:0}
+body.ai-active .ai-ui-block.bv39127-card .ai-ui-block-head>strong{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+body.ai-active .ai-block-actions.bv39127-actions{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:0;min-width:0}
+body.ai-active .ai-block-actions.bv39127-actions>.bv39125-primary{display:none!important}
+body.ai-active .ai-block-actions.bv39127-actions>.bv39125-original{display:none!important}
+body.ai-active .ai-block-actions.bv39127-actions>.bv39125-menu{margin-left:auto;position:relative;z-index:20}
+body.ai-active .ai-block-actions.bv39127-actions>.bv39125-menu>summary{min-width:0;min-height:28px;padding:3px 8px;font-size:12px;line-height:20px;border-radius:6px;white-space:nowrap}
+body.ai-active .ai-block-actions.bv39127-actions .bv39125-menu-items{right:0;left:auto;min-width:158px;max-width:min(250px,calc(100vw - 24px));z-index:100;max-height:min(70vh,450px);overflow:auto}
+body.ai-active .ai-block-actions.bv39127-actions .bv39125-menu-items>button{min-height:34px;font-size:13px}
+body.ai-active .ai-block-actions.bv39127-actions .bv39125-menu-items>.bv39127-full-edit{display:block!important}
+body.ai-active .ai-ui-block.bv39127-card.bv39127-attachments-open .ai-ui-block-attachments,
+body.ai-active .ai-ui-block.bv39127-card.bv39127-attachments-open .ai-ui-attachments{display:block!important}
+@media(max-width:480px){body.ai-active .ai-block-actions.bv39127-actions>.bv39125-menu>summary{padding:3px 6px;font-size:11px}body.ai-active .ai-ui-block.bv39127-card .ai-ui-block-head{gap:4px}}
