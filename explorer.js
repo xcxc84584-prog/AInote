@@ -545,10 +545,11 @@ row.addEventListener('touchstart',e=>{/* BLOCK B-9B02BC130C START: AREA A-6A7FC0
  /* BLOCK B-C7155B6F2F END. */},550);
 /* BLOCK B-9B02BC130C END. */},{passive:true});
 row.addEventListener('touchmove',e=>{/* BLOCK B-249E9695AE START: AREA A-6A7FC0B1 */
- if(!e.touches.length||Math.abs(e.touches[0].clientX-startX)>12||Math.abs(e.touches[0].clientY-startY)>12){clearTimeout(pressTimer);pressTimer=null}
-/* BLOCK B-249E9695AE END. */},{passive:true});
+ if(row.dataset.sortReady==='1'){e.preventDefault();return}if(!e.touches.length||Math.abs(e.touches[0].clientX-startX)>12||Math.abs(e.touches[0].clientY-startY)>12){clearTimeout(pressTimer);pressTimer=null}
+/* BLOCK B-249E9695AE END. */},{passive:false});
 row.addEventListener('touchend',e=>{/* BLOCK B-368BCCF08A START: AREA A-6A7FC0B1 */clearTimeout(pressTimer);pressTimer=null;
  if(row.dataset.sortReady==='1'){
+   row.dataset.sortReady='';
    const t=e.changedTouches[0],hit=document.elementFromPoint(t.clientX,t.clientY)?.closest('.tree-node[data-id]');
    const target=hit&&items.find(n=>n.id===Number(hit.dataset.id));
    if(target&&reorderSibling(x,target))persistOrderChange().then(display).catch(err=>alert(err.message));
@@ -812,6 +813,7 @@ function menu(x,left,top){/* BLOCK B-561584BD68 START: AREA A-6A7FC0B1 */
  const m=document.querySelector('#context-menu');m.replaceChildren();
  for(const [label,fn] of [
   ['重新命名',()=>rename(x)],
+  ['調整節點',()=>adjustNodes(x.kind==='directory'?x:x.parent)],
   ['導入文件',()=>importFiles(x)],
   ['導出文件（ZIP）',()=>exportNode(x)],
   ['移動至…',()=>moveWithPicker(x)],
