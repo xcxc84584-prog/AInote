@@ -1,0 +1,6 @@
+/* BV-Note v3.9.12.6: UI-only removal of redundant block controls. */
+#ai-ui-thread .bv39125-menu-items > button[hidden],
+#ai-ui-thread .ai-block-actions > button[hidden],
+#ai-ui-thread .ai-ui-block button[hidden],
+#ai-ui-thread .ai-ui-block-attachments[hidden],
+#ai-ui-thread .ai-ui-attachments[hidden] { display:none !important; }
