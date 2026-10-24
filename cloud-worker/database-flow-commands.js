@@ -15,9 +15,11 @@ function range(value){
 }
 import {aiTestRegistry} from './ai-refactor-tests.js';
 import {aiS345Tests} from './ai-s345-tests.js';
+import {aiS67Tests} from './ai-s67-tests.js';
 const testRegistry=Object.freeze({
  ...aiTestRegistry,
  ...aiS345Tests,
+ ...aiS67Tests,
  add:{arity:2,generate:()=>[Math.floor(Math.random()*2001)-1000,Math.floor(Math.random()*2001)-1000],run:([x,y])=>x+y,verify:([x,y],result)=>result===x+y}
 });
 async function audit(sql,user,code,message){
