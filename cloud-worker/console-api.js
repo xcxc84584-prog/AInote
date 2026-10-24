@@ -27,6 +27,7 @@ const commands=[
  {syntax:'/check Data-Base-Flow <YYYY-MM|YYYY-MM,YYYY-MM|ALL>',description:'Admin: historical flow summary (UTC).',tags:'database flow history',admin:true},
  {syntax:'/delete Data-Base-Flow <YYYY-MM|YYYY-MM,YYYY-MM|ALL>',description:'Admin: permanently delete flow counters with confirmation.',tags:'database flow delete',admin:true},
  {syntax:'/download Data-Base-Flow <YYYY-MM|YYYY-MM,YYYY-MM|ALL>',description:'Admin: download ZIP containing Markdown flow report.',tags:'database flow download',admin:true},
+ {syntax:'/test help',description:'Admin: list registered safe test targets and usage.',tags:'test help registry',admin:true},
  {syntax:'/test <target><frequency>',description:'Admin: randomized tests for registered pure functions; summary sent to /log.',tags:'test registry log',admin:true},
  {syntax:'/check Data-Base-Flow',description:'Admin: show database storage and observed monthly transfer estimates.',tags:'database flow usage storage',admin:true},
  {syntax:'/set Data-Base-Limit <Resource><Limit><Unit>',description:'Admin: set Storage/Egress/Upload/Download limit (B,KB,MB,GB or UNLIMITED).',tags:'database limit set',admin:true},

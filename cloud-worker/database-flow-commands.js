@@ -13,7 +13,9 @@ function range(value){
  const [y,m]=endMonth.split('-').map(Number);const end=`${y+Math.floor(m/12)}-${String(m%12+1).padStart(2,'0')}-01`;
  return {all:false,start:begin,end,label:months.join('..')};
 }
+import {aiTestRegistry} from './ai-refactor-tests.js';
 const testRegistry=Object.freeze({
+ ...aiTestRegistry,
  add:{arity:2,generate:()=>[Math.floor(Math.random()*2001)-1000,Math.floor(Math.random()*2001)-1000],run:([x,y])=>x+y,verify:([x,y],result)=>result===x+y}
 });
 async function audit(sql,user,code,message){
@@ -54,6 +56,11 @@ export async function flowCommands({command,data,admin,user,sql}){
   if(bytes.length>8*1024*1024)return failure('DBF-413','ZIP exceeds 8 MiB response limit',413);
   await audit(sql,user,'DBF_EXPORT',`scope=${r.label}; rows=${rows.length}`);
   return response({ok:true,lines:[`Export ready: ${filename}.zip`,`Rows: ${rows.length}; includes .md report.`],download:{filename:filename+'.zip',mime:'application/zip',base64:b64(bytes)}});
+ }
+ if(/^\/test\s+help$/i.test(command)){
+  if(!admin)return failure('ADM-403','Administrator mode required',403);
+  const entries=Object.entries(testRegistry);
+  return response({ok:true,lines:['TEST TARGETS (admin only)',...entries.map(([name,t])=>`${name} | ${t.description||'Legacy arithmetic test'} | /test <${name}><frequency> (1..100)`),`${entries.length} registered targets.`]});
  }
  const test=command.match(/^\/test\s+<([^<>]+)><(\d+)>$/i);
  if(test){
