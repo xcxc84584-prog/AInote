@@ -1,0 +1,8 @@
+/* v3.9.12.1 hotfix */
+#bv3912-bulk{display:none!important}
+#bv39121-context{position:fixed;z-index:9900;background:#16253a;border:1px solid #6783a6;border-radius:10px;padding:7px;min-width:215px;box-shadow:0 10px 35px #0009}
+#bv39121-context[hidden]{display:none!important}
+#bv39121-context button{display:block;width:100%;padding:9px 11px;text-align:left;color:#eaf4ff;background:transparent;border:0;border-radius:5px;cursor:pointer}
+#bv39121-context button:hover{background:#304765}
+#bv39121-continue{display:block;margin:5px 0 10px;background:#24466d;border:1px solid #6e91bb;color:#fff;padding:9px 12px;border-radius:7px;cursor:pointer}
+#bv39121-continue:disabled{opacity:.6}
