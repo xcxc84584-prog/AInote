@@ -1,0 +1,21 @@
+/* BV-Note v3.9.12 - AI only extension */
+#bv3912-rag-button{margin:0 5px;padding:7px 12px;border:1px solid #586b91;border-radius:8px;background:#19283d;color:#f3f7ff;cursor:pointer}
+#bv3912-rag-panel{position:fixed;right:12px;top:82px;bottom:12px;width:min(380px,calc(100vw - 24px));z-index:8800;background:#101b2a;color:#eef4ff;border:1px solid #536789;border-radius:12px;padding:16px;overflow:auto;box-shadow:0 12px 35px #0009}
+#bv3912-rag-panel[hidden],#bv3912-rag-button[hidden]{display:none!important}
+#bv3912-rag-panel button,#bv3912-bulk button,.bv3912-attachment button{background:#263953;color:#fff;border:1px solid #536789;border-radius:7px;padding:7px;cursor:pointer}
+#bv3912-rag-panel input{width:100%;box-sizing:border-box;background:#e9eef5;color:#101824;padding:8px;margin:8px 0}
+#bv3912-rag-panel .bv-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+#bv3912-rag-results{white-space:pre-wrap;max-height:30vh;overflow:auto;font-size:12px;line-height:1.5}
+#bv3912-bulk{padding:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;background:#162439;color:white}
+.bv3912-check{margin:0 7px 0 2px;accent-color:#3b82f6}
+.bv3912-qa-download{margin:5px;padding:5px 10px}
+.bv3912-attachment{padding:8px;background:#18283b;border:1px solid #425574;border-radius:8px;margin:8px 0}
+.bv3912-attachment img{display:block;max-width:100%;height:auto;max-height:650px;object-fit:contain;margin:8px auto}
+.bv3912-attachment a{color:#8bc7ff;overflow-wrap:anywhere}
+.bv3912-fullscreen{position:fixed!important;inset:8px!important;z-index:9500!important;width:auto!important;height:auto!important;max-height:none!important;overflow:auto!important;background:#101827!important;border:2px solid #698aff!important;padding:15px!important;box-sizing:border-box!important}
+.bv3912-fullscreen .ai-ui-block-edit{width:100%!important;min-height:65vh!important;box-sizing:border-box!important;resize:vertical!important;font-size:16px!important;line-height:1.65!important}
+.bv3912-fullscreen .ai-ui-block-text{overflow:visible!important;max-height:none!important}
+.bv3912-fullscreen .ai-ui-block-head{position:sticky;top:0;background:#101827;z-index:1}
+.bv3912-fullscreen-toggle{margin:0 5px}
+#ai-ui-thread .ai-ui-block-text img{max-width:100%!important;height:auto!important;object-fit:contain!important}
+#bv3912-status{font-size:12px;line-height:1.5;color:#bcd6ff;margin:8px 0}
