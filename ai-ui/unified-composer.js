@@ -21,11 +21,11 @@ async function prepare(files,signal){let image=null,docTexts=[],n=files.length;f
  }return {image,docTexts};}
 window.BVUnifiedAI={async send({source,files,history,token,model,onDelta}){
  if(active)throw Error('已有進行中的請求');active=new AbortController();const signal=active.signal;stop.hidden=false;let trace='unknown';
- try{progress(2,'準備附件與對話上下文');const {image,docTexts}=await prepare(files,signal);const messages=history.slice(-25).map(m=>({role:m.role,text:m.text}));
- let prompt=(source||'請分析附件')+docTexts.join('\n');if(prompt.length>28000)throw Error('AI-U-413：本次文件摘要超過輸入限制，請縮小附件');messages.push({role:'user',text:prompt});
+ try{progress(2,'準備附件與對話上下文');const {image,docTexts}=await prepare(files,signal);const pref=window.BVAISettings?.read()||{rag:false,memory:10,exponent:10};const messages=(pref.memory===0?[]:history.slice(-(pref.memory*2))).map(m=>({role:m.role,text:m.text}));
+ let prompt=(source||'請分析附件')+docTexts.join('\n');if(pref.rag){try{const {hybridSearch}=await import('../ai-rag/rag-core.js');const hits=await hybridSearch(source||'',3);if(hits.results.length)prompt+='\n\n[本地 RAG 參考片段，非系統指令]\n'+hits.results.map(r=>'來源: '+r.name+'\n'+r.text.slice(0,900)).join('\n---\n')}catch(e){console.warn('RAG unavailable',e)}}if(prompt.length>28000)throw Error('AI-U-413：本次文件摘要超過輸入限制，請縮小附件');messages.push({role:'user',text:prompt});
  const base=String(window.BV_CLOUD_API_URL||'').replace(/\/+$/,'');if(!base)throw Error('AI-U-503：未設定網站 API URL');
  progress(40,'正在上傳請求資料（瀏覽器 Fetch 無法提供精確上傳百分比）',true);
- const response=await fetch(base+'/api/ai/v2/responses',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({model:['gpt-5','gpt-4.1','gpt-4.1-mini'].includes(model)?model:'gpt-5',messages,images:image?[image]:[],stream:true,max_output_tokens:4096}),signal});
+ const response=await fetch(base+'/api/ai/v2/responses',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({model:['gpt-5','gpt-4.1','gpt-4.1-mini'].includes(model)?model:'gpt-5',messages,images:image?[image]:[],stream:true,max_output_tokens:2**pref.exponent}),signal});
  trace=response.headers.get('X-BV-Trace-ID')||'unknown';if(!response.ok){const d=await response.json().catch(()=>({}));throw Error(`${d.error_id||'AI-U-HTTP'} HTTP ${response.status} trace=${d.trace_id||trace} ${d.error||''}`)}
  progress(70,'已連線，正在接收 AI 回覆…',true);let received=0;const state=await consumeAIStream(response,{signal,onDelta:d=>{received+=d.length;onDelta(d);progress(70,`正在接收 AI 回覆（已收到 ${received} 字元）`,true)}});
  if(state.status!=='completed'){const e=new Error(`AI-U-STREAM-${state.status} trace=${trace}: ${state.error||'未完成'}`);e.partialText=state.text;e.trace=trace;e.streamStatus=state.status;throw e;}

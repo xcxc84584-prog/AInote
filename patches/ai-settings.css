@@ -1,0 +1,13 @@
+#bv-ai-quickbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+#bv-ai-quickbar button{white-space:nowrap}
+#bv-ai-settings-panel{background:#19283a;border:1px solid #526e8d;padding:12px;border-radius:9px;margin:8px 0;max-width:500px}
+#bv-ai-settings-panel[hidden]{display:none!important}
+#bv-ai-settings-panel label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0}
+#bv-ai-settings-panel input[type=number]{width:65px}
+.ai-block-actions .bv-ai-menu{position:relative;display:inline-block}
+.ai-block-actions .bv-ai-menu>summary{cursor:pointer;padding:7px 11px;border:1px solid #536d89;border-radius:5px;list-style:none;color:#e5f1ff;background:#23344a}
+.ai-block-actions .bv-ai-menu>summary::-webkit-details-marker{display:none}
+.ai-block-actions .bv-ai-menu>div{position:absolute;right:0;top:100%;z-index:70;min-width:130px;padding:6px;background:#172539;border:1px solid #56708d;border-radius:7px;box-shadow:0 7px 18px #0008}
+.ai-block-actions .bv-ai-menu button{display:block;margin:3px 0;width:100%;white-space:nowrap}
+.ai-ui-block.bv-ai-expanded{max-width:none;width:calc(100% - 12px)}
+.ai-ui-block.bv-ai-expanded textarea{min-height:65vh}

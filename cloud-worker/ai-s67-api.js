@@ -2,7 +2,7 @@
 import {report_webserver_powershell_log} from './console-log.js';
 const json=(v,status=200)=>new Response(JSON.stringify(v),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 const hash=async s=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('');
-export async function aiS67Api(req,env,path,sql){if(path!=='/api/ai/v2/responses')return null;
+export async function aiS67Api(req,env,path,sql,ctx){if(path!=='/api/ai/v2/responses')return null;
  const trace=crypto.randomUUID(),target='ai-request-model';
  const report=async(level,code,detail)=>{try{await report_webserver_powershell_log(sql,{source:'ai-s67',level,event_code:code,message:JSON.stringify({kind:'real',target,trace_id:trace,detail:String(detail).slice(0,160)})})}catch(e){console.error('AI-S67-LOG',trace,e?.name)}};
  const fail=async(code,msg,status)=>{await report('error',code,msg);return json({ok:false,error_id:code,trace_id:trace,error:msg},status)};
@@ -17,7 +17,7 @@ export async function aiS67Api(req,env,path,sql){if(path!=='/api/ai/v2/responses
  if(!['gpt-5','gpt-4.1','gpt-4.1-mini'].includes(model)||!Array.isArray(messages)||messages.length<1||messages.length>30)return fail('AI-S67-400','Unsupported model or messages',400);
  let total=0;const input=[];for(const m of messages){if(!m||!['user','assistant'].includes(m.role)||typeof m.text!=='string'||!m.text.trim()||m.text.length>30000)return fail('AI-S67-400','Invalid message',400);total+=m.text.length;input.push({role:m.role,content:m.text})}
  if(images.length){const last=input[input.length-1];if(last.role!=="user")return fail("AI-S9-400","Image must belong to user message",400);last.content=[{type:"input_text",text:last.content},{type:"input_image",image_url:images[0]}]}if(total>60000)return fail('AI-S67-413','Context budget exceeded',413);
- const max=body.max_output_tokens??2048;if(!Number.isSafeInteger(max)||max<256||max>8192)return fail('AI-S67-400','Invalid output budget',400);
+ const max=body.max_output_tokens??1024;if(!Number.isSafeInteger(max)||max<256||max>32768)return fail('AI-S67-400','Invalid output budget',400);
  // Site quota: reserve once before upstream. Retries are new calls; never count streamed chunks.
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const charged=await sql`INSERT INTO bv_ai_usage(user_id,usage_day,used) VALUES(${rows[0].user_id},${day}::date,1) ON CONFLICT(user_id,usage_day) DO UPDATE SET used=bv_ai_usage.used+1 WHERE bv_ai_usage.used<100 RETURNING used`;
@@ -25,7 +25,29 @@ export async function aiS67Api(req,env,path,sql){if(path!=='/api/ai/v2/responses
  try{
   const upstream=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:'Bearer '+env.OPENAI_API_KEY,'Content-Type':'application/json'},body:JSON.stringify({model,input,max_output_tokens:max,stream,store:false}),redirect:'manual'});
   if(!upstream.ok){await report('error','AI-S67-UPSTREAM','status='+upstream.status);return json({ok:false,error_id:'AI-S67-UPSTREAM',trace_id:trace,error:'Upstream error',upstream_status:upstream.status},502)}
-  if(stream){await report('info','AI-S67-STREAM-START','stream accepted');return new Response(upstream.body,{status:200,headers:{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-BV-Trace-ID':trace,'X-Accel-Buffering':'no'}})}
+  if(stream){
+  const started=Date.now(),userId=String(rows[0].user_id),[client,monitor]=upstream.body.tee();
+  ctx.waitUntil((async()=>{
+    let state='incomplete',firstTokenMs=null,inputTokens=null,outputTokens=null,streamBytes=0,buf='';
+    const reader=monitor.getReader(),decoder=new TextDecoder();
+    try{
+      while(true){const r=await reader.read();if(r.done)break;streamBytes+=r.value.byteLength;buf+=decoder.decode(r.value,{stream:true}).replace(/\r\n/g,'\n');let pos;
+        while((pos=buf.indexOf('\n\n'))!==-1){const frame=buf.slice(0,pos);buf=buf.slice(pos+2);const data=frame.split('\n').filter(x=>x.startsWith('data:')).map(x=>x.slice(5).trim()).join('');if(!data||data==='[DONE]')continue;
+          let event;try{event=JSON.parse(data)}catch{continue}
+          if(event.type==='response.output_text.delta'&&firstTokenMs===null)firstTokenMs=Date.now()-started;
+          if(event.type==='response.completed')state='completed';else if(event.type==='response.failed')state='failed';else if(event.type==='response.incomplete')state='incomplete';
+          if(event.response?.usage){inputTokens=Number(event.response.usage.input_tokens)||0;outputTokens=Number(event.response.usage.output_tokens)||0}
+        }
+      }
+    }catch(e){state='stream_error'}finally{reader.releaseLock()}
+    let cumulative=null;
+    if(inputTokens!==null&&outputTokens!==null){try{const result=await sql`INSERT INTO bv_ai_token_totals(user_id,input_tokens,output_tokens,total_tokens) VALUES(${userId},${inputTokens},${outputTokens},${inputTokens+outputTokens}) ON CONFLICT(user_id) DO UPDATE SET input_tokens=bv_ai_token_totals.input_tokens+EXCLUDED.input_tokens,output_tokens=bv_ai_token_totals.output_tokens+EXCLUDED.output_tokens,total_tokens=bv_ai_token_totals.total_tokens+EXCLUDED.total_tokens,updated_at=NOW() RETURNING total_tokens`;cumulative=String(result[0]?.total_tokens??'')}catch(e){await report('error','AI-PERF-DB-ERROR','migration missing or database write failed')}}
+    const record={trace_id:trace,user_id:userId,model,status:state,elapsed_ms:Date.now()-started,first_token_ms:firstTokenMs,stream_bytes:streamBytes,input_tokens:inputTokens,output_tokens:outputTokens,request_tokens:inputTokens===null?null:inputTokens+outputTokens,user_cumulative_tokens:cumulative,usage_source:inputTokens===null?'unavailable':'openai'};
+    try{await report_webserver_powershell_log(sql,{source:'ai-perf',level:state==='completed'?'info':'warning',event_code:'AI-PERF-STREAM-END',message:JSON.stringify(record)})}catch(e){console.error('AI-PERF-LOG',trace,e?.name)}
+  })());
+  await report('info','AI-S67-STREAM-START','stream accepted');
+  return new Response(client,{status:200,headers:{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-store','X-BV-Trace-ID':trace,'X-Accel-Buffering':'no'}})
+ }
   const response=await upstream.json();await report('info','AI-S67-COMPLETE','nonstream success');return json({ok:true,trace_id:trace,response});
  }catch(e){return fail('AI-S67-502','Upstream unavailable',502)}
 }

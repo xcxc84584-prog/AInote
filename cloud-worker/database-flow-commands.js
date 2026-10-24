@@ -18,12 +18,14 @@ import {aiS345Tests} from './ai-s345-tests.js';
 import {aiS67Tests} from './ai-s67-tests.js';
 import {aiS810Tests} from './ai-s810-tests.js';
 import {aiS1113Tests} from './ai-s1113-tests.js';
+import {aiPerformanceTests} from './ai-performance-tests.js';
 const testRegistry=Object.freeze({
  ...aiTestRegistry,
  ...aiS345Tests,
  ...aiS67Tests,
  ...aiS810Tests,
  ...aiS1113Tests,
+ ...aiPerformanceTests,
  add:{arity:2,generate:()=>[Math.floor(Math.random()*2001)-1000,Math.floor(Math.random()*2001)-1000],run:([x,y])=>x+y,verify:([x,y],result)=>result===x+y}
 });
 async function audit(sql,user,code,message){
