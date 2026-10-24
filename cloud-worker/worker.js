@@ -1,5 +1,6 @@
 import {meteredFetch} from './database-flow.js';
 import {consoleApi} from './console-api.js';
+import {aiTransferApi} from './ai-transfer-api.js';
 import {seappLogApi,reportSeappArea} from './seapp-log-api.js';
 import {report_webserver_powershell_log} from './console-log.js';
 import {authApi} from './auth.js';
@@ -48,6 +49,7 @@ if(path.startsWith('/api/')&&req.method!=='OPTIONS')ctx.waitUntil((async()=>{try
 // Best-effort authenticated per-second request counter; no request bodies or tokens stored.
 if(path.startsWith('/api/') && req.method!=='OPTIONS')ctx.waitUntil((async()=>{try{const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return;const hash=await hex(token);await sql`INSERT INTO bv_account_request_seconds(user_id,second_at,request_count) SELECT user_id,date_trunc('second',NOW()),1 FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() ON CONFLICT(user_id,second_at) DO UPDATE SET request_count=bv_account_request_seconds.request_count+1`}catch(e){console.error('Account request metric failed',e)}})());
 const seappResponse=await seappLogApi(req,env,path,sql);if(seappResponse)return withCors(seappResponse,cors);
+const verifiedAiPart=await aiTransferApi(req,env,path,sql);if(verifiedAiPart)return withCors(verifiedAiPart,cors);
 const consoleResponse=await consoleApi(req,env,path,sql);if(consoleResponse)return withCors(consoleResponse,cors);const deltaResponse=await deltaApi(req,env,path,sql);if(deltaResponse)return withCors(deltaResponse,cors);const chunkResponse=await chunkApi(req,env,path,sql);if(chunkResponse)return withCors(chunkResponse,cors);const authResponse=await authApi(req,env,path);if(authResponse){return withCors(authResponse,cors);}
 let match;
 if(path==='/api/projects'&&req.method==='POST'){const b=await req.json();if(typeof b.name!=='string'||!b.name.trim()||b.name.length>150)throw Error('專案名稱無效');const id=crypto.randomUUID();await sql`INSERT INTO projects(id,name) VALUES(${id},${b.name.trim()})`;return reply({project_id:id},201,cors)}

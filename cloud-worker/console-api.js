@@ -1,4 +1,6 @@
 import {flowCommands} from './database-flow-commands.js';
+import {aiTestRegistry} from './ai-refactor-tests.js';
+import {aiS345Tests} from './ai-s345-tests.js';
 // BV-Note v3.8.9.4 FHI console with verified administrator access.
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
@@ -31,6 +33,8 @@ const commands=[
  {syntax:'/test <target><frequency>',description:'Admin: randomized tests for registered pure functions; summary sent to /log.',tags:'test registry log',admin:true},
  {syntax:'/check Data-Base-Flow',description:'Admin: show database storage and observed monthly transfer estimates.',tags:'database flow usage storage',admin:true},
  {syntax:'/set Data-Base-Limit <Resource><Limit><Unit>',description:'Admin: set Storage/Egress/Upload/Download limit (B,KB,MB,GB or UNLIMITED).',tags:'database limit set',admin:true},
+ {syntax:'/log <x>',description:'Admin: show last x log records (1..100).',tags:'log filter recent',admin:true},
+ {syntax:'/log <x><target>',description:'Admin: filter last x records for registered /test target.',tags:'log test target filter',admin:true},
  {syntax:'/log',description:'Admin: internal structured log overview (reserved for application reporters).',tags:'log internal',admin:true},
  {syntax:'/admin logout',description:'End the current administrator session.',tags:'logout session',admin:true}
 ];
@@ -134,10 +138,17 @@ if(ip){
  const rows=await sql`SELECT ip,seen_at FROM bv_console_ip_history WHERE LOWER(identity)=LOWER(${identity}) ORDER BY seen_at DESC LIMIT 500`;
  return reply({ok:true,lines:[`IP HISTORY | ${identity} | ${rows.length} recent records`,...rows.map(r=>`${r.seen_at} | ${r.ip}`)]});
 }
-if(/^\/log$/i.test(command)){
+const logMatch=command.match(/^\/log(?:\s+<([0-9]+)>(?:<([a-z0-9-]+)>)?)?$/i);
+if(logMatch){
  if(!admin)return fail('ADM-403','Administrator mode required',403);
- const rows=await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs ORDER BY created_at DESC LIMIT 100`;
- return reply({ok:true,lines:[`INTERNAL LOGS (${rows.length}; reporter hook ready)`,...rows.map(r=>`${r.created_at} | ${r.source} | ${r.level} | ${r.event_code} | ${r.message}`)]});
+ const limit=logMatch[1]===undefined?100:Number(logMatch[1]);
+ if(!Number.isSafeInteger(limit)||limit<1||limit>100)return fail('LOG-400','Count must be 1..100');
+ const target=logMatch[2]?.toLowerCase();
+ const registry=new Set(['add',...Object.keys(aiTestRegistry),...Object.keys(aiS345Tests)]);
+ if(target&&!registry.has(target))return fail('LOG-404','Unknown target; use /test help',404);
+ const match=target?`%"target":"${target}"%`:null;
+ const rows=target?await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs WHERE message LIKE ${match} ORDER BY created_at DESC LIMIT ${limit}`:await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs ORDER BY created_at DESC LIMIT ${limit}`;
+ return reply({ok:true,lines:[`INTERNAL LOGS (${rows.length}; target=${target||'ALL'}; max=${limit})`,...rows.map(r=>`${r.created_at} | ${r.source} | ${r.level} | ${r.event_code} | ${r.message}`)]});
 }
 if(command==='/check File-Hash-ID-List'){
  const rows=await sql`SELECT d.file_id,d.owner_id,d.name,d.revision FROM bv_cloud_documents d WHERE (${admin} OR d.owner_id=${user}) AND NOT EXISTS(SELECT 1 FROM bv_console_hidden_fhi h WHERE h.owner_id=d.owner_id AND h.file_id=d.file_id) ORDER BY d.updated_at DESC LIMIT 500`;
