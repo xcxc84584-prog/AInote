@@ -277,10 +277,10 @@ function current(){/* BLOCK B-E1FB361D8A START: AREA A-6A7FC0B1 */return items.f
 function path(x){/* BLOCK B-C537FF3D7A START: AREA A-6A7FC0B1 */let parts=[x.name],p=x.parent;while(p){parts.unshift(p.name);p=p.parent;}return parts.join('/');/* BLOCK B-C537FF3D7A END. */}
 function siblings(p){/* BLOCK B-03B1BF283F START: AREA A-6A7FC0B1 */return items.filter(x=>x.parent===p).sort((a,b)=>a.order-b.order)/* BLOCK B-03B1BF283F END. */}
 async function scan(dir,parent){/* BLOCK B-DE8438BDAB START: AREA A-6A7FC0B1 */for await(const [n,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(n))continue;const x={id:++sequence,name:n,handle:h,parent,kind:h.kind,order:sequence,buffer:null};items.push(x);if(h.kind==='directory')await scan(h,x)}/* BLOCK B-DE8438BDAB END. */}
-async function renameRoot(){/* BLOCK B-7F20F2F351 START: AREA A-6A7FC0B1 */
+async function renameRoot(proposedName){/* BLOCK B-7F20F2F351 START: AREA A-6A7FC0B1 */
  if(!root)return;
  const oldRoot=root,oldName=oldRoot.name;
- const name=await inlineName('重新命名 Root',oldName);
+ const name=proposedName===undefined?await inlineName('重新命名 Root',oldName):String(proposedName).trim();
  if(!name||name===oldName)return;
  if(/[\\/]/.test(name)||name==='.'||name==='..')return alert('名稱無效');
  if(cloudVirtualId&&root?.cloudId===cloudVirtualId){root.name=name.endsWith('（Cloud）')?name:name+'（Cloud）';rootLabel.textContent=root.name;display();queueCloudSave();return;}
@@ -408,7 +408,7 @@ async function openRootFromHandle(d){/* BLOCK B-5C29B82EFF START: AREA A-6A7FC0B
 // Import a copy into the selected directory (or the selected file's parent).
 const importPicker=document.createElement('input');importPicker.type='file';importPicker.accept='.md,.txt,.pdf';importPicker.multiple=true;importPicker.hidden=true;document.body.append(importPicker);
 let importDestination=null;
-function importFiles(destination){/* BLOCK B-DEE881986C START: AREA A-6A7FC0B1 */
+function openLocalImportPicker(destination){/* BLOCK B-DEE881986C START: AREA A-6A7FC0B1 */
  if(!root)return alert('請先開啟 Root');
  importDestination=destination?.kind==='directory'?destination:destination?.parent||null;
  importPicker.value='';importPicker.click();
@@ -448,7 +448,7 @@ async function exportNode(node){/* BLOCK B-81CC6C25B6 START: AREA A-6A7FC0B1 */
 /* BLOCK B-81CC6C25B6 END. */}
 function rootMenu(left,top){/* BLOCK B-29EB4A4697 START: AREA A-6A7FC0B1 */
  const m=document.querySelector('#context-menu');m.replaceChildren();
- for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['導入文件',()=>importFiles(null)],['導出文件（ZIP）',()=>exportNode(null)],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
+ for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['導入文件',()=>openLocalImportPicker(null)],['導出文件（ZIP）',()=>exportNode(null)],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
   const b=document.createElement('button');b.textContent=label;b.onclick=()=>{/* BLOCK B-D59476608A START: AREA A-6A7FC0B1 */m.hidden=true;Promise.resolve().then(fn).catch(e=>alert(e.message))/* BLOCK B-D59476608A END. */};m.append(b);
  }positionMenu(m,left,top);
 /* BLOCK B-29EB4A4697 END. */}
@@ -467,6 +467,8 @@ function display(){/* BLOCK B-5CDD2C831E START: AREA A-6A7FC0B1 */cloudFolderBut
 
  const rootRow=document.createElement('div');rootRow.className='tree-node root-tree-node';rootRow.style.paddingLeft='10px';rootRow.classList.toggle('selected',rootSelected);
  const rootTitle=document.createElement('span');rootTitle.className='node-label';rootTitle.textContent=(rootCollapsed?'▸ ':'▾ ')+ '▣ '+root.name;rootRow.append(rootTitle);
+ const rootEdit=document.createElement('button');rootEdit.type='button';rootEdit.textContent='✎';rootEdit.title='直接重新命名 Root';rootEdit.setAttribute('aria-label','重新命名 Root');rootEdit.style.cssText='margin-left:auto;padding:2px 7px;cursor:pointer';
+ rootEdit.onclick=e=>{e.preventDefault();e.stopPropagation();const input=document.createElement('input');input.type='text';input.value=root.name;input.maxLength=200;input.setAttribute('aria-label','Root 新名稱');input.style.cssText='min-width:0;flex:1;margin:0 5px';rootTitle.replaceWith(input);rootEdit.hidden=true;input.focus();input.select();let finished=false;const finish=async(save)=>{if(finished)return;finished=true;const value=input.value.trim();if(save&&value&&value!==root.name)await renameRoot(value);display()};input.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();ev.stopPropagation();finish(true)}else if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();finish(false)}});input.addEventListener('blur',()=>finish(true));input.onclick=ev=>ev.stopPropagation()};rootRow.append(rootEdit);
  rootRow.onclick=e=>{/* BLOCK B-7C4CFA0ABF START: AREA A-6A7FC0B1 */rootSelected=true;selected=null;if(e.detail===2)rootCollapsed=!rootCollapsed;display()/* BLOCK B-7C4CFA0ABF END. */};
  rootRow.oncontextmenu=e=>{/* BLOCK B-E26E92CE06 START: AREA A-6A7FC0B1 */e.preventDefault();e.stopPropagation();rootMenu(e.clientX,e.clientY)/* BLOCK B-E26E92CE06 END. */};
  let timer;rootRow.addEventListener('touchstart',e=>{/* BLOCK B-280DA73CD4 START: AREA A-6A7FC0B1 */if(e.touches.length!==1)return;const x=e.touches[0].clientX,y=e.touches[0].clientY;timer=setTimeout(()=>rootMenu(x,y),550)/* BLOCK B-280DA73CD4 END. */},{passive:true});
@@ -741,7 +743,7 @@ async function pasteTargets(){/* BLOCK B-409DBBEDB2 START: AREA A-6A7FC0B1 */if(
 if(!root||!clipboard?.nodes.length)return alert('剪貼簿沒有可貼上的項目');const cur=current();const destNode=cur?.kind==='directory'?cur:cur?.parent||null;const dest=dirOf(destNode);if(!dest)return alert('請先選擇 Root');let failures=[];const done=[];for(const entry of clipboard.nodes){const x=entry.node;if(!items.includes(x)){failures.push(entry.name+'：來源已不存在');continue}if(x===destNode||destNode&&isChild(destNode,x)){failures.push(x.name+'：不能貼入自身或子資料夾');continue}if(clipboard.cut&&x.parent===destNode){done.push(x);continue}try{for await(const [n] of dest.entries())if(n===x.name)throw Error('目標已有同名項目');const newHandle=await copyNode(x,dest,x.name);if(clipboard.cut){await window.BVFlushFileRecords?.();const previous=captureRecordPaths(x);await dirOf(x.parent).removeEntry(x.name,{recursive:x.kind==='directory'});x.parent=destNode;x.handle=newHandle;if(x.kind==='directory')await rebindDescendants(x);await relocateRecords(previous);if(selected===x.id&&x.kind==='file')handle=newHandle;done.push(x)}else{const newNode={id:++sequence,uuid:uuid(),name:x.name,handle:newHandle,parent:destNode,kind:x.kind,order:sequence,buffer:null};nodeDB.nodes[path(newNode)]=newNode.uuid;items.push(newNode);async function cloneChildren(oldP,newP){/* BLOCK B-350BF31E5F START: AREA A-6A7FC0B1 */for(const child of siblings(oldP)){const h=child.kind==='directory'?await newP.handle.getDirectoryHandle(child.name):await newP.handle.getFileHandle(child.name);const copy={id:++sequence,uuid:uuid(),name:child.name,handle:h,parent:newP,kind:child.kind,order:sequence,buffer:null};nodeDB.nodes[path(copy)]=copy.uuid;if(child.kind==='file'&&recordDB.files[child.uuid])recordDB.files[copy.uuid]=structuredClone(recordDB.files[child.uuid]);items.push(copy);if(child.kind==='directory')await cloneChildren(child,copy)}/* BLOCK B-350BF31E5F END. */}if(x.kind==='directory')await cloneChildren(x,newNode);else if(recordDB.files[x.uuid])recordDB.files[newNode.uuid]=structuredClone(recordDB.files[x.uuid]);await flushNodeDB();await flushRecordDB();done.push(newNode)}orderDirty=true}catch(e){failures.push(x.name+'：'+e.message)}}if(clipboard.cut&&!failures.length)clipboard=null;display();queueCloudSave();if(failures.length)alert('部分貼上失敗：\n'+failures.join('\n'));else toast('已貼上 '+done.length+' 個項目')/* BLOCK B-409DBBEDB2 END. */}
 function operateMenu(left,top){/* BLOCK B-753B7697EE START: AREA A-6A7FC0B1 */const m=document.querySelector('#context-menu');m.replaceChildren();for(const [label,fn] of [['批量選取'+(batchMode?'（結束）':''),()=>{/* BLOCK B-EAE57E4C83 START: AREA A-6A7FC0B1 */batchMode=!batchMode;checkedIds.clear();display()/* BLOCK B-EAE57E4C83 END. */}],['刪除',deleteTargets],['剪下',()=>clipTargets(true)],['複製',()=>clipTargets(false)],['貼上',pasteTargets]]){const b=document.createElement('button');b.textContent=label;b.onclick=()=>{/* BLOCK B-FA191A3785 START: AREA A-6A7FC0B1 */m.hidden=true;Promise.resolve().then(fn).catch(e=>alert('操作失敗：'+e.message))/* BLOCK B-FA191A3785 END. */};m.append(b)}positionMenu(m,left,top)/* BLOCK B-753B7697EE END. */}
 function positionMenu(m,left,top){/* BLOCK B-30BF3B6CE6 START: AREA A-6A7FC0B1 */m.style.left=Math.max(8,Math.min(left,innerWidth-190))+'px';m.style.top=Math.max(8,Math.min(top,innerHeight-245))+'px';m.hidden=false/* BLOCK B-30BF3B6CE6 END. */}
-function importFiles(x){/* BLOCK B-9243EE32A8 START: AREA A-6A7FC0B1 */if(cloudVirtualId&&root?.cloudId===cloudVirtualId){selected=x.id;rootSelected=false;cloudImport.value='';cloudImport.click()}else alert('請使用選取本地文件功能')/* BLOCK B-9243EE32A8 END. */}
+function importFiles(x){/* BLOCK B-9243EE32A8 START: AREA A-6A7FC0B1 */if(cloudVirtualId&&root?.cloudId===cloudVirtualId){selected=x.id;rootSelected=false;cloudImport.value='';cloudImport.click()}else openLocalImportPicker(x)/* BLOCK B-9243EE32A8 END. */}
 function menu(x,left,top){/* BLOCK B-561584BD68 START: AREA A-6A7FC0B1 */
  const m=document.querySelector('#context-menu');m.replaceChildren();
  for(const [label,fn] of [
