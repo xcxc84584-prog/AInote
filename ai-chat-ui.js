@@ -78,8 +78,9 @@ if(!own&&!window.BVAuth?.getToken()){notice('請先登入 BV-Note 帳號');windo
 const url=BYOK_ENDPOINT;
 sending=true;$('ai-send-preview').disabled=true;notice('正在準備附件…');
 if(!own&&window.BVUnifiedAI){
+  let draftIndex=-1,receivedText='',lastPersist=0,c=null;
   try{
-    let c=current();
+    c=current();
     if(!c){createChat();c=current()}
     const hist=c.blocks.map(b=>({role:b.role==='Q'?'user':'assistant',text:b.text}));
     const labels=attachments.map(f=>'[Attachment] '+f.name);
@@ -87,22 +88,35 @@ if(!own&&window.BVUnifiedAI){
     c.blocks.push({role:'Q',text:shown});
     if(c.blocks.length===1)c.title=(source||labels[0]||'New Chat').replace(/[#*`\n]/g,' ').slice(0,38)||c.title;
     persist();renderTree();renderThread();
+    const updateDraft=(delta)=>{
+      if(!delta)return;receivedText+=delta;
+      if(draftIndex<0){draftIndex=c.blocks.length;c.blocks.push({role:'A',text:'',stream_state:'generating'});}
+      c.blocks[draftIndex].text=receivedText;
+      const now=Date.now();if(now-lastPersist>700){persist();lastPersist=now;}
+    };
     const result=await window.BVUnifiedAI.send({
       source,
       files:[...attachments],
       history:hist,
       token:window.BVAuth.getToken(),
       model,
-      onDelta:d=>{notice('Receiving AI response: '+String(d||'').length+' characters in latest chunk')}
+      onDelta:d=>{updateDraft(d);notice('正在接收 AI 回覆，已收到 '+receivedText.length+' 字元')}
     });
-    c.blocks.push({role:'A',text:result.text});
+    if(draftIndex<0){draftIndex=c.blocks.length;c.blocks.push({role:'A',text:result.text,stream_state:'completed'});}
+    else {c.blocks[draftIndex].text=result.text||receivedText;c.blocks[draftIndex].stream_state='completed';}
     $('ai-message-input').value='';
     attachments.length=0;
     showAttachments();persist();renderTree();renderThread();
     notice('AI response completed; trace='+result.trace);
     window.BVAuth?.refresh();
   }catch(e){
-    notice('AI request failed: '+(e?.message||String(e))+'; check /log for trace');
+    const part=String(e?.partialText||receivedText||'');
+    if(part&&c){
+      if(draftIndex<0){draftIndex=c.blocks.length;c.blocks.push({role:'A',text:part,stream_state:'interrupted'});}
+      else{c.blocks[draftIndex].text=part;c.blocks[draftIndex].stream_state='interrupted';}
+      persist();renderTree();renderThread();
+    }
+    notice('AI 串流未完成，已保留 '+part.length+' 字元。'+(e?.message||String(e))+'；請查看 /log');
   }finally{
     sending=false;
     $('ai-send-preview').disabled=false;

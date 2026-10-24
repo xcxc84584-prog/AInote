@@ -1,7 +1,7 @@
 // BV-Note v3.9.10 unified composer: existing textarea, SEND, attachment picker and chat storage.
 import {validateImage,imageDataURL} from '../ai-multimodal/image-handler.js';
 import {parseDocument} from '../ai-multimodal/document-parser.js';
-import {consumeAIStream} from '../ai-stream/sse.js';
+import {consumeAIStream} from '../ai-stream/sse.js?v=3.9.12.2';
 const host=document.getElementById('ai-composer-body');
 let bar=null,fill=null,label=null,stop=null,active=null;
 if(host){
@@ -25,10 +25,10 @@ window.BVUnifiedAI={async send({source,files,history,token,model,onDelta}){
  let prompt=(source||'請分析附件')+docTexts.join('\n');if(prompt.length>28000)throw Error('AI-U-413：本次文件摘要超過輸入限制，請縮小附件');messages.push({role:'user',text:prompt});
  const base=String(window.BV_CLOUD_API_URL||'').replace(/\/+$/,'');if(!base)throw Error('AI-U-503：未設定網站 API URL');
  progress(40,'正在上傳請求資料（瀏覽器 Fetch 無法提供精確上傳百分比）',true);
- const response=await fetch(base+'/api/ai/v2/responses',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({model:['gpt-5','gpt-4.1','gpt-4.1-mini'].includes(model)?model:'gpt-5',messages,images:image?[image]:[],stream:true,max_output_tokens:2048}),signal});
+ const response=await fetch(base+'/api/ai/v2/responses',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({model:['gpt-5','gpt-4.1','gpt-4.1-mini'].includes(model)?model:'gpt-5',messages,images:image?[image]:[],stream:true,max_output_tokens:4096}),signal});
  trace=response.headers.get('X-BV-Trace-ID')||'unknown';if(!response.ok){const d=await response.json().catch(()=>({}));throw Error(`${d.error_id||'AI-U-HTTP'} HTTP ${response.status} trace=${d.trace_id||trace} ${d.error||''}`)}
  progress(70,'已連線，正在接收 AI 回覆…',true);let received=0;const state=await consumeAIStream(response,{signal,onDelta:d=>{received+=d.length;onDelta(d);progress(70,`正在接收 AI 回覆（已收到 ${received} 字元）`,true)}});
- if(state.status!=='completed')throw Error(`AI-U-STREAM-${state.status} trace=${trace}: ${state.error||'未完成'}`);
+ if(state.status!=='completed'){const e=new Error(`AI-U-STREAM-${state.status} trace=${trace}: ${state.error||'未完成'}`);e.partialText=state.text;e.trace=trace;e.streamStatus=state.status;throw e;}
  progress(100,'完成：AI 回覆已接收');return {text:state.text,trace};
  }catch(e){progress(0,`失敗：${String(e.message||e).slice(0,180)}`);throw e;}finally{active=null;if(stop)stop.hidden=true;}
  },reset:hide};

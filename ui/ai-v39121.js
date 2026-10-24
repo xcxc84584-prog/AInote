@@ -79,7 +79,8 @@ continueBtn.onclick=async()=>{
  const chat=chats.find(c=>c.title===activeTitle);
  if(!chat||!chat.blocks.length)return notice('請先選擇包含 AI 回答的對話');
  const idx=chat.blocks.length-1;
- if(chat.blocks[idx].role!=='A')return notice('最後一個區塊不是 A 回答，無法直接接續');
+ const qOnly=chat.blocks[idx].role==='Q';
+ if(!qOnly&&chat.blocks[idx].role!=='A')return notice('最後一個區塊不是 Q 或 A，無法接續');
  if(!window.BVUnifiedAI?.send)return notice('網站串流 AI 尚未準備完成');
  if(!window.BVAuth?.getToken())return notice('請先登入');
  const model=$('ai-model-select');if(model)model.value='gpt-5';
@@ -93,19 +94,22 @@ continueBtn.onclick=async()=>{
    onDelta:delta=>{received+=delta}
   });
   const current=read(),c=current.find(x=>x.id===chat.id);
-  if(!c||c.blocks[idx]?.role!=='A')throw Error('原回答已變更，停止合併');
+  if(!c||c.blocks[idx]?.role!==(qOnly?'Q':'A'))throw Error('原回答已變更，停止合併');
+  if(qOnly)c.blocks.push({role:'A',text:'',stream_state:'generating'});
+  const aIndex=qOnly?idx+1:idx;
   const addition=result.text||received;
   if(!addition.trim())throw Error('未收到新的回答');
-  c.blocks[idx].text+=addition.startsWith('\n')?'':'\n\n';
-  c.blocks[idx].text+=addition;
+  c.blocks[aIndex].text+=addition.startsWith('\n')?'':'\n\n';
+  c.blocks[aIndex].text+=addition;c.blocks[aIndex].stream_state='completed';
   write(current);notice('接續完成，已合併到原 A Block；重新整理以同步顯示');
   location.reload();
  }catch(e){
   // Preserve any streamed text locally even if the connection is interrupted.
   if(received.trim()){
    const current=read(),c=current.find(x=>x.id===chat.id);
-   if(c&&c.blocks[idx]?.role==='A'){
-    c.blocks[idx].text+='\n\n'+received;write(current);
+   if(c&&c.blocks[idx]?.role===(qOnly?'Q':'A')){
+    if(qOnly)c.blocks.push({role:'A',text:'',stream_state:'interrupted'});
+    c.blocks[qOnly?idx+1:idx].text+='\n\n'+received;write(current);
     notice('串流中斷，已保留收到的部分；重新整理後可繼續接續');location.reload();return;
    }
   }
