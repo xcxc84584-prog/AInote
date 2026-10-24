@@ -23,6 +23,8 @@ const commands=[
  {syntax:'/check TARGET.Account<[1,3]><[10000,10]><[H,H]>',description:'Admin: filter accounts by Account-Flow metric ranges (AND).',tags:'target account filter',admin:true},
  {syntax:'/ip',description:'Admin: last recorded IP for each account/guest.',tags:'ip audit',admin:true},
  {syntax:'/ip <UserID>',description:'Admin: historical IP for an account or guest ID.',tags:'ip history',admin:true},
+ {syntax:'/check Data-Base-Flow',description:'Admin: show database storage and observed monthly transfer estimates.',tags:'database flow usage storage',admin:true},
+ {syntax:'/set Data-Base-Limit <Resource><Limit><Unit>',description:'Admin: set Storage/Egress/Upload/Download limit (B,KB,MB,GB or UNLIMITED).',tags:'database limit set',admin:true},
  {syntax:'/log',description:'Admin: internal structured log overview (reserved for application reporters).',tags:'log internal',admin:true},
  {syntax:'/admin logout',description:'End the current administrator session.',tags:'logout session',admin:true}
 ];
@@ -43,6 +45,36 @@ if(/^\/admin(?:\s|$)/i.test(command)){
  const expected=await digest(env.BV_CONSOLE_ADMIN_KEY),actual=await digest(key);
  if(expected!==actual)return fail('ADM-403','Invalid administrator key',403);
  return reply({ok:true,adminToken:await issueAdmin(env.BV_CONSOLE_ADMIN_KEY,user),lines:['Administrator mode enabled for 15 minutes.','FHI commands can now access all accounts.']});
+}
+// Database Flow v3.9.4; counters are application estimates, not Neon billing.
+if(/^\/check\s+Data-Base-Flow$/i.test(command)){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ const storage=await sql`SELECT pg_database_size(current_database())::bigint AS bytes`;
+ const monthly=await sql`SELECT COALESCE(SUM(upload_bytes),0)::bigint AS upload,COALESCE(SUM(download_bytes),0)::bigint AS download,COALESCE(SUM(egress_proxy_bytes),0)::bigint AS egress,COALESCE(SUM(request_count),0)::bigint AS requests FROM bv_database_flow_daily WHERE day>=date_trunc('month',NOW() AT TIME ZONE 'UTC')::date AND day<(date_trunc('month',NOW() AT TIME ZONE 'UTC')+interval '1 month')::date`;
+ const limits=await sql`SELECT resource,limit_bytes FROM bv_database_limits`;
+ const map=new Map(limits.map(x=>[x.resource,x.limit_bytes===null?null:Number(x.limit_bytes)]));
+ const pretty=n=>n===null?'Unlimited':n>=1e9?(n/1e9).toFixed(2)+' GB':n>=1e6?(n/1e6).toFixed(2)+' MB':n>=1e3?(n/1e3).toFixed(2)+' KB':n+' B';
+ const line=(label,n,key)=>{const max=map.get(key);return `${label.padEnd(18)}: ${pretty(n)} / ${max===undefined?'N/A':pretty(max)}${max?` (${(n/max*100).toFixed(2)}%)`:''}`};
+ const m=monthly[0],period=new Date().toISOString().slice(0,7);
+ return reply({ok:true,lines:[`DATABASE FLOW | ${period} (UTC)`,line('Storage (SQL)',Number(storage[0].bytes),'Storage'),line('External Egress*',Number(m.egress),'Egress'),line('Upload*',Number(m.upload),'Upload'),line('Download*',Number(m.download),'Download'),`Observed requests: ${m.requests}`,'* Worker-observed application traffic; NOT Neon billed egress.','* Upload requires Content-Length; unmeasured bodies are omitted.','* Monitoring started on deployment; historical usage is unavailable.','* Limits are display thresholds, not enforced quotas.']});
+}
+const setLimit=command.match(/^\/set\s+Data-Base-Limit\s+<([^<>]+)><([^<>]+)><([^<>]+)>$/i);
+if(setLimit){
+ if(!admin)return fail('ADM-403','Administrator mode required',403);
+ const aliases={storage:'Storage',egress:'Egress',upload:'Upload',download:'Download'};
+ const resource=aliases[setLimit[1].trim().toLowerCase()];
+ if(!resource)return fail('DBF-400','Resource must be Storage, Egress, Upload or Download');
+ const value=setLimit[2].trim(),unit=setLimit[3].trim().toUpperCase();
+ const scales={B:1,KB:1000,MB:1000000,GB:1000000000};
+ let bytes=null;
+ if(value.toUpperCase()==='UNLIMITED'&&unit==='B'){bytes=null}
+ else{
+  if(!/^(?:\d+)(?:\.\d{1,3})?$/.test(value)||!Object.hasOwn(scales,unit))return fail('DBF-400','Use positive number and B/KB/MB/GB; or <Unlimited><B>');
+  bytes=Math.round(Number(value)*scales[unit]);
+  if(!Number.isSafeInteger(bytes)||bytes<=0)return fail('DBF-400','Limit must be a positive safe integer number of bytes');
+ }
+ await sql`INSERT INTO bv_database_limits(resource,limit_bytes,updated_at) VALUES(${resource},${bytes},NOW()) ON CONFLICT(resource) DO UPDATE SET limit_bytes=EXCLUDED.limit_bytes,updated_at=NOW()`;
+ return reply({ok:true,lines:[`Database limit updated: ${resource} = ${bytes===null?'Unlimited':value+' '+unit}`,'This is a monitoring threshold only.']});
 }
 if(/^\/check\s+Account-List$/i.test(command)){
  if(!admin)return fail('ADM-403','Administrator mode required',403);
