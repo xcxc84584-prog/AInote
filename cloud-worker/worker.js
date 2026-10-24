@@ -1,5 +1,6 @@
 import {meteredFetch} from './database-flow.js';
 import {consoleApi} from './console-api.js';
+import {accessGuard} from './admin-extension.js';
 import {aiS67Api} from './ai-s67-api.js';
 import {aiTransferApi} from './ai-transfer-api.js';
 import {seappLogApi,reportSeappArea} from './seapp-log-api.js';
@@ -31,6 +32,7 @@ export default {async scheduled(event,env,ctx){ctx.waitUntil((async()=>{if(!env.
 if(env.AI_UPLOADS){const listed=await env.AI_UPLOADS.list({prefix:'ai-temp/',limit:1000});const expired=listed.objects.filter(o=>o.uploaded&&Date.now()-new Date(o.uploaded).getTime()>24*3600*1000).map(o=>o.key);if(expired.length)await env.AI_UPLOADS.delete(expired)}
 await sql`DELETE FROM bv_console_guests WHERE last_seen < NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_console_ip_history WHERE seen_at < NOW()-INTERVAL '30 days'`;await sql`DELETE FROM bv_guest_request_seconds WHERE second_at < NOW()-INTERVAL '2 days'`;await sql`DELETE FROM bv_ai_chunks WHERE created_at<NOW()-INTERVAL '24 hours'`;await sql`DELETE FROM bv_cloud_uploads WHERE state='uploading' AND created_at<NOW()-INTERVAL '48 hours'`})())},async fetch(req,env,ctx){return meteredFetch(req,env,ctx,()=>this.handleFetch(req,env,ctx));},async handleFetch(req,env,ctx){const origin=req.headers.get('Origin')||'',allowed=env.ALLOWED_ORIGIN||'';if(origin&&origin!==allowed)return reply({error:'Origin 不允許'},403);const cors=origin===allowed?origin:'';if(req.method==='OPTIONS')return new Response(null,{status:204,headers:{...(cors?{'Access-Control-Allow-Origin':cors}:{}),'Access-Control-Allow-Methods':'GET,POST,PUT,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization, X-BV-Guest-ID, X-BV-Upload-ID, X-BV-Part-Index, X-BV-Part-Count, X-BV-SHA256, X-BV-Console-Admin','Access-Control-Max-Age':'3600','Vary':'Origin'}});
 try{if(!env.DATABASE_URL)return reply({error:'未設定 DATABASE_URL'},503,cors);const sql=neon(env.DATABASE_URL);const path=new URL(req.url).pathname;
+const guard=await accessGuard(req,env,path,sql);if(guard)return withCors(guard,cors);
 // Best-effort identity/IP accounting. Guest token is a non-authorizing pseudonym.
 if(path.startsWith('/api/')&&req.method!=='OPTIONS')ctx.waitUntil((async()=>{try{
  const ip=(req.headers.get('CF-Connecting-IP')||'').slice(0,45);

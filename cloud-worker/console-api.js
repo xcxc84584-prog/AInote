@@ -1,8 +1,10 @@
 import {flowCommands} from './database-flow-commands.js';
+import {adminExtension} from './admin-extension.js';
 import {aiTestRegistry} from './ai-refactor-tests.js';
 import {aiS345Tests} from './ai-s345-tests.js';
 import {aiS67Tests} from './ai-s67-tests.js';
 import {aiS810Tests} from './ai-s810-tests.js';
+import {aiS1113Tests} from './ai-s1113-tests.js';
 // BV-Note v3.8.9.4 FHI console with verified administrator access.
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
@@ -13,6 +15,17 @@ async function signature(secret,payload){const key=await crypto.subtle.importKey
 async function issueAdmin(secret,user){const payload=b64(enc.encode(JSON.stringify({user,exp:Date.now()+15*60*1000})));return payload+'.'+await signature(secret,payload)}
 async function isAdmin(req,env,user){const token=req.headers.get('X-BV-Console-Admin')||'';if(!env.BV_CONSOLE_ADMIN_KEY||!token.includes('.'))return false;const [payload,sig]=token.split('.');if(!payload||!sig||sig!==await signature(env.BV_CONSOLE_ADMIN_KEY,payload))return false;try{const obj=JSON.parse(atob(payload.replace(/-/g,'+').replace(/_/g,'/')));return obj.user===user&&Number.isFinite(obj.exp)&&obj.exp>Date.now()}catch{return false}}
 const commands=[
+ {syntax:'/check Data-Base-Table',description:'Admin: list SQL tables.',tags:'database table',admin:true},
+ {syntax:'/check Data-Base-List <TargetTable>',description:'Admin: table schema.',tags:'database list',admin:true},
+ {syntax:'/check Data-Base-State <TargetTable><userID>',description:'Admin: redacted user rows.',tags:'database state',admin:true},
+ {syntax:'/ban-id <userid>',description:'Admin: ban account.',tags:'ban',admin:true},
+ {syntax:'/ban-ip <ip>',description:'Admin: ban IP.',tags:'ban',admin:true},
+ {syntax:'/ban-g <gmail>',description:'Admin: ban email.',tags:'ban',admin:true},
+ {syntax:'/unban-id <userid>',description:'Admin: unban account.',tags:'unban',admin:true},
+ {syntax:'/unban-ip <ip>',description:'Admin: unban IP.',tags:'unban',admin:true},
+ {syntax:'/unban-g <gmail>',description:'Admin: unban email.',tags:'unban',admin:true},
+ {syntax:'/delete all.log',description:'Admin: delete logs with confirmation.',tags:'log',admin:true},
+ {syntax:'/download all.log',description:'Admin: export last 1000 logs.',tags:'log',admin:true},
  {syntax:'/help',description:'List available commands and basic usage.',tags:'help search'},
  {syntax:'/help <keyword>',description:'Search command names, syntax, descriptions, and keywords (case-insensitive).',tags:'help search filter'},
  {syntax:'/check File-Hash-ID-List',description:'List visible File-Hash-IDs (all accounts in Admin Mode).',tags:'check FHI list file document'},
@@ -58,6 +71,7 @@ if(/^\/admin(?:\s|$)/i.test(command)){
  if(expected!==actual)return fail('ADM-403','Invalid administrator key',403);
  return reply({ok:true,adminToken:await issueAdmin(env.BV_CONSOLE_ADMIN_KEY,user),lines:['Administrator mode enabled for 15 minutes.','FHI commands can now access all accounts.']});
 }
+const extResult=await adminExtension({command,data,admin,user,sql});if(extResult)return extResult;
 const flowResult=await flowCommands({command,data,admin,user,sql});if(flowResult)return flowResult;
 // Database Flow v3.9.4; counters are application estimates, not Neon billing.
 if(/^\/check\s+Data-Base-Flow$/i.test(command)){
@@ -146,7 +160,7 @@ if(logMatch){
  const limit=logMatch[1]===undefined?100:Number(logMatch[1]);
  if(!Number.isSafeInteger(limit)||limit<1||limit>100)return fail('LOG-400','Count must be 1..100');
  const target=logMatch[2]?.toLowerCase();
- const registry=new Set(['add',...Object.keys(aiTestRegistry),...Object.keys(aiS345Tests),...Object.keys(aiS67Tests),...Object.keys(aiS810Tests)]);
+ const registry=new Set(['add',...Object.keys(aiTestRegistry),...Object.keys(aiS345Tests),...Object.keys(aiS67Tests),...Object.keys(aiS810Tests),...Object.keys(aiS1113Tests)]);
  if(target&&!registry.has(target))return fail('LOG-404','Unknown target; use /test help',404);
  const match=target?`%"target":"${target}"%`:null;
  const rows=target?await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs WHERE message LIKE ${match} ORDER BY created_at DESC LIMIT ${limit}`:await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs ORDER BY created_at DESC LIMIT ${limit}`;
