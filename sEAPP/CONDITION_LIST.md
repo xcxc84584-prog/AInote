@@ -1,7 +1,7 @@
-# CONDITION_LIST
-
-| ID | Description | STEP |
-|---|---|---|
-| C-UI-ERROR | JS exception / unhandled rejection | S-UI-ERROR |
-| C-API-ERROR | Cloud API unhandled exception | S-API-ERROR |
-| C-AI-ERROR | AI Worker exception | S-AI-ERROR |
+# CONDITION LIST
+| CONDITIONid | name | describe | STEP |
+|---|---|---|---|
+| C-ERROR | cloud_error | Worker dispatcher exception | A11 → B-SEAPP-01 |
+| C-PASS | cloud_success | No log persisted | A11 |
+| C-AUTH | authorized | Valid session; own records only | A-LOG |
+| C-DENIED | unauthorized | No valid session | reject 401 |

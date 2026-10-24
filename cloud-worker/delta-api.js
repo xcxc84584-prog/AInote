@@ -1,13 +1,12 @@
-/* AREA A-3717F8F5 START: cloud-worker/delta-api.js */
 // BV-Note 3.8.3: content-addressed per-account chunks and immutable file manifests.
 const j=(x,status=200)=>new Response(JSON.stringify(x),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
 const uid=x=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(x||'');
 const dig=x=>/^[a-f0-9]{64}$/i.test(x||'');
 const CHUNK=256*1024,MAX=100*1024*1024;
 const hex=async b=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',b))).map(v=>v.toString(16).padStart(2,'0')).join('');
-async function who(sql,req){/* BLOCK B-2BA1DB9902 START: AREA A-3717F8F5 */const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const h=await hex(new TextEncoder().encode(token));const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${h} AND expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null/* BLOCK B-2BA1DB9902 END. */}
+async function who(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const h=await hex(new TextEncoder().encode(token));const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${h} AND expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null}
 const validPath=(p,dir=false)=>typeof p==='string'&&p.length>0&&p.length<1024&&!p.startsWith('/')&&!p.includes('\\')&&!p.includes('\0')&&p.replace(/\/$/,'').split('/').every(x=>x&&x!=='.'&&x!=='..')&&(!dir||p.endsWith('/'));
-export async function deltaApi(req,env,path,sql){/* BLOCK B-6EB0E53F5C START: AREA A-3717F8F5 */if(!path.startsWith('/api/v383/'))return null;
+export async function deltaApi(req,env,path,sql){if(!path.startsWith('/api/v383/'))return null;
 try{
  const user=await who(sql,req);if(!user)return j({error:'請先登入'},401);
  const m=req.method;
@@ -69,6 +68,4 @@ try{
  }
  return j({error:'未知增量 API'},404);
 }catch(e){console.error('v383 delta API',e);return j({error:'增量操作失敗，請檢查 Worker 日誌'},500)}
-/* BLOCK B-6EB0E53F5C END. */}
-
-/* AREA A-3717F8F5 END. */
+}

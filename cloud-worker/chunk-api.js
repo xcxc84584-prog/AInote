@@ -1,4 +1,3 @@
-/* AREA A-72B8CE0F START: cloud-worker/chunk-api.js */
 import { sha256 } from '@noble/hashes/sha2.js';
 import {neon} from '@neondatabase/serverless';
 const json=(obj,status=200)=>new Response(JSON.stringify(obj),{status,headers:{'Content-Type':'application/json','Cache-Control':'no-store'}});
@@ -8,8 +7,8 @@ const partSize=256*1024,legacyPartSize=2*1024*1024,MAX=100*1024*1024;
 // Existing v3.7.8–v3.8.0 uploads retain their original 2 MiB boundaries.
 const uploadPartSize=u=>Number(u.part_count)===Math.ceil(Number(u.size_bytes)/legacyPartSize)?legacyPartSize:partSize;
 const tokenHash=async t=>hex(new TextEncoder().encode(t));
-async function owner(sql,req){/* BLOCK B-C37C4BFD1F START: AREA A-72B8CE0F */const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const h=await tokenHash(token);const rows=await sql`SELECT s.user_id FROM bv_sessions s WHERE s.token_hash=${h} AND s.expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null/* BLOCK B-C37C4BFD1F END. */}
-export async function chunkApi(req,env,path,sql){/* BLOCK B-115EF87E66 START: AREA A-72B8CE0F */if(!path.startsWith('/api/v378/'))return null;
+async function owner(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const h=await tokenHash(token);const rows=await sql`SELECT s.user_id FROM bv_sessions s WHERE s.token_hash=${h} AND s.expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null}
+export async function chunkApi(req,env,path,sql){if(!path.startsWith('/api/v378/'))return null;
  try{const user=await owner(sql,req);if(!user)return json({error:'需要登入'},401);
  const method=req.method;
  const fmatch=path.match(/^\/api\/v378\/files\/([0-9a-f-]+)(?:\/(history)(?:\/(\d+))?)?$/i);
@@ -64,6 +63,4 @@ export async function chunkApi(req,env,path,sql){/* BLOCK B-115EF87E66 START: AR
  if(file&&idok(file[1])&&method==='GET'){const rows=await sql`SELECT * FROM bv_cloud_documents WHERE file_id=${file[1]} AND owner_id=${user} AND expires_at>NOW()`;if(!rows.length)return json({error:'文件不存在或無權限'},404);const d=rows[0];const requested=new URL(req.url).searchParams.get('revision');const rev=requested===null?null:Number(requested);if(requested!==null&&(!Number.isSafeInteger(rev)||rev<1))return json({error:'版本無效'},400);const u=await sql`SELECT * FROM bv_cloud_uploads WHERE file_id=${d.file_id} AND owner_id=${user} AND state='complete' AND revision=${rev===null?Number(d.revision):rev} ORDER BY revision DESC LIMIT 1`;if(!u.length){const dr=await sql`SELECT revision FROM bv_delta_revisions WHERE file_id=${d.file_id} AND owner_id=${user} AND (${rev}::integer IS NULL OR revision=${rev}) ORDER BY revision DESC LIMIT 1`;if(dr.length&&(!file[2]||file[2]==='meta'))return json({file_id:d.file_id,name:d.name,revision:dr[0].revision,format:'delta',life_days:d.life_days,expires_at:d.expires_at});return json({error:'文件尚未完成上傳'},409)}const v=u[0];if(!file[2]||file[2]==='meta')return json({file_id:d.file_id,name:d.name,revision:v.revision,part_count:v.part_count,size_bytes:Number(v.size_bytes),sha256:v.sha256,life_days:d.life_days,expires_at:d.expires_at});const i=Number(file[2].split('/')[1]);if(!Number.isInteger(i)||i<0||i>=v.part_count)return json({error:'分片不存在'},404);const chunks=await sql`SELECT encode(data,'hex') AS hex,sha256 FROM bv_cloud_parts WHERE upload_id=${v.id} AND part_index=${i}`;if(!chunks.length)return json({error:'分片不存在'},404);const str=chunks[0].hex,bytes=new Uint8Array(str.length/2);for(let j=0;j<str.length;j+=2)bytes[j/2]=parseInt(str.slice(j,j+2),16);return new Response(bytes,{headers:{'Content-Type':'application/octet-stream','X-BV-SHA256':chunks[0].sha256,'Cache-Control':'no-store'}})}
  return json({error:'未知分片 API'},404)
  }catch(e){console.error('v378 API',e);return json({error:'雲端操作失敗，請查看 Worker 日誌'},500)}
-/* BLOCK B-115EF87E66 END. */}
-
-/* AREA A-72B8CE0F END. */
+}

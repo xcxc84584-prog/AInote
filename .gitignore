@@ -9,3 +9,10 @@ logs/
 coverage/
 dist/
 .DS_Store
+
+node_modules/
+.wrangler/
+.env
+.dev.vars
+*.pem
+*.key

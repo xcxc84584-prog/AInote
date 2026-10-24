@@ -1,25 +1,24 @@
-/* AREA A-10DFC911 START: cloud-worker/auth.js */
 import {jwtVerify,createRemoteJWKSet} from 'jose';
 import {neon} from '@neondatabase/serverless';
 const encoder=new TextEncoder();
 const digest=async value=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(value)))).map(x=>x.toString(16).padStart(2,'0')).join('');
 const b64=bytes=>btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const random=()=>b64(crypto.getRandomValues(new Uint8Array(32)));
-const newUUID=()=>{/* BLOCK B-52477918CA START: AREA A-10DFC911 */const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;/* BLOCK B-52477918CA END. */};
+const newUUID=()=>{const b=crypto.getRandomValues(new Uint8Array(16));b[6]=(b[6]&15)|64;b[8]=(b[8]&63)|128;const h=Array.from(b,x=>x.toString(16).padStart(2,'0')).join('');return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20)}`;};
 const json=(value,status=200)=>new Response(JSON.stringify(value),{status,headers:{'Content-Type':'application/json;charset=utf-8','Cache-Control':'no-store'}});
 const bad=(message,status=400)=>json({error:message},status);
 const dateTW=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 // Native WebCrypto avoids exhausting the Workers CPU budget.
 // The 100,000 iteration cap is required by the deployed Workers runtime.
 const PASSWORD_SCHEME='pbkdf2-sha256-100000$';
-async function derive(password,salt){/* BLOCK B-41B11002C4 START: AREA A-10DFC911 */
+async function derive(password,salt){
  const key=await crypto.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:encoder.encode(salt),iterations:100000,hash:'SHA-256'},key,256);
  return PASSWORD_SCHEME+b64(new Uint8Array(bits));
-/* BLOCK B-41B11002C4 END. */}
+}
 
-async function current(sql,req){/* BLOCK B-6522910D62 START: AREA A-10DFC911 */const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT u.id,u.email,s.id AS session_id FROM bv_sessions s JOIN bv_users u ON u.id=s.user_id WHERE s.token_hash=${hash} AND s.expires_at>NOW() LIMIT 1`;return rows[0]||null;/* BLOCK B-6522910D62 END. */}
-export async function authApi(req,env,path){/* BLOCK B-FD088C1E97 START: AREA A-10DFC911 */if(!path.startsWith('/api/auth/')&&path!=='/api/ai/chat'&&path!=='/api/ai/chunk')return null;if(!env.DATABASE_URL)return bad('DATABASE_URL missing',503);const sql=neon(env.DATABASE_URL);let phase='route';try{
+async function current(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT u.id,u.email,s.id AS session_id FROM bv_sessions s JOIN bv_users u ON u.id=s.user_id WHERE s.token_hash=${hash} AND s.expires_at>NOW() LIMIT 1`;return rows[0]||null;}
+export async function authApi(req,env,path){if(!path.startsWith('/api/auth/')&&path!=='/api/ai/chat'&&path!=='/api/ai/chunk')return null;if(!env.DATABASE_URL)return bad('DATABASE_URL missing',503);const sql=neon(env.DATABASE_URL);let phase='route';try{
  // Google Identity Services: verify signed ID token on server; never trust email from browser.
  if(path==='/api/auth/google'&&req.method==='POST'){
   if(!env.GOOGLE_CLIENT_ID)return bad('管理員尚未設定 GOOGLE_CLIENT_ID',503);
@@ -221,6 +220,4 @@ export async function authApi(req,env,path){/* BLOCK B-FD088C1E97 START: AREA A-
  }
  return bad('找不到路由',404);
  }catch(e){console.error('AUTH_API_ERROR',{phase,name:e?.name||'error',message:String(e?.message||'').slice(0,160)});return bad('服務暫時無法使用',500)}
-/* BLOCK B-FD088C1E97 END. */}
-
-/* AREA A-10DFC911 END. */
+}

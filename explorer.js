@@ -62,7 +62,9 @@ async function loadCloudRoot(saved){/* BLOCK B-7667D6DE5D START: AREA A-6A7FC0B1
  nodeDB={version:1,rootId:uuid(),nodes:{}};recordDB={version:2,files:{}};
  const directories=new Map();directories.set('',null);
  const addDir=key=>{/* BLOCK B-377FE82FD6 START: AREA A-6A7FC0B1 */if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:null,parent,kind:'directory',order:sequence,buffer:null};x.handle=cloudDir(x);items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x/* BLOCK B-377FE82FD6 END. */};
- for(const entry of saved.entries){if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
+ for(const entry of saved.entries){if(entry.path===ORDER_FILE)continue;if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
+ const orderRecord=saved.entries.find(e=>e.path===ORDER_FILE&&!e.dir);
+ if(orderRecord){try{applyOrderMetadata(JSON.parse(new TextDecoder().decode(orderRecord.data)))}catch(e){console.warn('Cloud node order metadata invalid',e)}}
  // All imported Cloud Root folders start collapsed; no document auto-opens.
  for(const node of items)if(node.kind==='directory')collapsed.add(node.id);
  selected=null;rootSelected=false;rootCollapsed=false;
@@ -93,7 +95,7 @@ window.BVCloudExportVirtualRoot=async()=>{/* BLOCK B-6C8D776EC8 START: AREA A-6A
   const data=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
   entries.push({path:path(node),data});
  }
- return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
+ entries.push(orderEntry());return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
 /* BLOCK B-6C8D776EC8 END. */};
 window.BVCloudRestoreVirtualRoot=async(id)=>{/* BLOCK B-9C9ADE08B8 START: AREA A-6A7FC0B1 */const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true/* BLOCK B-9C9ADE08B8 END. */};
 const singlePicker=document.createElement('input');singlePicker.type='file';
@@ -129,8 +131,8 @@ async function saveVirtual(){/* BLOCK B-26AC44A1E1 START: AREA A-6A7FC0B1 */
    const bytes=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
    entries.push({path:path(node),data:bytes});node.handle=memoryFile(node.name,bytes);node.buffer=null;
   }
-  await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
-  dirty=false;refreshUnsaved();rememberRoot();toast('已將完整 Cloud Root 草稿儲存至 IndexedDB（未寫入本地資料夾）');return;
+  entries.push(orderEntry());await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
+  orderDirty=false;dirty=false;refreshUnsaved();rememberRoot();toast('已將完整 Cloud Root 草稿儲存至 IndexedDB（未寫入本地資料夾）');return;
  }
  if(!x)return;const content=x.buffer??(sourceArea.style.display==='none'?rawMarkdown:sourceArea.value);
  await draftStore({id:x.uuid,name:x.name,rootName:root.name,content,updatedAt:Date.now()});
@@ -142,6 +144,49 @@ async function saveVirtual(){/* BLOCK B-26AC44A1E1 START: AREA A-6A7FC0B1 */
 let rootSelected=false;const SESSION_KEY="bv-note-session-v241";
 let batchMode=false;const checkedIds=new Set();let clipboard=null;
 const ORDER_FILE=".bv-note-explorer-order.json";
+// sEAPP v3.9.3: per-folder ordering survives ZIP, IndexedDB and local Root reload.
+let orderingParent=null,orderingActive=false;
+function orderMetadata(){
+ const paths=[];const ids=[];
+ const walk=p=>{for(const n of siblings(p)){paths.push(path(n));ids.push(n.uuid);if(n.kind==='directory')walk(n)}};
+ walk(null);return {version:3,ids,paths};
+}
+function applyOrderMetadata(data){
+ if(!data||(!Array.isArray(data.paths)&&!Array.isArray(data.ids)))return;
+ const rankByPath=new Map((data.paths||[]).map((v,i)=>[v,i]));
+ const rankById=new Map((data.ids||[]).map((v,i)=>[v,i]));
+ for(const n of items){const r=rankByPath.get(path(n))??rankById.get(n.uuid);if(r!==undefined)n.order=r;else n.order=100000+n.order}
+ normalizeOrders();
+}
+async function persistOrderChange(){
+ orderDirty=true;
+ if(cloudVirtualId&&root?.cloudId===cloudVirtualId){queueCloudSave();return}
+ if(!virtualRoot){await saveOrders()}
+}
+function reorderSibling(moving,target){
+ if(!moving||!target||moving===target||moving.parent!==target.parent)return false;
+ const peers=siblings(target.parent).filter(n=>n!==moving);
+ peers.splice(peers.indexOf(target),0,moving);
+ peers.forEach((n,i)=>n.order=i+1);return true;
+}
+async function adjustNodes(folder){
+ if(!root)return alert('請先選取 Root');
+ if(folder&&folder.kind!=='directory')folder=folder.parent;
+ if(orderingActive&&orderingParent===(folder||null)){orderingActive=false;orderingParent=null;display();toast('已結束節點排序模式');return}
+ orderingParent=folder||null;orderingActive=true;
+ display();toast('節點排序模式：長按拖曳同層項目，或使用上下箭頭。再次選取「調整節點」結束');
+}
+async function shiftNode(n,delta){
+ const peers=siblings(n.parent),i=peers.indexOf(n),j=i+delta;
+ if(j<0||j>=peers.length)return;
+ [peers[i],peers[j]]=[peers[j],peers[i]];
+ peers.forEach((x,k)=>x.order=k+1);
+ await persistOrderChange();display();
+}
+function orderEntry(){
+ return {path:ORDER_FILE,data:new TextEncoder().encode(JSON.stringify(orderMetadata(),null,2))};
+}
+
 const RECORD_FILE=".bv-note-records.json";
 // Stable UUIDs are random identifiers (not content hashes); persisted in Root metadata.
 const ID_FILE='.bv-note-node-ids.json';
@@ -194,8 +239,8 @@ async function relocateRecords(snapshot,copy=false){/* BLOCK B-E0A475AE3E START:
  await flushNodeDB();await flushRecordDB();
 /* BLOCK B-E0A475AE3E END. */}
 function normalizeOrders(){/* BLOCK B-B75E74F8FE START: AREA A-6A7FC0B1 */const parents=[null,...items.filter(x=>x.kind==='directory')];for(const p of parents)siblings(p).forEach((x,i)=>x.order=i+1)/* BLOCK B-B75E74F8FE END. */}
-async function loadOrders(){/* BLOCK B-0D2D34BB51 START: AREA A-6A7FC0B1 */try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(!Array.isArray(data.ids)&&!Array.isArray(data.paths))return;const ranks=new Map((data.ids||data.paths).map((p,i)=>[p,i]));for(const x of items)x.order=ranks.has(x.uuid)?ranks.get(x.uuid):ranks.has(path(x))?ranks.get(path(x)):100000+x.order;normalizeOrders()}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}/* BLOCK B-0D2D34BB51 END. */}
-async function saveOrders(){/* BLOCK B-92E3090C2B START: AREA A-6A7FC0B1 */if(virtualRoot)return;normalizeOrders();const data={version:2,ids:[]};const walk=p=>{/* BLOCK B-992430933E START: AREA A-6A7FC0B1 */for(const x of siblings(p)){data.ids.push(x.uuid);if(x.kind==='directory')walk(x)}/* BLOCK B-992430933E END. */};walk(null);const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;/* BLOCK B-92E3090C2B END. */}
+async function loadOrders(){/* BLOCK B-0D2D34BB51 START: AREA A-6A7FC0B1 */try{const h=await root.getFileHandle(ORDER_FILE);const data=JSON.parse(await(await h.getFile()).text());if(!Array.isArray(data.ids)&&!Array.isArray(data.paths))return;applyOrderMetadata(data)}catch(e){if(e.name!=='NotFoundError')console.warn('Explorer order load:',e)}/* BLOCK B-0D2D34BB51 END. */}
+async function saveOrders(){/* BLOCK B-92E3090C2B START: AREA A-6A7FC0B1 */if(virtualRoot)return;normalizeOrders();const data=orderMetadata();const h=await root.getFileHandle(ORDER_FILE,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close();orderDirty=false;/* BLOCK B-92E3090C2B END. */}
 const collapsed=new Set();let rootCollapsed=false;
 const edge=document.querySelector('#sider-edge');
 const closeSider=document.querySelector('#sider-close');
@@ -396,7 +441,7 @@ function enableRootOrdering(){/* BLOCK B-A52A5688FA START: AREA A-6A7FC0B1 */
 /* BLOCK B-A52A5688FA END. */}
 // AREA ROOT ORDER END
 // AREA MULTIROOT END
-async function openRootFromHandle(d){/* BLOCK B-5C29B82EFF START: AREA A-6A7FC0B1 */virtualRoot=false;cloudVirtualId=null;
+async function openRootFromHandle(d){orderingActive=false;orderingParent=null;/* BLOCK B-5C29B82EFF START: AREA A-6A7FC0B1 */virtualRoot=false;cloudVirtualId=null;
  const previousSession=(()=>{/* BLOCK B-9373222183 START: AREA A-6A7FC0B1 */try{return JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null')}catch{return null}/* BLOCK B-9373222183 END. */})();
  root=d;rootSelected=false;rootCollapsed=false;readingPositions.clear();readingRestoreToken++;readingRestoring=false;
  items=[];selected=null;sequence=0;resetBatch();collapsed.clear();await scan(d,null);await loadNodeDB();await loadOrders();await loadRecordDB();
@@ -444,11 +489,15 @@ async function exportNode(node){/* BLOCK B-81CC6C25B6 START: AREA A-6A7FC0B1 */
  async function collect(handle,name){/* BLOCK B-078D27FE78 START: AREA A-6A7FC0B1 */if(handle.kind==='file'){entries.push({name,data:new Uint8Array(await(await handle.getFile()).arrayBuffer())});return}
   entries.push({name:name+'/',data:new Uint8Array()});for await(const [child,h] of handle.entries())await collect(h,name+'/'+child);
  /* BLOCK B-078D27FE78 END. */}
- try{await collect(node?.handle||root,base);if(entries.length>65000)throw Error('ZIP 項目數量過多');const blob=makeZip(entries);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=base+'.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('已導出 '+base+'.zip');}catch(err){alert('導出失敗：'+err.message)}
+ try{
+ if(!virtualRoot&&orderDirty)await saveOrders();
+ await collect(node?.handle||root,base);
+ if(virtualRoot){entries.push({name:base+'/'+ORDER_FILE,data:orderEntry().data})}
+ if(entries.length>65000)throw Error('ZIP 項目數量過多');const blob=makeZip(entries);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=base+'.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);toast('已導出 '+base+'.zip');}catch(err){alert('導出失敗：'+err.message)}
 /* BLOCK B-81CC6C25B6 END. */}
 function rootMenu(left,top){/* BLOCK B-29EB4A4697 START: AREA A-6A7FC0B1 */
  const m=document.querySelector('#context-menu');m.replaceChildren();
- for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['導入文件',()=>openLocalImportPicker(null)],['導出文件（ZIP）',()=>exportNode(null)],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
+ for(const [label,fn] of [['新增 Fold',()=>create('directory',true)],['新增 File',()=>create('file',true)],['重新命名 Root',renameRoot],['調整節點',()=>adjustNodes(null)],['導入文件',()=>openLocalImportPicker(null)],['導出文件（ZIP）',()=>exportNode(null)],['儲存 Root',saveAll],['關閉 Root',closeRoot]]){
   const b=document.createElement('button');b.textContent=label;b.onclick=()=>{/* BLOCK B-D59476608A START: AREA A-6A7FC0B1 */m.hidden=true;Promise.resolve().then(fn).catch(e=>alert(e.message))/* BLOCK B-D59476608A END. */};m.append(b);
  }positionMenu(m,left,top);
 /* BLOCK B-29EB4A4697 END. */}
@@ -475,7 +524,16 @@ function display(){/* BLOCK B-5CDD2C831E START: AREA A-6A7FC0B1 */cloudFolderBut
  for(const ev of ['touchend','touchcancel','touchmove'])rootRow.addEventListener(ev,()=>clearTimeout(timer),{passive:true});
  tree.append(rootRow);
  const draw=(parent,level)=>{/* BLOCK B-FBDBB57E01 START: AREA A-6A7FC0B1 */siblings(parent).forEach((x,i)=>{/* BLOCK B-C513D90AE9 START: AREA A-6A7FC0B1 */if(explorerQuery&&!matches.has(x.id))return;const row=document.createElement('div');row.className='tree-node'+(selected===x.id?' selected':'');row.style.paddingLeft=(10+level*15)+'px';row.draggable=true;row.dataset.id=x.id;
-const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);if(batchMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.name);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{/* BLOCK B-D5CF445255 START: AREA A-6A7FC0B1 */const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()/* BLOCK B-D5CF445255 END. */};row.append(cb)}row.onclick=()=>{/* BLOCK B-CBC58DCFED START: AREA A-6A7FC0B1 */if(x.kind==='directory'){selected=x.id;rootSelected=false;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)/* BLOCK B-CBC58DCFED END. */};row.oncontextmenu=e=>{/* BLOCK B-965BA24F07 START: AREA A-6A7FC0B1 */e.preventDefault();e.stopPropagation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)/* BLOCK B-965BA24F07 END. */};
+const label=document.createElement('span');label.className='node-label';label.textContent=(x.kind==='directory'?(collapsed.has(x.id)?'▸ ':'▾ '):'▤ ')+x.name;const rank=document.createElement('small');rank.textContent=String(i+1);row.append(label,rank);
+if(orderingActive&&orderingParent===x.parent){
+ const up=document.createElement('button'),down=document.createElement('button');
+ up.type=down.type='button';up.textContent='↑';down.textContent='↓';
+ up.title='節點上移';down.title='節點下移';
+ up.style.cssText=down.style.cssText='padding:1px 5px;cursor:pointer';
+ up.onclick=e=>{e.preventDefault();e.stopPropagation();shiftNode(x,-1).catch(err=>alert(err.message))};
+ down.onclick=e=>{e.preventDefault();e.stopPropagation();shiftNode(x,1).catch(err=>alert(err.message))};
+ row.append(up,down);
+}if(batchMode){const cb=document.createElement('input');cb.type='checkbox';cb.className='node-check';cb.checked=checkedIds.has(x.id);cb.setAttribute('aria-label','選取 '+x.name);cb.onclick=e=>e.stopPropagation();cb.onchange=()=>{/* BLOCK B-D5CF445255 START: AREA A-6A7FC0B1 */const on=cb.checked;for(const node of items){if(node===x||x.kind==='directory'&&isChild(node,x)){if(on)checkedIds.add(node.id);else checkedIds.delete(node.id)}}display()/* BLOCK B-D5CF445255 END. */};row.append(cb)}row.onclick=()=>{/* BLOCK B-CBC58DCFED START: AREA A-6A7FC0B1 */if(x.kind==='directory'){selected=x.id;rootSelected=false;if(!collapsed.delete(x.id))collapsed.add(x.id);display();}else choose(x)/* BLOCK B-CBC58DCFED END. */};row.oncontextmenu=e=>{/* BLOCK B-965BA24F07 START: AREA A-6A7FC0B1 */e.preventDefault();e.stopPropagation();selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(e.clientX,e.clientY);else menu(x,e.clientX,e.clientY)/* BLOCK B-965BA24F07 END. */};
 // Long-press on mobile opens the same menu as desktop right-click.
 let pressTimer=null,startX=0,startY=0,suppressClick=false;
 row.addEventListener('touchstart',e=>{/* BLOCK B-9B02BC130C START: AREA A-6A7FC0B1 */
@@ -483,16 +541,22 @@ row.addEventListener('touchstart',e=>{/* BLOCK B-9B02BC130C START: AREA A-6A7FC0
  startX=e.touches[0].clientX;startY=e.touches[0].clientY;
  clearTimeout(pressTimer);
  pressTimer=setTimeout(()=>{/* BLOCK B-C7155B6F2F START: AREA A-6A7FC0B1 */
-  pressTimer=null;suppressClick=true;selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(startX,startY);else menu(x,startX,startY);
+  pressTimer=null;suppressClick=true;if(orderingActive&&orderingParent===x.parent){row.dataset.sortReady='1';row.style.opacity='0.65';return;}selected=x.id;display();if(batchMode&&checkedIds.size)operateMenu(startX,startY);else menu(x,startX,startY);
  /* BLOCK B-C7155B6F2F END. */},550);
 /* BLOCK B-9B02BC130C END. */},{passive:true});
 row.addEventListener('touchmove',e=>{/* BLOCK B-249E9695AE START: AREA A-6A7FC0B1 */
  if(!e.touches.length||Math.abs(e.touches[0].clientX-startX)>12||Math.abs(e.touches[0].clientY-startY)>12){clearTimeout(pressTimer);pressTimer=null}
 /* BLOCK B-249E9695AE END. */},{passive:true});
-row.addEventListener('touchend',()=>{/* BLOCK B-368BCCF08A START: AREA A-6A7FC0B1 */clearTimeout(pressTimer);pressTimer=null/* BLOCK B-368BCCF08A END. */},{passive:true});
+row.addEventListener('touchend',e=>{/* BLOCK B-368BCCF08A START: AREA A-6A7FC0B1 */clearTimeout(pressTimer);pressTimer=null;
+ if(row.dataset.sortReady==='1'){
+   const t=e.changedTouches[0],hit=document.elementFromPoint(t.clientX,t.clientY)?.closest('.tree-node[data-id]');
+   const target=hit&&items.find(n=>n.id===Number(hit.dataset.id));
+   if(target&&reorderSibling(x,target))persistOrderChange().then(display).catch(err=>alert(err.message));
+   else display();
+ }/* BLOCK B-368BCCF08A END. */},{passive:true});
 row.addEventListener('touchcancel',()=>{/* BLOCK B-0904BE65F4 START: AREA A-6A7FC0B1 */clearTimeout(pressTimer);pressTimer=null/* BLOCK B-0904BE65F4 END. */},{passive:true});
 row.addEventListener('click',e=>{/* BLOCK B-B1F3C84D21 START: AREA A-6A7FC0B1 */if(suppressClick){e.stopImmediatePropagation();e.preventDefault();suppressClick=false}/* BLOCK B-B1F3C84D21 END. */},true);
-row.ondragstart=e=>{/* BLOCK B-4E8B497299 START: AREA A-6A7FC0B1 */e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'/* BLOCK B-4E8B497299 END. */};row.ondragover=e=>{/* BLOCK B-2880378987 START: AREA A-6A7FC0B1 */e.preventDefault()/* BLOCK B-2880378987 END. */};row.ondrop=async e=>{/* BLOCK B-17747FA877 START: AREA A-6A7FC0B1 */e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving)await move(moving,x,e.shiftKey)/* BLOCK B-17747FA877 END. */};
+row.ondragstart=e=>{/* BLOCK B-4E8B497299 START: AREA A-6A7FC0B1 */e.dataTransfer.setData('text/plain',String(x.id));e.dataTransfer.effectAllowed='move'/* BLOCK B-4E8B497299 END. */};row.ondragover=e=>{/* BLOCK B-2880378987 START: AREA A-6A7FC0B1 */e.preventDefault()/* BLOCK B-2880378987 END. */};row.ondrop=async e=>{/* BLOCK B-17747FA877 START: AREA A-6A7FC0B1 */e.preventDefault();const moving=items.find(y=>y.id===Number(e.dataTransfer.getData('text/plain')));if(moving){if(orderingActive&&orderingParent===x.parent&&reorderSibling(moving,x)){await persistOrderChange();display()}else if(orderingActive&&orderingParent===x.parent){toast('只能調整同一層節點')}else await move(moving,x,e.shiftKey)}/* BLOCK B-17747FA877 END. */};
 tree.append(row);if(x.kind==='directory'&&(explorerQuery||!collapsed.has(x.id)))draw(x,level+1)/* BLOCK B-C513D90AE9 END. */})/* BLOCK B-FBDBB57E01 END. */};if(explorerQuery||!rootCollapsed)draw(null,1);renderOtherRoots();enableRootOrdering()/* BLOCK B-5CDD2C831E END. */}
 // v2.2.12: Remember the reading position independently for each Explorer file.
 // The workspace main element is the actual scroll container (not window).

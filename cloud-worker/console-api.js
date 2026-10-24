@@ -1,13 +1,12 @@
-/* AREA A-C4C8C9D5 START: cloud-worker/console-api.js */
 // BV-Note v3.8.9.4 FHI console with verified administrator access.
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
-async function digest(s){/* BLOCK B-21D3550CFE START: AREA A-C4C8C9D5 */return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('')/* BLOCK B-21D3550CFE END. */}
+async function digest(s){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))).map(x=>x.toString(16).padStart(2,'0')).join('')}
 const enc=new TextEncoder();
-function b64(bytes){/* BLOCK B-BFFA99F508 START: AREA A-C4C8C9D5 */return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')/* BLOCK B-BFFA99F508 END. */}
-async function signature(secret,payload){/* BLOCK B-229696DC43 START: AREA A-C4C8C9D5 */const key=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(new Uint8Array(await crypto.subtle.sign('HMAC',key,enc.encode(payload))))/* BLOCK B-229696DC43 END. */}
-async function issueAdmin(secret,user){/* BLOCK B-8100AC6864 START: AREA A-C4C8C9D5 */const payload=b64(enc.encode(JSON.stringify({user,exp:Date.now()+15*60*1000})));return payload+'.'+await signature(secret,payload)/* BLOCK B-8100AC6864 END. */}
-async function isAdmin(req,env,user){/* BLOCK B-AC4C3A1C91 START: AREA A-C4C8C9D5 */const token=req.headers.get('X-BV-Console-Admin')||'';if(!env.BV_CONSOLE_ADMIN_KEY||!token.includes('.'))return false;const [payload,sig]=token.split('.');if(!payload||!sig||sig!==await signature(env.BV_CONSOLE_ADMIN_KEY,payload))return false;try{const obj=JSON.parse(atob(payload.replace(/-/g,'+').replace(/_/g,'/')));return obj.user===user&&Number.isFinite(obj.exp)&&obj.exp>Date.now()}catch{return false}/* BLOCK B-AC4C3A1C91 END. */}
+function b64(bytes){return btoa(String.fromCharCode(...bytes)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+async function signature(secret,payload){const key=await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);return b64(new Uint8Array(await crypto.subtle.sign('HMAC',key,enc.encode(payload))))}
+async function issueAdmin(secret,user){const payload=b64(enc.encode(JSON.stringify({user,exp:Date.now()+15*60*1000})));return payload+'.'+await signature(secret,payload)}
+async function isAdmin(req,env,user){const token=req.headers.get('X-BV-Console-Admin')||'';if(!env.BV_CONSOLE_ADMIN_KEY||!token.includes('.'))return false;const [payload,sig]=token.split('.');if(!payload||!sig||sig!==await signature(env.BV_CONSOLE_ADMIN_KEY,payload))return false;try{const obj=JSON.parse(atob(payload.replace(/-/g,'+').replace(/_/g,'/')));return obj.user===user&&Number.isFinite(obj.exp)&&obj.exp>Date.now()}catch{return false}}
 const commands=[
  {syntax:'/help',description:'List available commands and basic usage.',tags:'help search'},
  {syntax:'/help <keyword>',description:'Search command names, syntax, descriptions, and keywords (case-insensitive).',tags:'help search filter'},
@@ -27,9 +26,9 @@ const commands=[
  {syntax:'/log',description:'Admin: internal structured log overview (reserved for application reporters).',tags:'log internal',admin:true},
  {syntax:'/admin logout',description:'End the current administrator session.',tags:'logout session',admin:true}
 ];
-async function getUser(sql,req){/* BLOCK B-111FF81BE8 START: AREA A-C4C8C9D5 */const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null/* BLOCK B-111FF81BE8 END. */}
-function fail(code,message,status=400){/* BLOCK B-827669D378 START: AREA A-C4C8C9D5 */return reply({ok:false,code,error:message},status)/* BLOCK B-827669D378 END. */}
-export async function consoleApi(req,env,path,sql){/* BLOCK B-ED6CE69634 START: AREA A-C4C8C9D5 */if(path!=='/api/console/execute')return null;
+async function getUser(sql,req){const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return null;const hash=await digest(token);const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${hash} AND expires_at>NOW() LIMIT 1`;return rows[0]?.user_id||null}
+function fail(code,message,status=400){return reply({ok:false,code,error:message},status)}
+export async function consoleApi(req,env,path,sql){if(path!=='/api/console/execute')return null;
 if(req.method!=='POST')return fail('CMD-405','POST method required',405);
 try{
 const user=await getUser(sql,req);if(!user)return fail('AUTH-401','Sign in to BV-Note first',401);
@@ -58,9 +57,9 @@ if(flow){
  const account=await sql`SELECT id,email FROM bv_users WHERE id::text=${identifier} OR LOWER(email)=LOWER(${identifier}) LIMIT 1`;
  if(!account.length)return fail('FLOW-404','Account not found',404);
  const target=account[0],checks={
- 1:async()=>{/* BLOCK B-9CD27A117F START: AREA A-C4C8C9D5 */const r=await sql`SELECT COALESCE((SELECT SUM(octet_length(p.data)) FROM bv_cloud_parts p JOIN bv_cloud_uploads u ON u.id=p.upload_id WHERE u.owner_id=${target.id}),0)::bigint AS bytes`;return `1 | Cloud storage: ${(Number(r[0].bytes)/1024).toFixed(2)} KB (${r[0].bytes} bytes; stored upload parts)`/* BLOCK B-9CD27A117F END. */},
- 2:async()=>{/* BLOCK B-59F2CC4C86 START: AREA A-C4C8C9D5 */const r=await sql`SELECT COALESCE((SELECT used FROM bv_ai_usage WHERE user_id=${target.id} AND usage_day=(NOW() AT TIME ZONE 'Asia/Taipei')::date),0)::int AS used`;return `2 | Website ChatGPT key calls today (Taipei): ${r[0].used}`/* BLOCK B-59F2CC4C86 END. */},
- 3:async()=>{/* BLOCK B-B59621727B START: AREA A-C4C8C9D5 */const r=await sql`SELECT COALESCE(SUM(request_count),0)::bigint AS total,COALESCE(MAX(request_count),0)::bigint AS peak FROM bv_account_request_seconds WHERE user_id=${target.id} AND second_at >= date_trunc('day',NOW() AT TIME ZONE 'Asia/Taipei') AT TIME ZONE 'Asia/Taipei' AND second_at < (date_trunc('day',NOW() AT TIME ZONE 'Asia/Taipei')+interval '1 day') AT TIME ZONE 'Asia/Taipei'`;return `3 | Requests today: ${r[0].total}; peak observed: ${r[0].peak} req/s (authenticated requests only)`/* BLOCK B-B59621727B END. */}
+ 1:async()=>{const r=await sql`SELECT COALESCE((SELECT SUM(octet_length(p.data)) FROM bv_cloud_parts p JOIN bv_cloud_uploads u ON u.id=p.upload_id WHERE u.owner_id=${target.id}),0)::bigint AS bytes`;return `1 | Cloud storage: ${(Number(r[0].bytes)/1024).toFixed(2)} KB (${r[0].bytes} bytes; stored upload parts)`},
+ 2:async()=>{const r=await sql`SELECT COALESCE((SELECT used FROM bv_ai_usage WHERE user_id=${target.id} AND usage_day=(NOW() AT TIME ZONE 'Asia/Taipei')::date),0)::int AS used`;return `2 | Website ChatGPT key calls today (Taipei): ${r[0].used}`},
+ 3:async()=>{const r=await sql`SELECT COALESCE(SUM(request_count),0)::bigint AS total,COALESCE(MAX(request_count),0)::bigint AS peak FROM bv_account_request_seconds WHERE user_id=${target.id} AND second_at >= date_trunc('day',NOW() AT TIME ZONE 'Asia/Taipei') AT TIME ZONE 'Asia/Taipei' AND second_at < (date_trunc('day',NOW() AT TIME ZONE 'Asia/Taipei')+interval '1 day') AT TIME ZONE 'Asia/Taipei'`;return `3 | Requests today: ${r[0].total}; peak observed: ${r[0].peak} req/s (authenticated requests only)`}
  };
  const selected=mode==='ALL'?Object.keys(checks).map(Number):part.startsWith('[')?part.slice(1,-1).split(',').map(x=>Number(x.trim())):[Number(part)];
  if(!selected.length||selected.length>50||selected.some(x=>!Number.isSafeInteger(x)||!checks[x])||new Set(selected).size!==selected.length)return fail('FLOW-400','Unknown, repeated, or invalid Account-Flow number',400);
@@ -145,6 +144,4 @@ const r=rows[0];if(Number(r.matched)!==versions.length)return fail('FHI-404','On
 if(Number(r.total)<=versions.length)return fail('FHI-409','At least one revision must remain; no revisions were deleted',409);
 return reply({ok:true,lines:[`Deleted ${versions.length} revision(s): ${versions.join(', ')}`,`Latest revision: ${r.revision}`]});
 }catch(e){console.error('Console API error',e);return fail('CMD-500','Server error; inspect Worker logs',500)}
-/* BLOCK B-ED6CE69634 END. */}
-
-/* AREA A-C4C8C9D5 END. */
+}

@@ -1,8 +1,8 @@
-# sEAPP v3.9.0 coverage and limitations
-- 基準：使用者上傳 v3.8.9.4 專案。GitHub main tree SHA: 95fb15a48f9291f72b1d2284c7114a6ff9cdd0e9（已讀取檔案樹，未下載/逐檔合併 GitHub 差異）。
-- 全站 JavaScript 函數 AST 標註：527 BLOCK，23 個檔案級 AREA；採註解方式，保留原有邏輯。
-- 新增：前端全域 exception / unhandledrejection、Worker 未處理例外、登入後日誌寫入與查詢、/log UI。
-- 不代表所有函數都具備執行期輸入輸出追蹤；BLOCK 標註是靜態架構覆蓋，未建立完整函數調用圖。
-- AI BYOK Worker 的內部異常仍由原 Cloudflare runtime logs 管理，尚未自動同步至 Neon。
-- Server-side uncaught errors 若未能關聯 user_id，僅留資料庫供管理員查看，普通使用者不可查詢。
-- 尚未進行真實 Neon migration、Cloudflare deploy、端對端測試。請先在測試環境驗證。
+# BV-Note sEAPP 整合狀態
+- 基準：使用者提供的 v3.8.9.4 ZIP。
+- GitHub：已讀取 main 的檔案樹作參照；本包不宣稱所有 GitHub 最新檔案均已同步或合併。
+- 新增：/log 頁面、Cloud Worker 的失敗日誌 API、Neon migration。
+- 既有 AREA：掃描原始碼現有 AREA START 標記，見 AREA_LIST_GENERATED.md。
+- 尚未完成：全站 BLOCK 級別重構、所有 BEHAVIOR/CONDITION/STEP 動態關聯、完整端對端測試。
+- 注意：未關聯 user_id 的 Worker 異常目前無法從一般使用者 /log 查詢；資料庫可供管理員稽核。
+- 安全：不要將本 ZIP 內的 SQL 遷移略過；不得將管理金鑰、token、完整輸入內容記錄到日誌。
