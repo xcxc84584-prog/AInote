@@ -1,3 +1,4 @@
+import {flowCommands} from './database-flow-commands.js';
 // BV-Note v3.8.9.4 FHI console with verified administrator access.
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
@@ -23,6 +24,10 @@ const commands=[
  {syntax:'/check TARGET.Account<[1,3]><[10000,10]><[H,H]>',description:'Admin: filter accounts by Account-Flow metric ranges (AND).',tags:'target account filter',admin:true},
  {syntax:'/ip',description:'Admin: last recorded IP for each account/guest.',tags:'ip audit',admin:true},
  {syntax:'/ip <UserID>',description:'Admin: historical IP for an account or guest ID.',tags:'ip history',admin:true},
+ {syntax:'/check Data-Base-Flow <YYYY-MM|YYYY-MM,YYYY-MM|ALL>',description:'Admin: historical flow summary (UTC).',tags:'database flow history',admin:true},
+ {syntax:'/delete Data-Base-Flow <YYYY-MM|YYYY-MM,YYYY-MM|ALL>',description:'Admin: permanently delete flow counters with confirmation.',tags:'database flow delete',admin:true},
+ {syntax:'/download Data-Base-Flow <YYYY-MM|YYYY-MM,YYYY-MM|ALL>',description:'Admin: download ZIP containing Markdown flow report.',tags:'database flow download',admin:true},
+ {syntax:'/test <target><frequency>',description:'Admin: randomized tests for registered pure functions; summary sent to /log.',tags:'test registry log',admin:true},
  {syntax:'/check Data-Base-Flow',description:'Admin: show database storage and observed monthly transfer estimates.',tags:'database flow usage storage',admin:true},
  {syntax:'/set Data-Base-Limit <Resource><Limit><Unit>',description:'Admin: set Storage/Egress/Upload/Download limit (B,KB,MB,GB or UNLIMITED).',tags:'database limit set',admin:true},
  {syntax:'/log',description:'Admin: internal structured log overview (reserved for application reporters).',tags:'log internal',admin:true},
@@ -46,6 +51,7 @@ if(/^\/admin(?:\s|$)/i.test(command)){
  if(expected!==actual)return fail('ADM-403','Invalid administrator key',403);
  return reply({ok:true,adminToken:await issueAdmin(env.BV_CONSOLE_ADMIN_KEY,user),lines:['Administrator mode enabled for 15 minutes.','FHI commands can now access all accounts.']});
 }
+const flowResult=await flowCommands({command,data,admin,user,sql});if(flowResult)return flowResult;
 // Database Flow v3.9.4; counters are application estimates, not Neon billing.
 if(/^\/check\s+Data-Base-Flow$/i.test(command)){
  if(!admin)return fail('ADM-403','Administrator mode required',403);
