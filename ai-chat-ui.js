@@ -78,18 +78,36 @@ if(!own&&!window.BVAuth?.getToken()){notice('請先登入 BV-Note 帳號');windo
 const url=BYOK_ENDPOINT;
 sending=true;$('ai-send-preview').disabled=true;notice('正在準備附件…');
 if(!own&&window.BVUnifiedAI){
- try{
-  let c=current();if(!c){createChat();c=current()}
-  const hist=c.blocks.map(b=>({role:b.role==='Q'?'user':'assistant',text:b.text}));
-  const labels=attachments.map(f=>'[?辣] '+f.name);
-  const shown=source+(labels.length?'\n\n'+labels.join('\n'):'');
-  c.blocks.push({role:'Q',text:shown});if(c.blocks.length===1)c.title=(source||labels[0]||'?啗?憭?).replace(/[#*`\n]/g,' ').slice(0,38)||c.title;
-  persist();renderTree();renderThread();
-  let answer='';const result=await window.BVUnifiedAI.send({source,files:[...attachments],history:hist,token:window.BVAuth.getToken(),model,onDelta:d=>{answer+=d;notice('甇??交??嚗?+answer.length+' 摮?')}});
-  c.blocks.push({role:'A',text:result.text});$('ai-message-input').value='';attachments.length=0;showAttachments();persist();renderTree();renderThread();notice('AI ??摰?嚗race='+result.trace);window.BVAuth?.refresh();
- }catch(e){notice('AI 隢?憭望?嚗?+e.message+'嚗?靽??航炊隞?Ⅳ??trace 隞乩? /log ?嚗?)}
- finally{sending=false;$('ai-send-preview').disabled=false}
- return;
+  try{
+    let c=current();
+    if(!c){createChat();c=current()}
+    const hist=c.blocks.map(b=>({role:b.role==='Q'?'user':'assistant',text:b.text}));
+    const labels=attachments.map(f=>'[Attachment] '+f.name);
+    const shown=source+(labels.length?'\n\n'+labels.join('\n'):'');
+    c.blocks.push({role:'Q',text:shown});
+    if(c.blocks.length===1)c.title=(source||labels[0]||'New Chat').replace(/[#*`\n]/g,' ').slice(0,38)||c.title;
+    persist();renderTree();renderThread();
+    const result=await window.BVUnifiedAI.send({
+      source,
+      files:[...attachments],
+      history:hist,
+      token:window.BVAuth.getToken(),
+      model,
+      onDelta:d=>{notice('Receiving AI response: '+String(d||'').length+' characters in latest chunk')}
+    });
+    c.blocks.push({role:'A',text:result.text});
+    $('ai-message-input').value='';
+    attachments.length=0;
+    showAttachments();persist();renderTree();renderThread();
+    notice('AI response completed; trace='+result.trace);
+    window.BVAuth?.refresh();
+  }catch(e){
+    notice('AI request failed: '+(e?.message||String(e))+'; check /log for trace');
+  }finally{
+    sending=false;
+    $('ai-send-preview').disabled=false;
+  }
+  return;
 }
 try{const parts=[{type:'input_text',text:source||'請分析附件'}],labels=[],uploads=[];
 for(const f of attachments){
