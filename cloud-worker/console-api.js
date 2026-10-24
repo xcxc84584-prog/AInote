@@ -2,6 +2,7 @@ import {flowCommands} from './database-flow-commands.js';
 import {aiTestRegistry} from './ai-refactor-tests.js';
 import {aiS345Tests} from './ai-s345-tests.js';
 import {aiS67Tests} from './ai-s67-tests.js';
+import {aiS810Tests} from './ai-s810-tests.js';
 // BV-Note v3.8.9.4 FHI console with verified administrator access.
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const uuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s||'');
@@ -145,7 +146,7 @@ if(logMatch){
  const limit=logMatch[1]===undefined?100:Number(logMatch[1]);
  if(!Number.isSafeInteger(limit)||limit<1||limit>100)return fail('LOG-400','Count must be 1..100');
  const target=logMatch[2]?.toLowerCase();
- const registry=new Set(['add',...Object.keys(aiTestRegistry),...Object.keys(aiS345Tests),...Object.keys(aiS67Tests)]);
+ const registry=new Set(['add',...Object.keys(aiTestRegistry),...Object.keys(aiS345Tests),...Object.keys(aiS67Tests),...Object.keys(aiS810Tests)]);
  if(target&&!registry.has(target))return fail('LOG-404','Unknown target; use /test help',404);
  const match=target?`%"target":"${target}"%`:null;
  const rows=target?await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs WHERE message LIKE ${match} ORDER BY created_at DESC LIMIT ${limit}`:await sql`SELECT created_at,source,level,event_code,message FROM bv_console_logs ORDER BY created_at DESC LIMIT ${limit}`;

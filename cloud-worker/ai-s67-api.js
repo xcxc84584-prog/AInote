@@ -11,12 +11,12 @@ export async function aiS67Api(req,env,path,sql){if(path!=='/api/ai/v2/responses
  const token=(req.headers.get('Authorization')||'').match(/^Bearer ([A-Za-z0-9_-]{30,})$/)?.[1];if(!token)return fail('AI-S67-401','Sign in required',401);
  const rows=await sql`SELECT user_id FROM bv_sessions WHERE token_hash=${await hash(token)} AND expires_at>NOW() LIMIT 1`;
  if(!rows.length)return fail('AI-S67-401','Session expired',401);
- const length=Number(req.headers.get('content-length')||0);if(length>65000)return fail('AI-S67-413','Request too large',413);
- let body;try{const raw=await req.text();if(raw.length>65000)throw Error('oversize');body=JSON.parse(raw)}catch{return fail('AI-S67-400','Invalid JSON',400)}
- const model=body?.model,stream=body?.stream===true,messages=body?.messages;
+ const length=Number(req.headers.get('content-length')||0);if(length>7500000)return fail('AI-S67-413','Request too large',413);
+ let body;try{const raw=await req.text();if(raw.length>7500000)throw Error('oversize');body=JSON.parse(raw)}catch{return fail('AI-S67-400','Invalid JSON',400)}
+ const model=body?.model,stream=body?.stream===true,messages=body?.messages;const images=body?.images??[];if(!Array.isArray(images)||images.length>1)return fail("AI-S9-400","Maximum one image",400);for(const image of images){if(typeof image!=="string"||image.length>7200000||!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(image))return fail("AI-S9-415","Invalid image data URL",415)}
  if(!['gpt-5','gpt-4.1','gpt-4.1-mini'].includes(model)||!Array.isArray(messages)||messages.length<1||messages.length>30)return fail('AI-S67-400','Unsupported model or messages',400);
  let total=0;const input=[];for(const m of messages){if(!m||!['user','assistant'].includes(m.role)||typeof m.text!=='string'||!m.text.trim()||m.text.length>30000)return fail('AI-S67-400','Invalid message',400);total+=m.text.length;input.push({role:m.role,content:[{type:'input_text',text:m.text}]})}
- if(total>60000)return fail('AI-S67-413','Context budget exceeded',413);
+ if(images.length){const last=input[input.length-1];if(last.role!=="user")return fail("AI-S9-400","Image must belong to user message",400);last.content.push({type:"input_image",image_url:images[0]})}if(total>60000)return fail('AI-S67-413','Context budget exceeded',413);
  const max=body.max_output_tokens??2048;if(!Number.isSafeInteger(max)||max<256||max>8192)return fail('AI-S67-400','Invalid output budget',400);
  // Site quota: reserve once before upstream. Retries are new calls; never count streamed chunks.
  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
