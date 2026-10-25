@@ -1,0 +1,11 @@
+/* BV-Note AI UI v3.9.12.8 */
+#ai-ui-thread .bv39128-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;margin:0!important;flex-wrap:nowrap!important}
+#ai-ui-thread .bv39128-actions>.ai-ui-fold,#ai-ui-thread .bv39128-actions>.ai-ui-delete,#ai-ui-thread .bv39128-hide{display:none!important}
+#ai-ui-thread .bv39128-actions>.bv39128-edit{display:inline-flex!important;align-items:center;justify-content:center;order:1;border:1px solid #ef5664!important;border-radius:7px!important;background:#562b34!important;color:#ffe0e2!important;padding:6px 12px!important;font-size:12px!important}
+#ai-ui-thread .bv39128-actions>.bv39128-edit.bv39128-commit{border-color:#4cbd76!important;background:#193f30!important;color:#d4ffe2!important}
+#ai-ui-thread .bv39128-actions>.bv39128-menu{display:block!important;order:2;margin:0!important}
+#ai-ui-thread .bv39128-actions>.bv39128-menu summary{white-space:nowrap}
+#ai-ui-thread .bv39128-menu .bv39128-hide{display:none!important}
+#ai-chat-composer .bv39128-toolbar{display:flex!important;flex-wrap:wrap;align-items:center;gap:8px}
+#ai-chat-composer .bv39128-toolbar #ai-composer-toggle{order:-1!important;margin:0!important}
+#ai-chat-composer .bv39128-toolbar #ai-attach-button{order:0!important}
