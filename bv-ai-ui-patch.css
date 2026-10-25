@@ -1,0 +1,13 @@
+/* BV-Note AI QA controls: additive UI styles */
+.ai-ui-block .ai-block-actions{display:flex;align-items:center;gap:8px;margin-top:0}
+.ai-ui-block .ai-ui-block-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ai-ui-block .bv-ai-actions-menu{position:relative}
+.ai-ui-block .bv-ai-actions-menu summary{list-style:none;cursor:pointer;border:1px solid #48617c;border-radius:6px;padding:6px 10px;background:#172536;color:#dce8f8;font-size:12px}
+.ai-ui-block .bv-ai-actions-menu summary::-webkit-details-marker{display:none}
+.ai-ui-block .bv-ai-actions-menu[open] .ai-ui-fold,.ai-ui-block .bv-ai-actions-menu[open] .ai-ui-delete{display:block;width:100%;margin:4px 0;text-align:left}
+.ai-ui-block .bv-ai-actions-menu[open]{z-index:10}
+.ai-ui-block .bv-ai-actions-menu[open] .ai-ui-fold,.ai-ui-block .bv-ai-actions-menu[open] .ai-ui-delete{background:#172536;border:1px solid #405776;color:#f3f6ff}
+.ai-ui-block .ai-ui-edit.bv-ai-state-edit{background:#53232b!important;border-color:#f45c67!important;color:#ffe1e4!important}
+.ai-ui-block .ai-ui-edit.ai-ui-commit{background:#194b32!important;border-color:#4cd389!important;color:#e3fff0!important}
+.ai-ui-block .ai-ui-block-text{min-height:28px}
+.ai-ui-block .ai-ui-block-edit{width:100%;min-height:110px}
