@@ -16,7 +16,22 @@ function life(){const v=Number($('cloud-life-days').value);if(!lifeOptions.inclu
 function showCreatePanel(){const p=$('cloud-create-panel');p.hidden=false;msg('請選擇雲端 Fold 保存期限後建立專案')}
 
 function el(tag,text){const n=document.createElement(tag);n.textContent=text;return n}
-function renderFiles(rows){const body=$('cloud-file-table').querySelector('tbody');body.replaceChildren();for(const f of rows){const tr=el('tr','');for(const val of [f.name,String(f.revision||0)])tr.append(el('td',val));const td=el('td','');for(const [title,cb] of [['歷史',()=>history(f.file_id)],['編輯',()=>editCloud(f.file_id)],['下載',()=>download(f.file_id)],['刪除',()=>removeFile(f.file_id)]]){const b=el('button',title);b.onclick=()=>run(cb);td.append(b)}tr.append(td);body.append(tr)}if(!rows.length){const tr=el('tr','');const td=el('td','目前帳號沒有有效的雲端文件。');td.colSpan=3;tr.append(td);body.append(tr)}}
+// BV_CLOUD_EXPIRY_PATCH_V3: display-only countdown; database expiry is authoritative.
+function cloudExpiryLabel(value){
+ if(!value)return '—';
+ const timestamp=Date.parse(value);
+ if(!Number.isFinite(timestamp))return '—';
+ const hours=Math.max(0,(timestamp-Date.now())/3600000);
+ return hours<=0?'0.00 h (expired)':hours.toFixed(2)+' h';
+}
+function refreshCloudExpiry(){
+ if(document.hidden)return;
+ document.querySelectorAll('#cloud-file-table td[data-cloud-expiry]').forEach(cell=>{
+  cell.textContent=cloudExpiryLabel(cell.dataset.cloudExpiry);
+ });
+}
+setInterval(refreshCloudExpiry,1000);
+function renderFiles(rows){const body=$('cloud-file-table').querySelector('tbody');body.replaceChildren();for(const f of rows){const tr=el('tr','');for(const val of [f.name,String(f.revision||0)])tr.append(el('td',val));const expiryCell=el('td',cloudExpiryLabel(f.expires_at));if(f.expires_at)expiryCell.dataset.cloudExpiry=f.expires_at;tr.append(expiryCell);const td=el('td','');for(const [title,cb] of [['歷史',()=>history(f.file_id)],['編輯',()=>editCloud(f.file_id)],['下載',()=>download(f.file_id)],['刪除',()=>removeFile(f.file_id)]]){const b=el('button',title);b.onclick=()=>run(cb);td.append(b)}tr.append(td);body.append(tr)}if(!rows.length){const tr=el('tr','');const td=el('td','目前帳號沒有有效的雲端文件。');td.colSpan=4;tr.append(td);body.append(tr)}}
 function upsert(f){files=[...files.filter(x=>x.file_id!==f.file_id),f];renderFiles(files)}
 $('cloud-search-button').onclick=()=>run(async()=>{const id=$('cloud-search-input').value.trim();if(!id){const listing=await api('/api/v378/files');files=listing.files;renderFiles(files);msg('已列出帳號名下 '+files.length+' 筆 Neon 分片文件');return}if(!validId(id))throw Error('只能使用完整 File Hash ID（UUID）搜尋');progress(35,'查詢雲端資料…');let f;try{f=await api('/api/v378/files/'+encodeURIComponent(id)+'/meta')}catch{f=await api('/api/files/'+encodeURIComponent(id)+'/meta')}upsert(f);selectedCloud=id;msg('找到專案：'+f.name)});
 $('cloud-search-input').addEventListener('keydown',e=>{if(e.key==='Enter')$('cloud-search-button').click()});
