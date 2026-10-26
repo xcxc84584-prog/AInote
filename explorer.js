@@ -62,15 +62,21 @@ async function loadCloudRoot(saved){/* BLOCK B-7667D6DE5D START: AREA A-6A7FC0B1
  nodeDB={version:1,rootId:uuid(),nodes:{}};recordDB={version:2,files:{}};
  const directories=new Map();directories.set('',null);
  const addDir=key=>{/* BLOCK B-377FE82FD6 START: AREA A-6A7FC0B1 */if(directories.has(key))return directories.get(key);const segments=key.split('/');const name=segments.pop();const parent=addDir(segments.join('/'));const x={id:++sequence,uuid:uuid(),name,handle:null,parent,kind:'directory',order:sequence,buffer:null};x.handle=cloudDir(x);items.push(x);directories.set(key,x);nodeDB.nodes[key]=x.uuid;return x/* BLOCK B-377FE82FD6 END. */};
- for(const entry of saved.entries){if(entry.path===ORDER_FILE)continue;if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
- const orderRecord=saved.entries.find(e=>e.path===ORDER_FILE&&!e.dir);
+ for(const entry of saved.entries){if([ORDER_FILE,RECORD_FILE,ID_FILE].includes(entry.path))continue;if(entry.dir){addDir(entry.path.replace(/\/$/,''));continue}const segments=entry.path.split('/');const name=segments.pop();if(!name)continue;const parent=segments.length?addDir(segments.join('/')):null;const x={id:++sequence,uuid:uuid(),name,handle:memoryFile(name,entry.data),parent,kind:'file',order:sequence,buffer:null};items.push(x);nodeDB.nodes[entry.path]=x.uuid}
+  // Restore stable UUIDs before annotations; metadata belongs to the Cloud Root ZIP.
+  const bvIdsEntry=saved.entries.find(e=>e.path===ID_FILE&&!e.dir);
+  if(bvIdsEntry){try{const ids=JSON.parse(new TextDecoder().decode(bvIdsEntry.data));if(ids?.nodes){nodeDB=ids;for(const node of items){const known=ids.nodes[path(node)];if(known)node.uuid=known;}}}catch(e){console.warn('Cloud UUID metadata invalid',e)}}
+  const bvRecordsEntry=saved.entries.find(e=>e.path===RECORD_FILE&&!e.dir);
+  if(bvRecordsEntry){try{const parsed=JSON.parse(new TextDecoder().decode(bvRecordsEntry.data));if(parsed?.files)recordDB=parsed}catch(e){console.warn('Cloud annotation metadata invalid',e)}}
+const orderRecord=saved.entries.find(e=>e.path===ORDER_FILE&&!e.dir);
  if(orderRecord){try{applyOrderMetadata(JSON.parse(new TextDecoder().decode(orderRecord.data)))}catch(e){console.warn('Cloud node order metadata invalid',e)}}
  // All imported Cloud Root folders start collapsed; no document auto-opens.
  for(const node of items)if(node.kind==='directory')collapsed.add(node.id);
  selected=null;rootSelected=false;rootCollapsed=false;
  rootLabel.textContent=root.name;setDocumentVisible(false);display();
  toast('雲端 Root 已載入，所有資料夾預設閉合（'+items.length+' 個節點）');
- rememberRoot();
+  try{localStorage.setItem('bvnote-last-cloud-root',saved.id)}catch{}
+  rememberRoot();
 /* BLOCK B-7667D6DE5D END. */}
 window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{/* BLOCK B-5A063C7F29 START: AREA A-6A7FC0B1 */
  if(!/^[0-9a-f-]{36}$/i.test(id))throw Error('Cloud ID 無效');
@@ -95,7 +101,7 @@ window.BVCloudExportVirtualRoot=async()=>{/* BLOCK B-6C8D776EC8 START: AREA A-6A
   const data=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
   entries.push({path:path(node),data});
  }
- entries.push(orderEntry());return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
+ entries.push({path:RECORD_FILE,data:new TextEncoder().encode(JSON.stringify(recordDB))});entries.push({path:ID_FILE,data:new TextEncoder().encode(JSON.stringify(nodeDB))});entries.push(orderEntry());return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
 /* BLOCK B-6C8D776EC8 END. */};
 window.BVCloudRestoreVirtualRoot=async(id)=>{/* BLOCK B-9C9ADE08B8 START: AREA A-6A7FC0B1 */const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true/* BLOCK B-9C9ADE08B8 END. */};
 const singlePicker=document.createElement('input');singlePicker.type='file';
@@ -195,7 +201,7 @@ let recordDB={version:2,files:{}};
 let recordWrite=Promise.resolve(),nodeWrite=Promise.resolve();
 const uuid=()=>crypto.randomUUID();
 async function writeJSON(target,name,data){/* BLOCK B-AA56E4411D START: AREA A-6A7FC0B1 */const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close()/* BLOCK B-AA56E4411D END. */}
-async function flushRecordDB(){/* BLOCK B-14E7D87CA9 START: AREA A-6A7FC0B1 */if(!root||virtualRoot)return;const target=root,payload=structuredClone(recordDB);recordWrite=recordWrite.catch(()=>{/* BLOCK B-DC70EA256C END. *//* BLOCK B-DC70EA256C START: AREA A-6A7FC0B1 */}).then(()=>writeJSON(target,RECORD_FILE,payload));return recordWrite;/* BLOCK B-14E7D87CA9 END. */}
+async function flushRecordDB(){/* BLOCK B-14E7D87CA9 START: AREA A-6A7FC0B1 */if(!root)return;if(virtualRoot){queueCloudSave();return;}const target=root,payload=structuredClone(recordDB);recordWrite=recordWrite.catch(()=>{/* BLOCK B-DC70EA256C END. *//* BLOCK B-DC70EA256C START: AREA A-6A7FC0B1 */}).then(()=>writeJSON(target,RECORD_FILE,payload));return recordWrite;/* BLOCK B-14E7D87CA9 END. */}
 async function flushNodeDB(){/* BLOCK B-B2A32B9CD3 START: AREA A-6A7FC0B1 */if(!root||virtualRoot)return;const target=root,payload=structuredClone(nodeDB);nodeWrite=nodeWrite.catch(()=>{/* BLOCK B-6507D369C4 END. *//* BLOCK B-6507D369C4 START: AREA A-6A7FC0B1 */}).then(()=>writeJSON(target,ID_FILE,payload));return nodeWrite;/* BLOCK B-B2A32B9CD3 END. */}
 function canonicalRecordKey(key){/* BLOCK B-E1F5CED091 START: AREA A-6A7FC0B1 */if(!key)return '';const prefix=root?.name+'/';if(prefix&&key.startsWith(prefix))return key.slice(prefix.length);const exact=items.filter(x=>x.kind==='file').map(x=>path(x));return exact.find(p=>key===p||key.endsWith('/'+p))||key;/* BLOCK B-E1F5CED091 END. */}
 async function loadNodeDB(){/* BLOCK B-8A7F2239B0 START: AREA A-6A7FC0B1 */
@@ -391,11 +397,12 @@ function renderOtherRoots(){/* BLOCK B-E605760B00 START: AREA A-6A7FC0B1 */
  for(const workspace of rootWorkspaces){if(workspace.root===root)continue;
   const row=document.createElement('div');row.className='tree-node root-tree-node';
   row.style.paddingLeft='10px';row.style.cursor='pointer';
-  const label=document.createElement('span');label.className='node-label';label.textContent='▸ ▣ '+workspace.root.name;
+  const label=document.createElement('span');label.className='node-label';label.textContent=(workspace.rootCollapsed?'▸ ':'▾ ')+'▣ '+workspace.root.name;
   row.append(label);row.title='切換至此 Root（操作以所選文件所屬 Root 為準）';
-  row.onclick=()=>activateRoot(workspace).catch(e=>alert('Root 切換失敗：'+e.message));
+  row.onclick=e=>{if(e.detail===2){workspace.rootCollapsed=!workspace.rootCollapsed;display();return;}activateRoot(workspace).catch(err=>alert('Root 切換失敗：'+err.message))};
   tree.append(row);
-  // Show every opened Root's tree; selecting a file activates its owning Root first.
+   if(workspace.rootCollapsed)continue;
+   // Show every opened Root's tree; selecting a file activates its owning Root first.
   const drawInactive=(parent,depth)=>{/* BLOCK B-BFA94A92AE START: AREA A-6A7FC0B1 */
    const children=workspace.items.filter(x=>x.parent===parent).sort((a,b)=>a.order-b.order);
    for(const x of children){
@@ -403,7 +410,7 @@ function renderOtherRoots(){/* BLOCK B-E605760B00 START: AREA A-6A7FC0B1 */
     const node=document.createElement('div');node.className='tree-node';node.style.paddingLeft=(10+depth*15)+'px';
     const name=document.createElement('span');name.className='node-label';name.textContent=(x.kind==='directory'?'▾ ':'▤ ')+x.name;node.append(name);
     node.onclick=async()=>{/* BLOCK B-750698DC3F START: AREA A-6A7FC0B1 */try{await activateRoot(workspace);const live=items.find(y=>y.uuid===x.uuid);if(live){if(live.kind==='file')await choose(live);else{selected=live.id;rootSelected=false;display()}}}catch(e){alert('切換文件失敗：'+e.message)}/* BLOCK B-750698DC3F END. */};
-    tree.append(node);if(x.kind==='directory')drawInactive(x,depth+1);
+    tree.append(node);if(x.kind==='directory'&&!workspace.collapsed.has(x.id))drawInactive(x,depth+1);
    }
   /* BLOCK B-BFA94A92AE END. */};
   drawInactive(null,1);
@@ -422,7 +429,7 @@ function enableRootOrdering(){/* BLOCK B-A52A5688FA START: AREA A-6A7FC0B1 */
  for(const header of headers){
   const name=header.querySelector('.node-label')?.textContent||'';
   const workspace=rootWorkspaces.find(w=>name.includes('▣ '+w.root.name));if(!workspace)continue;
-  header.draggable=true;header.title=(header.title||'')+'｜拖曳排序，觸控長按後移動';
+  header.draggable=false;header.title=(header.title||'')+'｜Root 固定依開啟順序排列';
   header.addEventListener('dragstart',e=>{/* BLOCK B-B282B0EC9C START: AREA A-6A7FC0B1 */rootDrag=workspace.root;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','bv-root-order')/* BLOCK B-B282B0EC9C END. */});
   header.addEventListener('dragover',e=>{/* BLOCK B-B238E0EEAC START: AREA A-6A7FC0B1 */if(rootDrag){e.preventDefault();header.classList.add('root-order-target')}/* BLOCK B-B238E0EEAC END. */});
   header.addEventListener('dragleave',()=>header.classList.remove('root-order-target'));
@@ -509,7 +516,7 @@ explorerSearchInput.addEventListener('input',()=>{/* BLOCK B-C9B5A8C634 START: A
 explorerSearchClear.addEventListener('click',()=>{/* BLOCK B-9669E80AD5 START: AREA A-6A7FC0B1 */explorerSearchInput.value='';explorerQuery='';display();explorerSearchInput.focus()/* BLOCK B-9669E80AD5 END. */});
 function display(){/* BLOCK B-5CDD2C831E START: AREA A-6A7FC0B1 */cloudFolderButton.hidden=!(cloudVirtualId&&root?.cloudId===cloudVirtualId);tree.replaceChildren();
  explorerSearchClear.hidden=!explorerQuery;
- if(!root){explorerSearchStatus.textContent='';renderOtherRoots();enableRootOrdering();return;}
+ if(!root){explorerSearchStatus.textContent='';renderOtherRoots();return;}
  const matches=new Set();let directMatches=0;
  if(explorerQuery){for(const node of items){if(!node.name.toLocaleLowerCase().includes(explorerQuery))continue;directMatches++;matches.add(node.id);let ancestor=node.parent;while(ancestor){matches.add(ancestor.id);ancestor=ancestor.parent}}}
  explorerSearchStatus.textContent=explorerQuery?`符合 ${directMatches} 個項目` : '';
@@ -834,6 +841,9 @@ window.addEventListener('focus',syncExternal);document.addEventListener('visibil
 // Ctrl+S saves the complete open Root when present.
 document.addEventListener('keydown',e=>{/* BLOCK B-CFB7CC84F7 START: AREA A-6A7FC0B1 */if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}/* BLOCK B-CFB7CC84F7 END. */},true);
 window.BVSwitchEditorMode=(mode)=>switchMode(mode);
+ // BVNOTE_PATCH_20261026_FIX2: Restore last Cloud Root from IndexedDB after reload.
+ setTimeout(async()=>{try{if(root)return;const id=localStorage.getItem('bvnote-last-cloud-root');if(!id)return;const saved=await cloudRead('bv378-root-'+id);if(saved)await loadCloudRoot(saved)}catch(e){console.warn('Cloud workspace restore failed',e)}},0);
+
 /* BLOCK B-C681CA29D7 END. */})();
 // AREA A02 END: ExplorerManager
 
