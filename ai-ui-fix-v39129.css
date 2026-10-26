@@ -1,0 +1,17 @@
+/* Scoped, final override for stacked legacy UI patches. */
+#ai-ui-thread .bv39129-card .ai-block-actions{display:flex!important;align-items:center!important;gap:8px!important;justify-content:flex-end!important;flex-wrap:wrap}
+#ai-ui-thread .bv39129-card .ai-block-actions > :not(.bv39129-edit):not(.bv39129-menu){display:none!important}
+#ai-ui-thread .bv39129-card .ai-ui-block-attachments:not(.bv39129-show-attachments),
+#ai-ui-thread .bv39129-card .ai-ui-attachments:not(.bv39129-show-attachments){display:none!important}
+#ai-ui-thread .bv39129-card .bv39129-edit{display:inline-flex!important;align-items:center;justify-content:center;min-width:68px;padding:7px 12px;border:1px solid #f06470;border-radius:6px;background:#51262d;color:#fff;cursor:pointer}
+#ai-ui-thread .bv39129-card .bv39129-edit.is-commit{border-color:#4fc47b;background:#1d563a;color:#fff}
+#ai-ui-thread .bv39129-card .bv39129-menu{display:block!important;position:relative;min-width:56px;z-index:8}
+#ai-ui-thread .bv39129-card .bv39129-menu summary{list-style:none;cursor:pointer;border:1px solid #4c6785;background:#203249;color:#f5f7fb;border-radius:6px;padding:7px 11px;font-size:12px}
+#ai-ui-thread .bv39129-card .bv39129-menu summary::-webkit-details-marker{display:none}
+#ai-ui-thread .bv39129-card .bv39129-menu summary::after{content:' ▾'}
+#ai-ui-thread .bv39129-card .bv39129-items{position:absolute;right:0;top:calc(100% + 4px);min-width:174px;padding:5px;background:#1b2839;border:1px solid #52657c;border-radius:8px;box-shadow:0 8px 24px #0008;display:flex;flex-direction:column;z-index:100}
+#ai-ui-thread .bv39129-card .bv39129-items button{display:block!important;width:100%;text-align:left;background:transparent;color:#edf3fb;border:0;border-radius:4px;padding:9px 10px;cursor:pointer}
+#ai-ui-thread .bv39129-card .bv39129-items button:hover{background:#30445d}
+#ai-ui-thread .bv39129-card .bv39129-items button.danger{color:#ff808b}
+#ai-ui-thread .bv39129-card .bv39129-menu:not([open]) .bv39129-items{display:none!important}
+#ai-ui-thread .bv39129-card .ai-ui-block-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
