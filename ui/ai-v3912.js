@@ -38,7 +38,38 @@ const thread=$('ai-ui-thread');function decorate(){for(const card of thread.quer
 const DB='bvnote-block-files-v3912';function openDB(){return new Promise((ok,bad)=>{const r=indexedDB.open(DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('files',{keyPath:'key'});r.onsuccess=()=>ok(r.result);r.onerror=()=>bad(r.error)})}
 async function saveAttachment(blockId,file){const db=await openDB(),key=location.pathname+':'+(explorer.querySelector('.ai-ui-chat-tree[open] summary .node-label')?.textContent||'chat')+':'+blockId+':'+file.name;return new Promise((ok,bad)=>{const t=db.transaction('files','readwrite');t.objectStore('files').put({key,name:file.name,type:file.type,blob:file,blockId,created:Date.now()});t.oncomplete=()=>{db.close();ok()};t.onerror=()=>bad(t.error)})}
 async function getAttachments(blockId){const db=await openDB();return new Promise((ok,bad)=>{const t=db.transaction('files','readonly'),r=t.objectStore('files').getAll();r.onsuccess=()=>{db.close();ok(r.result.filter(x=>x.blockId===blockId))};r.onerror=()=>bad(r.error)})}
-async function renderAttachments(card,box){const entries=await getAttachments(card.id);if(!card.isConnected)return;box.replaceChildren(el('strong',`附件（${entries.length}）`));for(const item of entries){const row=el('div');const a=el('a','⬇ '+item.name);a.href=URL.createObjectURL(item.blob);a.download=item.name;row.append(a);if(item.type.startsWith('image/')){const img=el('img');img.src=a.href;img.alt=item.name;row.append(img)}box.append(row)}}
+// BVNOTE_CLOUD_QA_FIX3_20261026: delete the exact IndexedDB attachment by its primary key.
+async function removeAttachment(key){
+ const db=await openDB();return new Promise((ok,bad)=>{
+  const tx=db.transaction('files','readwrite');tx.objectStore('files').delete(key);
+  tx.oncomplete=()=>{db.close();ok()};tx.onerror=()=>{db.close();bad(tx.error)};
+  tx.onabort=()=>{db.close();bad(tx.error||new Error('Attachment delete aborted'))};
+ });
+}
+async function renderAttachments(card,box){
+ const entries=await getAttachments(card.id);if(!card.isConnected)return;
+ for(const url of (box._bvAttachmentURLs||[]))URL.revokeObjectURL(url);
+ const urls=[];box._bvAttachmentURLs=urls;
+ box.replaceChildren(el('strong',`附件（${entries.length}）`));
+ for(const item of entries){
+  const row=el('div');row.className='bv-qa-attachment-row';
+  const a=el('a','⬇ '+item.name);const url=URL.createObjectURL(item.blob);urls.push(url);
+  a.href=url;a.download=item.name;row.append(a);
+  const remove=el('button','移除');remove.type='button';remove.className='bv-qa-attachment-remove';
+  remove.title='永久移除此 QA BLOCK 的附件';
+  remove.style.cssText='margin-left:12px;padding:2px 8px;border:1px solid #b95a64;border-radius:5px;background:transparent;color:#ffb2b9;cursor:pointer';
+  remove.onclick=async event=>{
+   event.preventDefault();event.stopPropagation();
+   if(!confirm('確定永久移除附件「'+item.name+'」？此操作無法復原。'))return;
+   remove.disabled=true;
+   try{await removeAttachment(item.key);await renderAttachments(card,box)}
+   catch(err){remove.disabled=false;alert('附件移除失敗：'+err.message)}
+  };
+  row.append(remove);
+  if(item.type?.startsWith('image/')){const img=el('img');img.src=url;img.alt=item.name;row.append(img)}
+  box.append(row);
+ }
+}
 new MutationObserver(()=>queueMicrotask(decorate)).observe(thread,{childList:true,subtree:false});decorate();
 // Default model: UI selection, server may enforce its own supported model.
 const model=$('ai-model-select');if(model){const setDefault=()=>{if(!sessionStorage.getItem('bv3912-model-set')){model.value='gpt-5';model.dispatchEvent(new Event('change',{bubbles:true}));sessionStorage.setItem('bv3912-model-set','1')}};setTimeout(setDefault,500)}

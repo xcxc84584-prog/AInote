@@ -13,7 +13,10 @@ function selectionAnchor(){const sel=window.getSelection();if(sel?.rangeCount&&!
 
 let activeKey='',records={toc:[],notes:[],marks:[]},lastSelection=null;
 const storeKey=()=>activeKey?'bv-note-annotations:'+activeKey:null;
-async function saveRecords(){
+// BVNOTE_CLOUD_QA_FIX3_20261026: allow Cloud Commit to await metadata operations.
+let bvAnnotationWrites=Promise.resolve();
+window.BVWaitForAnnotationWrites=()=>bvAnnotationWrites;
+async function bvSaveRecordsInner(){
  if(!storeKey())return;
  localStorage.setItem(storeKey(),JSON.stringify(records));
  try{
@@ -25,6 +28,11 @@ async function saveRecords(){
    if(ok===false)throw Error('文件儲存失敗');
   }
  }catch(e){console.error('自動儲存失敗',e);document.querySelector('#status').textContent='自動儲存失敗：'+e.message;}
+}
+function saveRecords(){
+ const task=bvSaveRecordsInner();
+ bvAnnotationWrites=Promise.allSettled([bvAnnotationWrites,task]).then(()=>{});
+ return task;
 }
 function readRecords(){try{records=window.BVGetFileRecords?.(activeKey)||JSON.parse(localStorage.getItem(storeKey())||'{"toc":[],"notes":[]}')}catch{records={toc:[],notes:[],marks:[]}}records.toc||=[];records.notes||=[];records.marks||=[];reconcile();renderPanel();renderMarks();decorate();}
 function reconcile(){const raw=window.BVGetRawMarkdown?.()||'';let changed=false;for(const kind of ['toc']){const old=records[kind].length;records[kind]=records[kind].filter(r=>r.text&&raw.includes(r.text));changed ||=old!==records[kind].length;}if(changed)saveRecords();}

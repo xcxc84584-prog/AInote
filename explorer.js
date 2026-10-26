@@ -94,7 +94,9 @@ window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{/* BLOCK B-5A063C7F29 STA
  /* BLOCK B-471772DF34 END. */});
  const saved={id,name,entries:safe,updatedAt:Date.now()};await cloudWrite(key,saved);await loadCloudRoot(saved);return true;
 /* BLOCK B-5A063C7F29 END. */};
-window.BVCloudExportVirtualRoot=async()=>{/* BLOCK B-6C8D776EC8 START: AREA A-6A7FC0B1 */
+window.BVCloudExportVirtualRoot=async()=>{
+ // BVNOTE_CLOUD_QA_FIX3_20261026: wait for pending TOC/annotation writes before Cloud Commit.
+ await window.BVWaitForAnnotationWrites?.();/* BLOCK B-6C8D776EC8 START: AREA A-6A7FC0B1 */
  if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)throw Error('目前未選取雲端虛擬 Root');
  const x=current();if(x?.kind==='file'&&dirty)x.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
  const entries=[];for(const node of items.filter(n=>n.kind==='directory'))entries.push({path:path(node)+'/',dir:true});for(const node of items.filter(n=>n.kind==='file')){
@@ -137,7 +139,7 @@ async function saveVirtual(){/* BLOCK B-26AC44A1E1 START: AREA A-6A7FC0B1 */
    const bytes=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
    entries.push({path:path(node),data:bytes});node.handle=memoryFile(node.name,bytes);node.buffer=null;
   }
-  entries.push(orderEntry());await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
+  entries.push({path:RECORD_FILE,data:new TextEncoder().encode(JSON.stringify(recordDB))});entries.push({path:ID_FILE,data:new TextEncoder().encode(JSON.stringify(nodeDB))});entries.push(orderEntry());await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
   orderDirty=false;dirty=false;refreshUnsaved();rememberRoot();toast('已將完整 Cloud Root 草稿儲存至 IndexedDB（未寫入本地資料夾）');return;
  }
  if(!x)return;const content=x.buffer??(sourceArea.style.display==='none'?rawMarkdown:sourceArea.value);
