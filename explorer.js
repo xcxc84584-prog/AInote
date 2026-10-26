@@ -55,7 +55,43 @@ function cloudDir(node=null){/* BLOCK B-E34F726A6E START: AREA A-6A7FC0B1 */retu
  async removeEntry(name){/* BLOCK B-9B93CDEDCC START: AREA A-6A7FC0B1 */if(!siblings(node).some(n=>n.name===name))throw new DOMException('Not found','NotFoundError')/* BLOCK B-9B93CDEDCC END. */}
 }/* BLOCK B-E34F726A6E END. */}
 let cloudSaveTimer;
-function queueCloudSave(){/* BLOCK B-0F5A5C9E6D START: AREA A-6A7FC0B1 */if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)return;clearTimeout(cloudSaveTimer);cloudSaveTimer=setTimeout(async()=>{/* BLOCK B-5898DF5703 START: AREA A-6A7FC0B1 */try{const snap=await window.BVCloudExportVirtualRoot();await cloudWrite('bv378-root-'+snap.id,{id:snap.id,name:root.name,entries:snap.entries,updatedAt:Date.now()})}catch(e){console.error('Cloud Root autosave',e)}/* BLOCK B-5898DF5703 END. */},600)/* BLOCK B-0F5A5C9E6D END. */}
+// BVNOTE_ANNOTATION_STORAGE_FIX4: Cloud writes are serialized to prevent stale overwrite.
+let bvCloudWriteTail=Promise.resolve();
+function bvQueueCloudWrite(task){
+ const pending=bvCloudWriteTail.catch(()=>{}).then(task);
+ bvCloudWriteTail=pending.catch(()=>{});
+ return pending;
+}
+function queueCloudSave(){
+ if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)return;
+ clearTimeout(cloudSaveTimer);
+ cloudSaveTimer=setTimeout(()=>{
+  bvQueueCloudWrite(async()=>{
+   // Do not wait for annotation writer here; it may itself be waiting for this queue.
+   const id=cloudVirtualId;
+   if(!id||root?.cloudId!==id)return;
+   const saved=await cloudRead('bv378-root-'+id);
+   if(!saved)return;
+   const snapshot=await window.BVCloudExportVirtualRoot(true);
+   await cloudWrite('bv378-root-'+id,{id,name:root.name,entries:snapshot.entries,updatedAt:Date.now()});
+  }).catch(e=>console.error('Cloud Root autosave',e));
+ },600);
+}
+// BVNOTE_ANNOTATION_STORAGE_FIX4: persistent Cloud Root metadata.
+function bvCloudMetadataEntries(){
+ const enc=new TextEncoder();
+ return [
+  {path:ID_FILE,data:enc.encode(JSON.stringify(nodeDB))},
+  {path:RECORD_FILE,data:enc.encode(JSON.stringify(recordDB))}
+ ];
+}
+function bvAddCloudMetadata(entries){
+ for(const entry of bvCloudMetadataEntries()){
+  const i=entries.findIndex(e=>e.path===entry.path&&!e.dir);
+  if(i<0)entries.push(entry);else entries[i]=entry;
+ }
+ return entries;
+}
 async function loadCloudRoot(saved){/* BLOCK B-7667D6DE5D START: AREA A-6A7FC0B1 */
  rememberRoot();virtualRoot=true;cloudVirtualId=saved.id;root={name:saved.name.replace(/\.zip$/i,'')+'（Cloud）',kind:'directory',cloudId:saved.id};Object.assign(root,cloudDir(null));
  rootSelected=false;rootCollapsed=false;items=[];selected=null;sequence=0;collapsed.clear();dirty=false;
@@ -94,16 +130,16 @@ window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{/* BLOCK B-5A063C7F29 STA
  /* BLOCK B-471772DF34 END. */});
  const saved={id,name,entries:safe,updatedAt:Date.now()};await cloudWrite(key,saved);await loadCloudRoot(saved);return true;
 /* BLOCK B-5A063C7F29 END. */};
-window.BVCloudExportVirtualRoot=async()=>{
+window.BVCloudExportVirtualRoot=async(skipWait=false)=>{
  // BVNOTE_CLOUD_QA_FIX3_20261026: wait for pending TOC/annotation writes before Cloud Commit.
- await window.BVWaitForAnnotationWrites?.();/* BLOCK B-6C8D776EC8 START: AREA A-6A7FC0B1 */
+ if(!skipWait)await window.BVWaitForAnnotationWrites?.();/* BLOCK B-6C8D776EC8 START: AREA A-6A7FC0B1 */
  if(!cloudVirtualId||root?.cloudId!==cloudVirtualId)throw Error('目前未選取雲端虛擬 Root');
  const x=current();if(x?.kind==='file'&&dirty)x.buffer=sourceArea.style.display==='none'?rawMarkdown:sourceArea.value;
  const entries=[];for(const node of items.filter(n=>n.kind==='directory'))entries.push({path:path(node)+'/',dir:true});for(const node of items.filter(n=>n.kind==='file')){
   const data=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
   entries.push({path:path(node),data});
  }
- entries.push({path:RECORD_FILE,data:new TextEncoder().encode(JSON.stringify(recordDB))});entries.push({path:ID_FILE,data:new TextEncoder().encode(JSON.stringify(nodeDB))});entries.push(orderEntry());return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
+ entries.push({path:RECORD_FILE,data:new TextEncoder().encode(JSON.stringify(recordDB))});entries.push({path:ID_FILE,data:new TextEncoder().encode(JSON.stringify(nodeDB))});bvAddCloudMetadata(entries);entries.push(orderEntry());return {id:cloudVirtualId,name:root.name.replace(/（Cloud）$/,'')+'.zip',entries};
 /* BLOCK B-6C8D776EC8 END. */};
 window.BVCloudRestoreVirtualRoot=async(id)=>{/* BLOCK B-9C9ADE08B8 START: AREA A-6A7FC0B1 */const saved=await cloudRead('bv378-root-'+id);if(!saved)throw Error('IndexedDB 中找不到此 Cloud Root');if((dirty||items.some(x=>x.buffer!==null))&&!confirm('目前有未儲存修改，是否仍要切換？'))return false;await loadCloudRoot(saved);return true/* BLOCK B-9C9ADE08B8 END. */};
 const singlePicker=document.createElement('input');singlePicker.type='file';
@@ -139,7 +175,7 @@ async function saveVirtual(){/* BLOCK B-26AC44A1E1 START: AREA A-6A7FC0B1 */
    const bytes=node.buffer!==null?new TextEncoder().encode(node.buffer):node.handle.bytes();
    entries.push({path:path(node),data:bytes});node.handle=memoryFile(node.name,bytes);node.buffer=null;
   }
-  entries.push({path:RECORD_FILE,data:new TextEncoder().encode(JSON.stringify(recordDB))});entries.push({path:ID_FILE,data:new TextEncoder().encode(JSON.stringify(nodeDB))});entries.push(orderEntry());await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
+  entries.push({path:RECORD_FILE,data:new TextEncoder().encode(JSON.stringify(recordDB))});entries.push({path:ID_FILE,data:new TextEncoder().encode(JSON.stringify(nodeDB))});bvAddCloudMetadata(entries);entries.push(orderEntry());await cloudWrite('bv378-root-'+cloudVirtualId,{id:cloudVirtualId,name:root.name,entries,updatedAt:Date.now()});
   orderDirty=false;dirty=false;refreshUnsaved();rememberRoot();toast('已將完整 Cloud Root 草稿儲存至 IndexedDB（未寫入本地資料夾）');return;
  }
  if(!x)return;const content=x.buffer??(sourceArea.style.display==='none'?rawMarkdown:sourceArea.value);
@@ -203,7 +239,29 @@ let recordDB={version:2,files:{}};
 let recordWrite=Promise.resolve(),nodeWrite=Promise.resolve();
 const uuid=()=>crypto.randomUUID();
 async function writeJSON(target,name,data){/* BLOCK B-AA56E4411D START: AREA A-6A7FC0B1 */const h=await target.getFileHandle(name,{create:true});const w=await h.createWritable();await w.write(JSON.stringify(data,null,2));await w.close()/* BLOCK B-AA56E4411D END. */}
-async function flushRecordDB(){/* BLOCK B-14E7D87CA9 START: AREA A-6A7FC0B1 */if(!root)return;if(virtualRoot){queueCloudSave();return;}const target=root,payload=structuredClone(recordDB);recordWrite=recordWrite.catch(()=>{/* BLOCK B-DC70EA256C END. *//* BLOCK B-DC70EA256C START: AREA A-6A7FC0B1 */}).then(()=>writeJSON(target,RECORD_FILE,payload));return recordWrite;/* BLOCK B-14E7D87CA9 END. */}
+async function flushRecordDB(){
+ if(!root)return;
+ if(virtualRoot){
+  if(cloudVirtualId&&root?.cloudId===cloudVirtualId){
+   const id=cloudVirtualId,rootName=root.name,records=structuredClone(recordDB),ids=structuredClone(nodeDB);
+   // Serialize with autosave; an older snapshot must never overwrite newer annotations.
+   await bvQueueCloudWrite(async()=>{
+    const key='bv378-root-'+id;
+    const saved=await cloudRead(key);
+    if(!saved)throw Error('Cloud Root snapshot not found: '+id);
+    const entries=saved.entries.filter(e=>![RECORD_FILE,ID_FILE].includes(e.path));
+    const enc=new TextEncoder();
+    entries.push({path:RECORD_FILE,data:enc.encode(JSON.stringify(records))});
+    entries.push({path:ID_FILE,data:enc.encode(JSON.stringify(ids))});
+    await cloudWrite(key,{...saved,name:rootName,entries,updatedAt:Date.now()});
+   });
+  }
+  return;
+ }
+ const target=root,payload=structuredClone(recordDB);
+ recordWrite=recordWrite.catch(()=>{}).then(()=>writeJSON(target,RECORD_FILE,payload));
+ return recordWrite;
+}
 async function flushNodeDB(){/* BLOCK B-B2A32B9CD3 START: AREA A-6A7FC0B1 */if(!root||virtualRoot)return;const target=root,payload=structuredClone(nodeDB);nodeWrite=nodeWrite.catch(()=>{/* BLOCK B-6507D369C4 END. *//* BLOCK B-6507D369C4 START: AREA A-6A7FC0B1 */}).then(()=>writeJSON(target,ID_FILE,payload));return nodeWrite;/* BLOCK B-B2A32B9CD3 END. */}
 function canonicalRecordKey(key){/* BLOCK B-E1F5CED091 START: AREA A-6A7FC0B1 */if(!key)return '';const prefix=root?.name+'/';if(prefix&&key.startsWith(prefix))return key.slice(prefix.length);const exact=items.filter(x=>x.kind==='file').map(x=>path(x));return exact.find(p=>key===p||key.endsWith('/'+p))||key;/* BLOCK B-E1F5CED091 END. */}
 async function loadNodeDB(){/* BLOCK B-8A7F2239B0 START: AREA A-6A7FC0B1 */
