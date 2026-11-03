@@ -79,7 +79,7 @@ body.diary-active #bv-diary{
   scrollbar-gutter:stable;
 }
 body.diary-active #bv-diary .dy-shell{
-  display:grid;grid-template-columns:203px minmax(0,1fr);
+  display:grid;grid-template-columns:304.5px minmax(0,1fr);
   grid-template-rows:auto auto minmax(0,1fr);
   column-gap:22px;max-width:none;width:100%;
   margin:0;padding:0 24px 28px 0;
@@ -103,7 +103,7 @@ body.diary-active #bv-diary #dy-content{
 body.diary-active #bv-diary #dy-explorer-sidebar{
   grid-column:1;grid-row:1 / span 3;
   position:sticky;top:0;left:auto;right:auto;bottom:auto;
-  align-self:start;width:203px;min-width:0;max-width:none;
+  align-self:start;width:304.5px;min-width:0;max-width:none;
   height:calc(100vh - 133px);max-height:none;
   margin:0;padding:10px 9px;
   overflow-x:hidden;overflow-y:auto;
@@ -148,3 +148,5 @@ body.diary-active #bv-diary .dy-move-form input[type=number]{width:100%}
  body.diary-active #bv-diary .dy-tabs,
  body.diary-active #bv-diary #dy-content{width:100%;max-width:none}
 }
+
+/* BV DIARY v0.3.1: fixed-width sidebar */
