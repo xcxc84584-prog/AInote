@@ -150,3 +150,32 @@ body.diary-active #bv-diary .dy-move-form input[type=number]{width:100%}
 }
 
 /* BV DIARY v0.3.1: fixed-width sidebar */
+
+/* BV DIARY v0.3.2: mobile forecast horizontal scrolling */
+@media (max-width:700px){
+ body.diary-active #bv-diary,
+ body.diary-active #bv-diary .dy-shell,
+ body.diary-active #bv-diary .dy-layout,
+ body.diary-active #bv-diary #dy-content,
+ body.diary-active #bv-diary .dy-panel{
+   min-width:0;
+   max-width:100%;
+ }
+ body.diary-active #bv-diary .dy-table-wrap{
+   display:block;
+   width:100%;
+   min-width:0;
+   max-width:100%;
+   overflow-x:auto;
+   overflow-y:hidden;
+   -webkit-overflow-scrolling:touch;
+   overscroll-behavior-x:contain;
+   touch-action:pan-x pan-y;
+   scrollbar-width:thin;
+ }
+ body.diary-active #bv-diary .dy-forecast-table{
+   width:max-content;
+   min-width:680px;
+   table-layout:auto;
+ }
+}
