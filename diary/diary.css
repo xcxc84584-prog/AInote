@@ -179,3 +179,12 @@ body.diary-active #bv-diary .dy-move-form input[type=number]{width:100%}
    table-layout:auto;
  }
 }
+
+/* BV DIARY v0.3.4: unified cloud operations toolbar */
+#bv-diary .dy-cloud-operations{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 7px;border:1px solid rgba(139,162,194,.28);border-radius:9px;background:rgba(35,48,68,.36)}
+#bv-diary .dy-cloud-operations-label{font-size:12px;color:#b6c8e3;white-space:nowrap;margin-right:3px}
+#bv-diary .dy-cloud-operations button{white-space:nowrap}
+@media(max-width:700px){#bv-diary .dy-cloud-operations{max-width:100%;width:100%;justify-content:flex-start;box-sizing:border-box}}
+
+/* BV DIARY v0.3.6: cloud action area has buttons only */
+#bv-diary .dy-top-actions{gap:6px}
