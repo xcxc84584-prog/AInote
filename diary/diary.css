@@ -64,3 +64,87 @@ body.diary-active #filename{display:none!important}
 #bv-diary .dy-transfer-progress progress{display:block;width:100%;height:6px;accent-color:#a5c8ff}
 #bv-diary .dy-transfer-progress[hidden]{display:none}
 @media(max-width:800px){#bv-diary .dy-layout{display:block}#bv-diary .dy-side{width:auto;max-width:none;position:relative;top:auto;max-height:55vh;margin-bottom:14px}}
+
+body.diary-active #bv-diary .dy-explorer-entry{position:relative!important;overflow:visible!important}
+/* Popup is portalled visually using fixed positioning, not inserted in document flow. */
+body.diary-active #bv-diary .dy-explorer-context{position:fixed!important;z-index:1200!important;width:188px!important;max-width:calc(100vw - 16px)!important;display:flex!important;flex-direction:column!important;gap:3px!important;padding:5px!important;margin:0!important;border:1px solid #52617a!important;border-radius:7px!important;background:#242b38!important;box-shadow:0 8px 20px #000a!important}
+body.diary-active #bv-diary .dy-explorer-context button{width:100%!important;min-height:33px!important;text-align:left!important;justify-content:flex-start!important;padding:7px 10px!important;border:1px solid #455269!important;border-radius:5px!important;background:#2b3341!important;color:#f1f5ff!important;font-size:12px!important}
+body.diary-active #bv-diary .dy-explorer-context button:hover{background:#36527c!important}
+
+/* BV DIARY v0.2.7: in-flow sidebar, no fixed positioning or ancestor clipping.
+   The DIARY is its own scroll container; do not modify .workspace overflow. */
+body.diary-active #bv-diary{
+  overflow-y:auto;overflow-x:hidden;min-height:0;
+  padding:0;background:#101216;
+  scrollbar-gutter:stable;
+}
+body.diary-active #bv-diary .dy-shell{
+  display:grid;grid-template-columns:203px minmax(0,1fr);
+  grid-template-rows:auto auto minmax(0,1fr);
+  column-gap:22px;max-width:none;width:100%;
+  margin:0;padding:0 24px 28px 0;
+  box-sizing:border-box;align-items:start;
+}
+body.diary-active #bv-diary .dy-shell:not(:has(#dy-explorer-sidebar)){
+  display:block;padding:0 24px 28px;
+}
+body.diary-active #bv-diary .dy-top,
+body.diary-active #bv-diary .dy-tabs{
+  grid-column:2;min-width:0;width:min(900px,100%);
+  margin-left:auto;margin-right:auto;
+}
+body.diary-active #bv-diary .dy-top{padding-top:16px}
+body.diary-active #bv-diary .dy-layout{display:contents}
+body.diary-active #bv-diary #dy-content{
+  grid-column:2;grid-row:3;min-width:0;
+  width:min(900px,100%);max-width:900px;
+  margin:0 auto;
+}
+body.diary-active #bv-diary #dy-explorer-sidebar{
+  grid-column:1;grid-row:1 / span 3;
+  position:sticky;top:0;left:auto;right:auto;bottom:auto;
+  align-self:start;width:203px;min-width:0;max-width:none;
+  height:calc(100vh - 133px);max-height:none;
+  margin:0;padding:10px 9px;
+  overflow-x:hidden;overflow-y:auto;
+  background:#191d25;border:0;border-right:1px solid #39404c;
+  border-radius:0;box-shadow:none;z-index:2;
+  box-sizing:border-box;overscroll-behavior:contain;
+}
+body.diary-active #bv-diary .dy-explorer-entry{
+  position:relative;overflow:visible;background:#151c27;
+  border:1px solid #344254;border-radius:5px;
+}
+body.diary-active #bv-diary .dy-explorer-card{min-height:38px;padding:7px 5px;gap:5px}
+body.diary-active #bv-diary .dy-explorer-info strong{font-size:11px;overflow-wrap:anywhere}
+body.diary-active #bv-diary .dy-explorer-info small{font-size:10px}
+body.diary-active #bv-diary .dy-explorer-context{
+  position:fixed;z-index:2000;width:188px;max-width:calc(100vw - 16px);
+  display:flex;flex-direction:column;gap:3px;
+  padding:5px;margin:0;background:#242b38;
+  border:1px solid #52617a;border-radius:7px;box-shadow:0 8px 20px #000a;
+}
+body.diary-active #bv-diary .dy-explorer-context button{
+  width:100%;min-height:33px;text-align:left;
+  padding:7px 10px;background:#2b3341;color:#f1f5ff;
+  border:1px solid #455269;border-radius:5px;font-size:12px;
+}
+body.diary-active #bv-diary .dy-explorer-context button:hover{background:#36527c}
+body.diary-active #bv-diary .dy-explorer-inline{padding:7px 5px}
+body.diary-active #bv-diary .dy-explorer-inline .dy-form{grid-template-columns:1fr}
+body.diary-active #bv-diary .dy-move-form input[type=number]{width:100%}
+/* On narrow screens, Explorer remains in normal flow; never obscure main content. */
+@media(max-width:700px){
+ body.diary-active #bv-diary .dy-shell,
+ body.diary-active #bv-diary .dy-shell:not(:has(#dy-explorer-sidebar)){
+   display:block;padding:0 12px 24px;
+ }
+ body.diary-active #bv-diary .dy-layout{display:block}
+ body.diary-active #bv-diary #dy-explorer-sidebar{
+   position:relative;top:auto;width:100%;height:auto;max-height:42vh;
+   margin-bottom:14px;border:1px solid #39404c;
+ }
+ body.diary-active #bv-diary .dy-top,
+ body.diary-active #bv-diary .dy-tabs,
+ body.diary-active #bv-diary #dy-content{width:100%;max-width:none}
+}
