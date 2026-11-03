@@ -35,3 +35,14 @@ body.diary-active #filename{display:none!important}
 #bv-diary .dy-edit-panel{border-color:#7aa9db;box-shadow:0 0 0 1px #285384}
 #bv-diary .dy-list li>span:first-child{overflow-wrap:anywhere}
 @media(max-width:700px){#bv-diary .dy-top-actions{width:100%;justify-content:space-between}#bv-diary .dy-list li{align-items:flex-start;flex-wrap:wrap}}
+
+/* BV DIARY EXPLORER v0.2.0 */
+#bv-diary .dy-explorer-list{list-style:none;margin:12px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+#bv-diary .dy-explorer-list>li{display:flex;align-items:center;gap:12px;background:#191c23;border:1px solid #343d4b;border-radius:7px;padding:11px 13px;user-select:none;touch-action:pan-y;cursor:grab}
+#bv-diary .dy-explorer-list>li:focus-visible{outline:2px solid #a5c8ff}
+#bv-diary .dy-explorer-list>li.dy-dragging{border-color:#a5c8ff;background:#26384e;opacity:.8;cursor:grabbing}
+#bv-diary .dy-explorer-handle{color:#a5c8ff;font-size:21px}
+#bv-diary .dy-explorer-number{color:#9aa8bc;min-width:22px;font-variant-numeric:tabular-nums}
+#bv-diary .dy-explorer-info{display:flex;flex:1;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+#bv-diary .dy-explorer-info small{color:#9aa8bc}
+#bv-diary .dy-explorer-context{display:flex;gap:8px;padding:12px;border:1px solid #546a86;background:#151b25;border-radius:8px;flex-wrap:wrap}
