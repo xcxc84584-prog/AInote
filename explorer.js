@@ -693,6 +693,19 @@ async function closeRoot(){/* BLOCK B-A11F0A0A3D START: AREA A-6A7FC0B1 */
  window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;
  if((dirty||orderDirty||items.some(x=>x.buffer!==null))&&!confirm('此 Root 有未儲存修改，仍要關閉？'))return;
  const old=root;const next=rootWorkspaces.find(w=>w.root!==old);
+ // v0.2.2: a closed Cloud Fold must not resurrect on refresh.
+ // Keep the IndexedDB snapshot intact; remove only the last-open pointer.
+ if(old?.cloudId){
+  try{
+   const k='bvnote-last-cloud-root';
+   if(localStorage.getItem(k)===String(old.cloudId)){
+    const nextCloudId=next?.root?.cloudId;
+    if(nextCloudId)localStorage.setItem(k,String(nextCloudId));
+    else localStorage.removeItem(k);
+   }
+  }catch(err){console.warn('Cloud Fold restore preference cleanup failed',err)}
+ }
+
  rootWorkspaces.splice(rootWorkspaces.findIndex(w=>w.root===old),1);
  root=null;virtualRoot=false;cloudVirtualId=null;selected=null;items=[];sequence=0;orderDirty=false;
  rootSelected=false;rootCollapsed=false;collapsed.clear();resetBatch();dirty=false;
@@ -902,7 +915,7 @@ window.addEventListener('focus',syncExternal);document.addEventListener('visibil
 document.addEventListener('keydown',e=>{/* BLOCK B-CFB7CC84F7 START: AREA A-6A7FC0B1 */if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}/* BLOCK B-CFB7CC84F7 END. */},true);
 window.BVSwitchEditorMode=(mode)=>switchMode(mode);
  // BVNOTE_PATCH_20261026_FIX2: Restore last Cloud Root from IndexedDB after reload.
- setTimeout(async()=>{try{if(root)return;const id=localStorage.getItem('bvnote-last-cloud-root');if(!id)return;const saved=await cloudRead('bv378-root-'+id);if(saved)await loadCloudRoot(saved)}catch(e){console.warn('Cloud workspace restore failed',e)}},0);
+ setTimeout(async()=>{try{if(root)return;const id=localStorage.getItem('bvnote-last-cloud-root');if(!id)return;const saved=await cloudRead('bv378-root-'+id);if(saved&&localStorage.getItem('bvnote-last-cloud-root')===id&&!root)await loadCloudRoot(saved)}catch(e){console.warn('Cloud workspace restore failed',e)}},0);
 
 /* BLOCK B-C681CA29D7 END. */})();
 // AREA A02 END: ExplorerManager
