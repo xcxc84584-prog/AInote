@@ -89,3 +89,13 @@
 .dy-fm .dy-fm-clear-selection{padding:1px 6px;min-width:23px;font-size:17px;line-height:1.2;background:transparent;border-color:transparent;color:#a9bfdc}
 .dy-fm .dy-fm-clear-selection:hover{background:#2b4059}
 @media(max-width:520px){.dy-fm-compact-select{gap:5px}.dy-fm-crumb{gap:5px}.dy-fm .dy-fm-bulk-delete{padding:4px 6px}}
+
+/* v0.3.19: quiet BV-NOTE native icon palette and grey path browser surface */
+.dy-fm-grid{background:#222831;border:1px solid #3b4654;border-radius:8px;padding:12px;min-height:84px;align-content:start}
+.dy-fm-item{background:#1c2735;border-color:#3b4b5d}
+.dy-fm-icon,.dy-fm-type-folder,.dy-fm-type-text,.dy-fm-type-generic,.dy-fm-type-code,.dy-fm-type-archive,.dy-fm-type-pdf,.dy-fm-type-word,.dy-fm-type-ppt{background:transparent!important;border:0;color:inherit;font-size:inherit;width:44px;height:48px;margin:0 auto 7px}
+.dy-fm-file-svg{display:block;width:42px;height:44px;filter:drop-shadow(0 2px 2px #0005)}
+.dy-fm-item>small{background:#29313c;border:1px solid #3e4a59;border-radius:4px;padding:5px 6px;color:#bdc9d8;text-align:left;direction:ltr}
+.dy-fm-path-panel{background:#252c35;border-color:#4c5665}
+.dy-fm-path-panel input,.dy-fm-path-panel select{background:#303844;border-color:#586577}
+@media(max-width:600px){.dy-fm-grid{padding:8px;gap:8px}}

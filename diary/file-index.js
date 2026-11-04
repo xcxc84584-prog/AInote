@@ -47,7 +47,22 @@ function iconType(e){
  if(['ppt','pptx'].includes(ext))return 'ppt';
  return 'generic';
 }
-function iconLabel(t){return ({folder:'📁',text:'▤',code:'</>',archive:'ZIP',pdf:'PDF',word:'W',ppt:'P',generic:'▣'})[t]||'▣'}
+function iconLabel(t){
+ // Original inline SVG artwork: no CDN, font, or third-party asset dependency.
+ const colors={folder:'#e4b957',text:'#8fb2d6',generic:'#91a4b8',code:'#788de7',archive:'#e0b04e',pdf:'#df6b73',word:'#5a9ee6',ppt:'#e28a59'};
+ const c=colors[t]||colors.generic;
+ const content={
+ folder:'<path d="M3 7V5.5A2.5 2.5 0 0 1 5.5 3H10l2.2 2.4H20a2 2 0 0 1 2 2V18a3 3 0 0 1-3 3H5a2 2 0 0 1-2-2Z" fill="currentColor" opacity=".85"/><path d="M3 9h19" stroke="#f8e0a4" stroke-width="1.3"/>',
+ text:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor" opacity=".85"/><path d="M14 2.5V8h5" fill="none" stroke="#dceafa" stroke-width="1.5"/><path d="M8 12h8M8 15h8M8 18h5" stroke="#163049" stroke-width="1.35" stroke-linecap="round"/>',
+ generic:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor"/><path d="M14 2.5V8h5" fill="none" stroke="#e3ebf4" stroke-width="1.5"/>',
+ code:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor" opacity=".86"/><path d="M14 2.5V8h5" fill="none" stroke="#e1e8ff" stroke-width="1.5"/><path d="m10 11-3 3 3 3m4-6 3 3-3 3" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
+ archive:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor"/><path d="M14 2.5V8h5" fill="none" stroke="#fff0ca" stroke-width="1.5"/><path d="M11 4v2m0 2v2m0 2v2" stroke="#634615" stroke-width="2"/><rect x="9" y="15" width="4" height="4" rx=".7" fill="#674914"/>',
+ pdf:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor"/><path d="M14 2.5V8h5" fill="none" stroke="#ffe1e4" stroke-width="1.5"/><text x="11.7" y="17.1" text-anchor="middle" font-size="6.3" font-family="Arial,sans-serif" font-weight="bold" fill="#fff">PDF</text>',
+ word:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor"/><path d="M14 2.5V8h5" fill="none" stroke="#dceeff" stroke-width="1.5"/><text x="11.7" y="18" text-anchor="middle" font-size="11" font-family="Arial,sans-serif" font-weight="bold" fill="#fff">W</text>',
+ ppt:'<path d="M6 2.5h8l5 5V21H6a2 2 0 0 1-2-2V4.5a2 2 0 0 1 2-2Z" fill="currentColor"/><path d="M14 2.5V8h5" fill="none" stroke="#ffe6d6" stroke-width="1.5"/><text x="11.7" y="18" text-anchor="middle" font-size="11" font-family="Arial,sans-serif" font-weight="bold" fill="#fff">P</text>'
+ };
+ return `<svg class="dy-fm-file-svg" viewBox="0 0 24 24" aria-hidden="true" focusable="false" style="color:${c}">${content[t]||content.generic}</svg>`;
+}
 
 function render(){
  if(!active)return;visibleObserver?.disconnect();visibleObserver=null;let host=$('#dy-file-manager');if(!host)return;
