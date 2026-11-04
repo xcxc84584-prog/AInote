@@ -1,8 +1,8 @@
-/* BV DIARY File Manager v0.3.16 - browser-only, metadata and handles local */
+/* BV DIARY File Manager v0.3.17 - browser-only, metadata and handles local */
 (()=>{
 'use strict';
 const DB='bv-diary-file-index-v1',STORE='entries',TAB='files';
-let dbPromise,items=[],query='',viewFolder=null,active=false,busy=false,cloudRevision=null,cloudKnown=false,cloudMessage='尚未載入雲端索引',editingId=null,menuId=null,menuPoint=null,projectChooser=false,pathPanel=false,selectedIds=new Set(),renderLimit=60,importProgress=null;
+let dbPromise,items=[],query='',viewFolder=null,active=false,busy=false,cloudRevision=null,cloudKnown=false,cloudMessage='尚未載入雲端索引（使用 DIARY 頂部載入／存儲）',editingId=null,menuId=null,menuPoint=null,pathPanel=false,selectedIds=new Set(),renderLimit=60;
 let visibleObserver=null;
 const DEVICE_KEY='bv-diary-file-device-id-v1';
 function deviceId(){let v=localStorage.getItem(DEVICE_KEY);if(!v){v='device-'+id();localStorage.setItem(DEVICE_KEY,v)}return v}
@@ -36,6 +36,19 @@ function ensure(){
  }
 }
 function pathFor(e){return e.relativePath||e.name}
+function iconType(e){
+ if(e.kind==='directory')return 'folder';
+ const ext=(e.name.split('.').pop()||'').toLowerCase();
+ if(['txt','md','markdown','log','csv','ini','rtf'].includes(ext))return 'text';
+ if(['c','h','cpp','hpp','cc','cs','py','js','jsx','ts','tsx','java','go','rs','html','css','json','xml','sh','ps1','sql','php','rb'].includes(ext))return 'code';
+ if(['zip','rar','7z','tar','gz','bz2','xz'].includes(ext))return 'archive';
+ if(ext==='pdf')return 'pdf';
+ if(['doc','docx'].includes(ext))return 'word';
+ if(['ppt','pptx'].includes(ext))return 'ppt';
+ return 'generic';
+}
+function iconLabel(t){return ({folder:'📁',text:'▤',code:'</>',archive:'ZIP',pdf:'PDF',word:'W',ppt:'P',generic:'▣'})[t]||'▣'}
+
 function render(){
  if(!active)return;visibleObserver?.disconnect();visibleObserver=null;let host=$('#dy-file-manager');if(!host)return;
  const q=query.trim().toLocaleLowerCase();
@@ -43,14 +56,11 @@ function render(){
  const list=q?visibleEntries().filter(x=>[x.name,pathFor(x),x.localPath||'',...(x.tags||[])].join(' ').toLocaleLowerCase().includes(q)):visible;
  const folder=items.find(x=>x.id===viewFolder);
  host.innerHTML=`<section class="dy-fm">
-  <header class="dy-fm-heading"><div><h3>文件管家</h3><small>本地索引 · 不儲存檔案內容 · 雲端僅同步索引資料</small><small class="dy-fm-device">對應裝置：${esc(deviceLabel())} · ${esc(THIS_DEVICE)}</small></div><div class="dy-fm-actions"><button data-fm="project" aria-expanded="${projectChooser}">+Project</button><button data-fm="add-folder">+Fold</button><button data-fm="path-panel" aria-expanded="${pathPanel}">+Path</button><button data-fm="cloud-load">Load</button><button data-fm="cloud-save">Save</button></div></header>
+  <header class="dy-fm-heading"><div><h3>文件管家</h3><small>本地索引 · 不儲存檔案內容 · 雲端僅同步索引資料</small><small class="dy-fm-device">對應裝置：${esc(deviceLabel())} · ${esc(THIS_DEVICE)}</small></div><div class="dy-fm-actions"><button data-fm="path-panel" aria-expanded="${pathPanel}">+Path</button></div></header>
   ${pathPanel?`<form class="dy-fm-path-panel" id="dy-fm-path-form"><div><strong>+Path · 純路徑索引</strong><small>只儲存路徑文字，不讀取或授權實體檔案；可選 File 或 Fold。</small></div><label>類型<select name="kind"><option value="file">File</option><option value="directory">Fold</option></select></label><label>名稱<input name="name" maxlength="500" required placeholder="例如 main.cpp"></label><label>本地路徑<input name="localPath" maxlength="2000" required placeholder="例如 C:\\Work\\main.cpp"></label><button type="submit">新增索引</button><button type="button" data-fm="path-close">取消</button></form>`:''}
-  ${importProgress?`<div class="dy-fm-progress" role="status" aria-live="polite"><span>${esc(importProgress.label)}</span><progress max="${importProgress.total||1}" value="${importProgress.done}"></progress><small>${importProgress.total?Math.floor(importProgress.done/importProgress.total*100)+'%':importProgress.done+' 項'} · ${importProgress.done}/${importProgress.total||'?'} 項</small></div>`:''}
-  ${projectChooser?`<div class="dy-fm-project-chooser"><span>匯入專案</span><button data-fm="project-files">選擇多個文件</button><button data-fm="project-folder">選擇資料夾（含子資料夾）</button><button data-fm="project-close">取消</button></div>`:''}
   <p class="dy-fm-cloud" aria-live="polite">${esc(cloudMessage)}</p><label class="dy-fm-search">⌕ <input id="dy-fm-search" type="search" placeholder="搜尋文件名稱、路徑或標籤" value="${esc(query)}" autocomplete="off"></label>
-  <div class="dy-fm-crumb"><button data-fm="home">全部索引</button>${folder?' / '+esc(folder.name):''}<span>${list.length} 項</span></div>
-  <div class="dy-fm-bulk"><label><input type="checkbox" id="dy-fm-select-all" ${list.length>0&&list.every(e=>selectedIds.has(e.id))?'checked':''}> 全選目前結果</label><span>已選 ${list.filter(e=>selectedIds.has(e.id)).length} / ${list.length} 項</span><button data-fm="bulk-remove" ${!list.some(e=>selectedIds.has(e.id))?'disabled':''}>批量移除</button></div>
-  <div class="dy-fm-grid">${list.slice(0,renderLimit).map(e=>`<article class="dy-fm-item" data-id="${esc(e.id)}" tabindex="0" title="${esc(e.localPath||pathFor(e))}"><label class="dy-fm-select" title="選取索引"><input type="checkbox" data-fm-select="${esc(e.id)}" ${selectedIds.has(e.id)?'checked':''} aria-label="選取 ${esc(e.name)}"></label><div class="dy-fm-icon ${e.kind==='directory'?'folder':'file'}">${e.kind==='directory'?'📁':'📄'}</div>${editingId===e.id?`<form class="dy-fm-inline" data-id="${esc(e.id)}"><label>File name<input name="name" maxlength="500" required value="${esc(e.name)}"></label><label>Path（手動備註）<input name="localPath" maxlength="2000" value="${esc(e.localPath||'')}"></label><div class="dy-fm-inline-actions"><button type="submit">儲存</button><button type="button" data-fm="cancel-edit" data-id="${esc(e.id)}">取消</button></div></form>`:`<strong>${esc(e.name)}</strong><small>${esc(e.localPath||pathFor(e))}</small>`}<div class="dy-fm-controls"><button type="button" class="dy-fm-more" data-fm="menu" data-id="${esc(e.id)}" aria-label="${esc(e.name)} 操作選單" aria-haspopup="menu" aria-expanded="${menuId===e.id?'true':'false'}">···</button></div></article>`).join('')||'<p class="dy-fm-empty">尚無索引。按「+Project」選擇多個文件或資料夾。</p>'}</div>${list.length>renderLimit?`<div class="dy-fm-load-more" data-fm-more><button data-fm="show-more">顯示更多（${list.length-renderLimit} 項）</button></div>`:''}
+  <div class="dy-fm-crumb"><button data-fm="home">全部索引</button>${folder?' / '+esc(folder.name):''}<div class="dy-fm-compact-select"><label class="dy-fm-select-all-label" title="全選／取消全選目前結果"><input type="checkbox" id="dy-fm-select-all" ${list.length>0&&list.every(e=>selectedIds.has(e.id))?'checked':''} ${list.length===0?'disabled':''} aria-label="全選目前結果"><span>全選</span></label>${list.some(e=>selectedIds.has(e.id))?`<span class="dy-fm-selected-count" role="status">已選 ${list.filter(e=>selectedIds.has(e.id)).length} 項</span><button type="button" class="dy-fm-bulk-delete" data-fm="bulk-remove" title="批量移除已選索引（不刪除實體文件）">移除</button><button type="button" class="dy-fm-clear-selection" data-fm="clear-selection" title="取消所有選取" aria-label="取消所有選取">×</button>`:`<span class="dy-fm-total-count">${list.length} 項</span>`}</div></div>
+  <div class="dy-fm-grid">${list.slice(0,renderLimit).map(e=>`<article class="dy-fm-item" data-id="${esc(e.id)}" tabindex="0" title="${esc(e.localPath||pathFor(e))}"><label class="dy-fm-select" title="選取索引"><input type="checkbox" data-fm-select="${esc(e.id)}" ${selectedIds.has(e.id)?'checked':''} aria-label="選取 ${esc(e.name)}"></label><div class="dy-fm-icon dy-fm-type-${iconType(e)}" aria-label="${iconType(e)}">${iconLabel(iconType(e))}</div>${editingId===e.id?`<form class="dy-fm-inline" data-id="${esc(e.id)}"><label>File name<input name="name" maxlength="500" required value="${esc(e.name)}"></label><label>Path（手動備註）<input name="localPath" maxlength="2000" value="${esc(e.localPath||'')}"></label><div class="dy-fm-inline-actions"><button type="submit">儲存</button><button type="button" data-fm="cancel-edit" data-id="${esc(e.id)}">取消</button></div></form>`:`<strong>${esc(e.name)}</strong><small>${esc(e.localPath||pathFor(e))}</small>`}<div class="dy-fm-controls"><button type="button" class="dy-fm-more" data-fm="menu" data-id="${esc(e.id)}" aria-label="${esc(e.name)} 操作選單" aria-haspopup="menu" aria-expanded="${menuId===e.id?'true':'false'}">···</button></div></article>`).join('')||'<p class="dy-fm-empty">尚無索引。按「+Path」新增文件或資料夾路徑。</p>'}</div>${list.length>renderLimit?`<div class="dy-fm-load-more" data-fm-more><button data-fm="show-more">顯示更多（${list.length-renderLimit} 項）</button></div>`:''}
   <p class="dy-fm-foot">雙擊資料夾可在網頁內查看其索引；雙擊文件可在授權後預覽或下載。瀏覽器無法直接開啟 Windows 檔案總管定位。</p>
   <input type="file" id="dy-fm-import" accept=".json,application/json" hidden>
   ${menuId&&items.some(e=>e.id===menuId)?`<div class="dy-fm-menu" role="menu" aria-label="文件操作"><button type="button" role="menuitem" data-fm="edit" data-id="${esc(menuId)}">編輯</button><button type="button" role="menuitem" data-fm="copy-path" data-id="${esc(menuId)}">複製本地路徑</button><button type="button" role="menuitem" data-fm="remove" data-id="${esc(menuId)}">移除</button><button type="button" role="menuitem" data-fm="close-menu">取消</button></div>`:''}
@@ -77,70 +87,6 @@ async function copyPath(entry){
  try{await navigator.clipboard.writeText(path);cloudMessage='已複製本地路徑';}
  catch(err){cloudMessage='複製失敗：請確認瀏覽器剪貼簿權限（需 localhost 或 HTTPS）';}
  render();
-}
-// A browser cannot disclose an absolute OS path. Directory traversal stores only relative paths.
-// Import is bounded to avoid exceeding the cloud index limit (2000 entries).
-const PROJECT_MAX=1500;
-async function pickProjectFiles(){
- if(busy)return;
- if(typeof window.showOpenFilePicker!=='function'){alert('請使用支援 File System Access API 的 Chrome / Edge（HTTPS 或 localhost）。');return}
- busy=true;projectChooser=false;
- try{
-  const handles=await window.showOpenFilePicker({multiple:true});
-  if(handles.length>PROJECT_MAX||items.length+handles.length>2000)throw Error('索引數量超出上限，請減少選取數量');
-  let count=0;importProgress={label:'正在加入文件索引',done:0,total:handles.length};render();
-  for(const handle of handles){if(handle.kind!=='file')continue;
-   await put({id:id(),name:handle.name,kind:'file',parent:viewFolder||null,relativePath:handle.name,localPath:'',tags:[],device:THIS_DEVICE,createdAt:new Date().toISOString(),handle});count++;importProgress.done=count;if(count%10===0){render();await new Promise(r=>setTimeout(r,0))}
-  }
-  cloudMessage=`已加入 ${count} 個本機文件（尚未 Save 至雲端）`;
- }catch(err){if(err.name!=='AbortError'){cloudMessage='選擇文件失敗：'+err.message;alert(cloudMessage)}}
- finally{busy=false;importProgress=null;await reload()}
-}
-async function pickProjectFolder(){
- if(busy)return;
- if(typeof window.showDirectoryPicker!=='function'){alert('請使用支援資料夾選擇的 Chrome / Edge（HTTPS 或 localhost）。');return}
- busy=true;projectChooser=false;
- try{
-  const root=await window.showDirectoryPicker({mode:'read'});
-  // Preflight: collect and validate the complete tree before writing any entries.
-  importProgress={label:'正在掃描資料夾',done:0,total:0};render();
-  const pending=[];const stack=[{handle:root,parentToken:null,relativePath:root.name}];
-  while(stack.length){
-   const node=stack.pop();
-   if(pending.length>=PROJECT_MAX||items.length+pending.length>=2000)throw Error('資料夾內容超過索引上限（單次 1500 項、總計 2000 項），本次未匯入');
-   const token=id();pending.push({...node,token});importProgress.done=pending.length;if(pending.length%30===0){render();await new Promise(r=>setTimeout(r,0))}
-   if(node.handle.kind==='directory'){
-    const children=[];
-    for await(const child of node.handle.values())children.push(child);
-    children.sort((a,b)=>a.name.localeCompare(b.name));
-    for(let i=children.length-1;i>=0;i--){const child=children[i];stack.push({handle:child,parentToken:token,relativePath:node.relativePath+'/'+child.name})}
-   }
-  }
-  const tokenToId=new Map(pending.map(x=>[x.token,id()]));importProgress={label:'正在儲存索引',done:0,total:pending.length};render();
-  for(const node of pending){
-   const handle=node.handle;
-   await put({id:tokenToId.get(node.token),name:handle.name,kind:handle.kind,parent:node.parentToken?tokenToId.get(node.parentToken):(viewFolder||null),relativePath:node.relativePath,localPath:'',tags:[],device:THIS_DEVICE,virtual:false,createdAt:new Date().toISOString(),handle});importProgress.done++;if(importProgress.done%20===0){render();await new Promise(r=>setTimeout(r,0))}
-  }
-  cloudMessage=`已匯入資料夾「${root.name}」及 ${pending.length-1} 個子項目（尚未 Save 至雲端）`;
- }catch(err){if(err.name!=='AbortError'){cloudMessage='匯入資料夾失敗：'+err.message;alert(cloudMessage)}}
- finally{busy=false;importProgress=null;await reload()}
-}
-async function add(kind){
- if(busy)return;busy=true;
- try{
-  let handle;if(kind==='directory'){const name=prompt('新建虛擬資料夾名稱','新資料夾');if(name===null)return;if(!name.trim()){alert('名稱不可為空');return}const e={id:id(),name:name.trim().slice(0,500),kind:'directory',parent:viewFolder||null,relativePath:name.trim().slice(0,500),localPath:'',tags:[],virtual:true,device:'',createdAt:new Date().toISOString()};await put(e);await reload();return;}handle=(await window.showOpenFilePicker({multiple:false}))[0];
-  let e={id:id(),name:handle.name,kind,parent:viewFolder||null,relativePath:handle.name,localPath:'',tags:[],device:THIS_DEVICE,createdAt:new Date().toISOString(),handle};
-  await put(e);await reload();
- }catch(e){if(e.name!=='AbortError')alert('選擇失敗：'+e.message)}
- finally{busy=false}
-}
-async function access(e){
- if(!e.handle){cloudMessage='這是純路徑索引，無法直接開啟檔案；可使用「複製本地路徑」。';render();return false}
- try{
-  let p=await e.handle.queryPermission({mode:'read'});
-  if(p!=='granted')p=await e.handle.requestPermission({mode:'read'});
-  return p==='granted';
- }catch(err){alert('無法取得授權：'+err.message);return false}
 }
 async function open(e){
  if(e.kind==='directory'){viewFolder=e.id;renderLimit=60;selectedIds.clear();render();return}
@@ -216,6 +162,15 @@ async function cloudSave(){if(busy)return;busy=true;cloudMessage='正在檢查�
  const result=await cloudRequest('PUT',{baseRevision:remote.revision,entries});
  cloudRevision=result.revision;cloudKnown=true;cloudMessage=`已儲存雲端版本 ${cloudRevision}（此裝置 ${localScope.length} 筆；其他裝置文件保留）`;
  }catch(err){cloudMessage='存儲失敗：'+err.message;alert(cloudMessage)}finally{busy=false;render()}}
+// Shared DIARY toolbar: one click starts DIARY's native cloud operation and the file index operation.
+// Keep DIARY's original click listener intact. The two requests use distinct API endpoints.
+document.addEventListener('click',ev=>{
+ const button=ev.target.closest('#bv-diary #dy-cloud-load, #bv-diary #dy-save-as');
+ if(!button)return;
+ // A rapid second click is ignored by file manager while busy; DIARY owns its own busy guard.
+ if(button.id==='dy-cloud-load')void cloudLoad();
+ else void cloudSave();
+},true);
 // Capture DIARY tab navigation before diary.js handles it.  Its render() does
 // not know the files tab and would otherwise overwrite this panel.
 document.addEventListener('click',ev=>{
@@ -232,24 +187,18 @@ document.addEventListener('click',async ev=>{
  if(!active)return;
  const btn=ev.target.closest('#dy-file-manager [data-fm]');if(!btn)return;
  const act=btn.dataset.fm;const entry=items.find(x=>x.id===btn.dataset.id);
- if(act==='path-panel'){pathPanel=!pathPanel;projectChooser=false;render();return}
+ if(act==='path-panel'){pathPanel=!pathPanel;render();return}
  if(act==='path-close'){pathPanel=false;render();return}
  if(act==='show-more'){renderLimit+=60;render();return}
+ if(act==='clear-selection'){selectedIds.clear();render();return}
  if(act==='bulk-remove'){await bulkRemove();return}
- if(act==='project'){projectChooser=!projectChooser;menuId=null;render();return}
- if(act==='project-close'){projectChooser=false;render();return}
- if(act==='project-files'){await pickProjectFiles();return}
- if(act==='project-folder'){await pickProjectFolder();return}
  if(act==='menu'&&entry){showMenu(entry.id);return}
  if(act==='close-menu'){menuId=null;menuPoint=null;render();return}
  if(act==='copy-path'&&entry){menuId=null;menuPoint=null;await copyPath(entry);return}
- if(act==='add-file'||act==='add-folder')await add(act==='add-file'?'file':'directory');
- else if(act==='home'){viewFolder=null;renderLimit=60;selectedIds.clear();render()}
+ if(act==='home'){viewFolder=null;renderLimit=60;selectedIds.clear();render()}
  else if(act==='edit'&&entry){menuId=null;menuPoint=null;editingId=editingId===entry.id?null:entry.id;render();if(editingId)$('#dy-file-manager .dy-fm-inline input[name=name]')?.focus()}
  else if(act==='cancel-edit'){editingId=null;render()}
  else if(act==='remove'&&entry&&confirm(`移除「${entry.name}」索引？不會刪除實體文件。`)){await del(entry.id);await reload()}
- else if(act==='cloud-load')await cloudLoad();
- else if(act==='cloud-save')await cloudSave();
  else if(act==='export')await exportIndex();
  else if(act==='import')$('#dy-fm-import')?.click();
 });
@@ -261,7 +210,6 @@ document.addEventListener('contextmenu',ev=>{
 });
 document.addEventListener('pointerdown',ev=>{
  if(!active)return;
- if(projectChooser&&!ev.target.closest('#dy-file-manager .dy-fm-project-chooser, #dy-file-manager [data-fm=project]')){projectChooser=false;queueMicrotask(()=>render())}
  if(menuId&&!ev.target.closest('#dy-file-manager .dy-fm-menu, #dy-file-manager .dy-fm-more')){
   menuId=null;menuPoint=null;
   // Do not re-render while a user is clicking an editor control.
@@ -273,7 +221,7 @@ document.addEventListener('pointerdown',ev=>{
 },true);
 document.addEventListener('keydown',ev=>{
  if(ev.key==='Escape'&&active&&(menuId||editingId)){
-  menuId=null;menuPoint=null;editingId=null;projectChooser=false;render();ev.preventDefault();
+  menuId=null;menuPoint=null;editingId=null;render();ev.preventDefault();
  }
 });
 document.addEventListener('submit',async e=>{if(e.target.id==='dy-fm-path-form'){e.preventDefault();await savePath(e.target);return}const form=e.target.closest('#dy-file-manager .dy-fm-inline');if(!form)return;e.preventDefault();await saveInline(form)});

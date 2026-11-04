@@ -59,3 +59,33 @@
 .dy-fm-item{position:relative}
 .dy-fm-select{position:absolute;left:8px;top:8px;z-index:1}
 .dy-fm-load-more{text-align:center;margin:14px 0}
+
+/* v0.3.17: BV-NOTE / DIARY native visual language, minimal path-only toolbar */
+.dy-fm{background:transparent;border:0;padding:2px;color:inherit}
+.dy-fm-heading{margin-bottom:10px}
+.dy-fm-heading h3{color:inherit}
+.dy-fm-actions button{background:#213c5c;border-color:#43658a}
+.dy-fm-item{background:#18283d;border:1px solid #344b66}
+.dy-fm-icon{width:42px;height:48px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:15px;font-weight:800;letter-spacing:-.4px;border-radius:6px;color:#eaf4ff;background:#34475d}
+.dy-fm-type-folder{background:transparent;font-size:32px}
+.dy-fm-type-text{background:#456584;color:#f0f6ff;font-size:28px}
+.dy-fm-type-generic{background:#52677d;color:#fff;font-size:27px}
+.dy-fm-type-code{background:#3c4db4;color:#fff;font-size:16px}
+.dy-fm-type-archive{background:#b78515;color:#fff;font-size:13px}
+.dy-fm-type-pdf{background:#b62d37;color:#fff;font-size:12px}
+.dy-fm-type-word{background:#2165b7;color:#fff;font-size:25px}
+.dy-fm-type-ppt{background:#c45c24;color:#fff;font-size:25px}
+.dy-fm-path-panel{background:#19283b}
+
+/* v0.3.18: contextual, single-row bulk selection. No permanent bulk panel. */
+.dy-fm-crumb{display:flex;align-items:center;gap:8px;min-height:32px;margin-bottom:9px;flex-wrap:wrap}
+.dy-fm-compact-select{margin-left:auto;display:flex;align-items:center;gap:8px;min-height:30px;font-size:12px;color:#a9bfdc}
+.dy-fm-select-all-label{display:inline-flex;align-items:center;gap:5px;cursor:pointer;white-space:nowrap}
+.dy-fm-select-all-label input{width:15px;height:15px;margin:0;accent-color:#70b3ff;cursor:pointer}
+.dy-fm-selected-count{font-variant-numeric:tabular-nums;color:#c8def9;white-space:nowrap}
+.dy-fm-total-count{white-space:nowrap;color:#91a5bf}
+.dy-fm .dy-fm-bulk-delete{padding:4px 8px;font-size:11px;background:#46303a;border-color:#7a4a5a;color:#ffdce3}
+.dy-fm .dy-fm-bulk-delete:hover{background:#633847}
+.dy-fm .dy-fm-clear-selection{padding:1px 6px;min-width:23px;font-size:17px;line-height:1.2;background:transparent;border-color:transparent;color:#a9bfdc}
+.dy-fm .dy-fm-clear-selection:hover{background:#2b4059}
+@media(max-width:520px){.dy-fm-compact-select{gap:5px}.dy-fm-crumb{gap:5px}.dy-fm .dy-fm-bulk-delete{padding:4px 6px}}
