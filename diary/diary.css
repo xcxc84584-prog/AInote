@@ -188,3 +188,16 @@ body.diary-active #bv-diary .dy-move-form input[type=number]{width:100%}
 
 /* BV DIARY v0.3.6: cloud action area has buttons only */
 #bv-diary .dy-top-actions{gap:6px}
+
+/* BV DIARY v0.3.7: visible progress for cloud actions, no false percentage */
+#dy-cloud-progress-live{
+ position:fixed;right:16px;bottom:18px;z-index:2147483000;
+ width:min(320px,calc(100vw - 32px));padding:12px 14px;
+ border:1px solid #638bb8;border-radius:10px;
+ background:#172439;color:#eef5ff;
+ box-shadow:0 8px 30px rgba(0,0,0,.5);
+ font-size:13px;box-sizing:border-box;
+}
+#dy-cloud-progress-live[hidden]{display:none!important}
+#dy-cloud-progress-live .dy-cloud-progress-label{display:block;margin-bottom:8px}
+#dy-cloud-progress-live progress{display:block;width:100%;height:10px;accent-color:#77adfa}
