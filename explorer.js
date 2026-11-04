@@ -36,7 +36,7 @@ async function openSingleFile(file){/* BLOCK B-8D881CAAE7 START: AREA A-6A7FC0B1
  items.push(x);nodeDB={version:1,rootId:uuid(),nodes:{[name]:x.uuid}};
  recordDB={version:2,files:{}};rootLabel.textContent=root.name+'（草稿）';
  await draftStore({id:x.uuid,name,rootName:root.name,content,updatedAt:Date.now()});
- await choose(x);dirty=true;refreshUnsaved();display();
+ await choose(x);dirty=true;refreshUnsaved();display();dprCapture();
  toast('單檔已匯入 IndexedDB 草稿；按 Save 才會寫入本地');
 /* BLOCK B-8D881CAAE7 END. */}
 
@@ -112,7 +112,7 @@ const orderRecord=saved.entries.find(e=>e.path===ORDER_FILE&&!e.dir);
  rootLabel.textContent=root.name;setDocumentVisible(false);display();
  toast('雲端 Root 已載入，所有資料夾預設閉合（'+items.length+' 個節點）');
   try{localStorage.setItem('bvnote-last-cloud-root',saved.id)}catch{}
-  rememberRoot();
+  rememberRoot();if(typeof dprCapture==='function')dprCapture();
 /* BLOCK B-7667D6DE5D END. */}
 window.BVCloudOpenVirtualRoot=async(id,name,entries)=>{/* BLOCK B-5A063C7F29 START: AREA A-6A7FC0B1 */
  if(!/^[0-9a-f-]{36}$/i.test(id))throw Error('Cloud ID 無效');
@@ -186,6 +186,20 @@ async function saveVirtual(){/* BLOCK B-26AC44A1E1 START: AREA A-6A7FC0B1 */
 /* BLOCK B-26AC44A1E1 END. */}
 
 let rootSelected=false;const SESSION_KEY="bv-note-session-v241";
+// DPR1: tab-scoped lifecycle. Only FileSystemHandles are persisted to IndexedDB.
+const DPR_KEY='bv-note-dpr1-lifecycle-v1',DPR_DB='bv-note-dpr1-handles-v1';
+function dprDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DPR_DB,1);r.onupgradeneeded=()=>r.result.createObjectStore('roots');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function dprHandle(action,value){const db=await dprDB();try{return await new Promise((resolve,reject)=>{const tx=db.transaction('roots',action==='read'?'readonly':'readwrite'),store=tx.objectStore('roots');const q=action==='read'?store.get('active'):action==='clear'?store.delete('active'):store.put(value,'active');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}finally{db.close()}}
+function dprSession(){try{return JSON.parse(sessionStorage.getItem(DPR_KEY)||'null')}catch{return null}}
+function dprCapture(){if(!root)return;const x=current(),session={kind:cloudVirtualId?'cloud':virtualRoot?'single':'folder',name:root.name,cloudId:cloudVirtualId||null,uuid:x?.uuid||null,raw:x?.kind==='file'?(sourceArea.style.display==='none'?rawMarkdown:sourceArea.value):null,dirty:!!dirty,mode:sourceArea.style.display==='none'?'view':'edit',scroll:document.querySelector('.workspace>main')?.scrollTop||0,treeScroll:tree.scrollTop,collapsed:[...collapsed],rootCollapsed,at:Date.now()};try{sessionStorage.setItem(DPR_KEY,JSON.stringify(session))}catch(e){console.warn('DPR1 session storage full',e)}}
+function dprClear(){try{sessionStorage.removeItem(DPR_KEY);sessionStorage.removeItem(SESSION_KEY)}catch{}dprHandle('clear').catch(console.warn)}
+async function dprRestoreState(session){if(!session||!root||session.name!==root.name)return;try{if(Array.isArray(session.collapsed)){collapsed.clear();for(const id of session.collapsed)collapsed.add(id)}rootCollapsed=!!session.rootCollapsed;const file=items.find(x=>x.uuid===session.uuid);if(file){await choose(file);if(session.mode==='view')switchMode('view',true);else switchMode('edit',true);if(session.dirty&&typeof session.raw==='string'){rawMarkdown=session.raw;sourceArea.value=session.raw;file.buffer=session.raw;dirty=true;refreshUnsaved()}}display();requestAnimationFrame(()=>{tree.scrollTop=session.treeScroll||0;const main=document.querySelector('.workspace>main');if(main)main.scrollTop=session.scroll||0})}catch(e){console.warn('DPR1 restore failed',e)}}
+let dprTimer;function dprSchedule(){clearTimeout(dprTimer);dprTimer=setTimeout(dprCapture,250)}
+window.addEventListener('pagehide',()=>dprCapture());
+sourceArea.addEventListener('input',dprSchedule);
+tree.addEventListener('scroll',dprSchedule,{passive:true});
+document.querySelector('.workspace>main')?.addEventListener('scroll',dprSchedule,{passive:true});
+
 let batchMode=false;const checkedIds=new Set();let clipboard=null;
 const ORDER_FILE=".bv-note-explorer-order.json";
 // sEAPP v3.9.3: per-folder ordering survives ZIP, IndexedDB and local Root reload.
@@ -686,13 +700,13 @@ async function openRoot(){/* BLOCK B-1EC982FAE8 START: AREA A-6A7FC0B1 */
   const d=await showDirectoryPicker({mode:'readwrite'});
   rememberRoot();
   for(const w of rootWorkspaces){if(w.root===d||typeof w.root.isSameEntry==='function'&&await w.root.isSameEntry(d)){await activateRoot(w);return}}
-  await openRootFromHandle(d);rememberRoot();toast('已加入 Root '+d.name);
+  await openRootFromHandle(d);rememberRoot();dprHandle('write',d).catch(console.warn);dprCapture();toast('已加入 Root '+d.name);
  }catch(e){if(e.name!=='AbortError')alert('資料夾開啟失敗：'+e.message)}
 /* BLOCK B-1EC982FAE8 END. */}
 async function closeRoot(){/* BLOCK B-A11F0A0A3D START: AREA A-6A7FC0B1 */
  window.BVPdfViewer?.hide();sourceButton.hidden=false;if(!root)return;
  if((dirty||orderDirty||items.some(x=>x.buffer!==null))&&!confirm('此 Root 有未儲存修改，仍要關閉？'))return;
- const old=root;const next=rootWorkspaces.find(w=>w.root!==old);
+ const old=root;const next=rootWorkspaces.find(w=>w.root!==old);dprClear();
  // v0.2.2: a closed Cloud Fold must not resurrect on refresh.
  // Keep the IndexedDB snapshot intact; remove only the last-open pointer.
  if(old?.cloudId){
@@ -710,7 +724,7 @@ async function closeRoot(){/* BLOCK B-A11F0A0A3D START: AREA A-6A7FC0B1 */
  root=null;virtualRoot=false;cloudVirtualId=null;selected=null;items=[];sequence=0;orderDirty=false;
  rootSelected=false;rootCollapsed=false;collapsed.clear();resetBatch();dirty=false;
  rawMarkdown='';setName('未命名.md');setDocumentVisible(false);
- if(next)await activateRoot(next);else{rootLabel.textContent='尚未選取 Root';switchMode('edit');display()}
+ if(next){await activateRoot(next);dprCapture()}else{rootLabel.textContent='尚未選取 Root';switchMode('edit');display()}
 /* BLOCK B-A11F0A0A3D END. */}
 function dirOf(p){/* BLOCK B-D9663A5614 START: AREA A-6A7FC0B1 */return p?p.handle:root/* BLOCK B-D9663A5614 END. */}
 function normalizeNewFileName(name){/* BLOCK B-9277220E37 START: AREA A-6A7FC0B1 */
@@ -907,7 +921,7 @@ function menu(x,left,top){/* BLOCK B-561584BD68 START: AREA A-6A7FC0B1 */
 /* BLOCK B-561584BD68 END. */}
 document.addEventListener('click',e=>{/* BLOCK B-E27789ED1D START: AREA A-6A7FC0B1 */if(!e.target.closest('#context-menu')&&!e.target.closest('#explorer-operate'))document.querySelector('#context-menu').hidden=true/* BLOCK B-E27789ED1D END. */});
 document.querySelector('#explorer-operate').onclick=e=>{/* BLOCK B-C4B19B196D START: AREA A-6A7FC0B1 */e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();operateMenu(r.left,r.bottom+5)/* BLOCK B-C4B19B196D END. */};document.querySelector('#root-open').onclick=openRoot;document.querySelector('#root-save').onclick=saveAll;document.querySelector('#root-close').onclick=closeRoot;document.querySelector('#add-fold').onclick=()=>{/* BLOCK B-2CE02FFE98 START: AREA A-6A7FC0B1 */if(!root){window.BVCreateNewDocument();return;}create('directory')/* BLOCK B-2CE02FFE98 END. */};document.querySelector('#add-file').onclick=async()=>{/* BLOCK B-8D2D4FC881 START: AREA A-6A7FC0B1 */if(!root){await openSingleFile(new File([''],'新文件.md',{type:'text/markdown'}));return}create('file')/* BLOCK B-8D2D4FC881 END. */};
-sourceArea.addEventListener('input',()=>{/* BLOCK B-5F5D9AD345 START: AREA A-6A7FC0B1 */if(cloudVirtualId&&root?.cloudId===cloudVirtualId)queueCloudSave();if(virtualRoot&&!cloudVirtualId&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}/* BLOCK B-5F5D9AD345 END. */});
+sourceArea.addEventListener('input',()=>{/* BLOCK B-5F5D9AD345 START: AREA A-6A7FC0B1 */if(cloudVirtualId&&root?.cloudId===cloudVirtualId)queueCloudSave();if(virtualRoot&&!cloudVirtualId&&current())draftStore({id:current().uuid,name:current().name,rootName:root.name,content:sourceArea.value,updatedAt:Date.now()}).catch(console.error);sourceButton.textContent='Commit';sourceButton.title='內容已編輯，點擊提交';sourceButton.classList.add('commit-mode');sourceButton.classList.remove('edit-mode');try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({mode:'edit',rootName:root?.name||'',fileUUID:current()?.uuid||null,raw:sourceArea.value}))}catch{}dprSchedule()/* BLOCK B-5F5D9AD345 END. */});
 // Re-scan external file changes on focus and while the page is visible.
 let scanBusy=false;async function syncExternal(){/* BLOCK B-D713771C34 START: AREA A-6A7FC0B1 */if(virtualRoot||!root||scanBusy||dirty||orderDirty)return;scanBusy=true;try{const old=new Map(items.map(x=>[path(x),x]));const found=[];async function walk(dir,parent,prefix){/* BLOCK B-180A138B31 START: AREA A-6A7FC0B1 */for await(const [name,h] of dir.entries()){if(h.kind!=='directory'&&!/\.(md|txt|pdf)$/i.test(name))continue;const key=prefix?prefix+'/'+name:name;let x=old.get(key);if(!x||x.kind!==h.kind){x={id:++sequence,name,handle:h,parent,kind:h.kind,order:sequence,buffer:null,uuid:nodeDB.nodes[key]||uuid()};nodeDB.nodes[key]=x.uuid;}else{x.handle=h;x.parent=parent;}found.push(x);if(h.kind==='directory')await walk(h,x,key)}/* BLOCK B-180A138B31 END. */}await walk(root,null,'');if(found.length!==items.length||found.some(x=>!items.includes(x))){items=found;const currentNode=items.find(x=>x.id===selected);if(!currentNode&&selected!==null){selected=null;setDocumentVisible(false)}display();await flushNodeDB()}}catch(e){console.warn('External refresh',e)}finally{scanBusy=false}/* BLOCK B-D713771C34 END. */}
 window.addEventListener('focus',syncExternal);document.addEventListener('visibilitychange',()=>{/* BLOCK B-2154D05999 START: AREA A-6A7FC0B1 */if(!document.hidden)syncExternal()/* BLOCK B-2154D05999 END. */});setInterval(()=>{/* BLOCK B-E738FF279B START: AREA A-6A7FC0B1 */if(!document.hidden)syncExternal()/* BLOCK B-E738FF279B END. */},12000);
@@ -915,7 +929,8 @@ window.addEventListener('focus',syncExternal);document.addEventListener('visibil
 document.addEventListener('keydown',e=>{/* BLOCK B-CFB7CC84F7 START: AREA A-6A7FC0B1 */if(root&&(e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'){e.preventDefault();e.stopImmediatePropagation();saveAll()}/* BLOCK B-CFB7CC84F7 END. */},true);
 window.BVSwitchEditorMode=(mode)=>switchMode(mode);
  // BVNOTE_PATCH_20261026_FIX2: Restore last Cloud Root from IndexedDB after reload.
- setTimeout(async()=>{try{if(root)return;const id=localStorage.getItem('bvnote-last-cloud-root');if(!id)return;const saved=await cloudRead('bv378-root-'+id);if(saved&&localStorage.getItem('bvnote-last-cloud-root')===id&&!root)await loadCloudRoot(saved)}catch(e){console.warn('Cloud workspace restore failed',e)}},0);
+ setTimeout(async()=>{try{if(root)return;const session=dprSession();if(!session)return;if(session.kind==='folder'){const h=await dprHandle('read');if(h&&h.name===session.name){const permission=await h.queryPermission({mode:'readwrite'});if(permission==='granted'){await openRootFromHandle(h);await dprRestoreState(session)}else{const button=document.createElement('button');button.type='button';button.textContent='恢復上次 Root（授權）';button.title='瀏覽器要求重新授權資料夾';button.addEventListener('click',async()=>{try{if(await h.requestPermission({mode:'readwrite'})!=='granted')return;button.remove();await openRootFromHandle(h);await dprRestoreState(session)}catch(e){alert('恢復失敗：'+e.message)}});rootLabel.after(button)}}}else if(session.kind==='cloud'&&session.cloudId){const saved=await cloudRead('bv378-root-'+session.cloudId);if(saved){await loadCloudRoot(saved);await dprRestoreState(session)}}else if(session.kind==='single'&&session.uuid){const db=await new Promise((resolve,reject)=>{const r=indexedDB.open(DRAFT_DB,1);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});const draft=await new Promise(resolve=>{const q=db.transaction('drafts').objectStore('drafts').get(session.uuid);q.onsuccess=()=>resolve(q.result);q.onerror=()=>resolve(null)});db.close();if(draft){await openSingleFile(new File([draft.content],draft.name));const x=current();if(x){x.uuid=session.uuid;await dprRestoreState(session)}}}}catch(e){console.warn('DPR1 automatic restore',e)}},0);
+setTimeout(async()=>{try{if(root)return;const id=localStorage.getItem('bvnote-last-cloud-root');if(!id||dprSession()?.kind==='folder'||dprSession()?.kind==='single')return;const saved=await cloudRead('bv378-root-'+id);if(saved&&localStorage.getItem('bvnote-last-cloud-root')===id&&!root)await loadCloudRoot(saved)}catch(e){console.warn('Cloud workspace restore failed',e)}},0);
 
 /* BLOCK B-C681CA29D7 END. */})();
 // AREA A02 END: ExplorerManager
