@@ -1,0 +1,39 @@
+/* BV DIARY v0.3.9 - embedded file index */
+#dy-file-manager{min-width:0;color:#dce8f8}
+.dy-fm{padding:14px;background:#101824;border:1px solid #293b55;border-radius:12px}
+.dy-fm-heading{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.dy-fm-heading h3{margin:0 0 5px;color:#dbeafe}.dy-fm-heading small,.dy-fm-foot{color:#91a5bf;font-size:12px}
+.dy-fm-actions{display:flex;gap:7px;flex-wrap:wrap}
+.dy-fm button{border:1px solid #41658c;border-radius:7px;background:#1d3550;color:#e6f1ff;padding:7px 10px;cursor:pointer}
+.dy-fm button:hover{background:#2c5177}
+.dy-fm-search{display:flex;gap:8px;align-items:center;background:#1b293c;border:1px solid #425979;border-radius:8px;padding:8px 12px;margin:14px 0}
+.dy-fm-search input{background:transparent;border:0;outline:none;color:#e6f1ff;width:100%;min-width:0;font-size:14px}
+.dy-fm-crumb{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:#abc5e7}
+.dy-fm-crumb span{margin-left:auto;font-size:12px;color:#90a6c0}
+.dy-fm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.dy-fm-item{background:#19283b;border:1px solid #30435d;border-radius:9px;min-width:0;padding:12px;text-align:center}
+.dy-fm-item:hover,.dy-fm-item:focus-visible{border-color:#78a9ee;outline:none}
+.dy-fm-icon{font-size:34px;line-height:1.4}
+.dy-fm-item strong,.dy-fm-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dy-fm-item strong{font-size:13px}.dy-fm-item small{font-size:11px;color:#8ca6c5;margin:6px 0}
+.dy-fm-controls{display:flex;justify-content:center;gap:5px}
+.dy-fm-controls button{font-size:11px;padding:5px 7px}
+.dy-fm-empty{grid-column:1/-1;text-align:center;color:#8fa7c2;padding:24px}
+@media(max-width:600px){.dy-fm-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dy-fm{padding:9px}}
+
+.dy-fm-cloud{font-size:12px;color:#9ac5f2;margin:10px 0}
+
+/* v0.3.13: inline card editor and device marker */
+.dy-fm-device{display:block;margin-top:5px;overflow-wrap:anywhere}
+.dy-fm-inline{display:flex;flex-direction:column;gap:7px;margin:9px 0;text-align:left}
+.dy-fm-inline label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#b7cbea}
+.dy-fm-inline input{box-sizing:border-box;max-width:100%;width:100%;border:1px solid #55789d;border-radius:5px;background:#0e1b2b;color:#eaf4ff;padding:7px;font-size:12px}
+.dy-fm-inline-actions{display:flex;gap:5px;justify-content:center}
+.dy-fm-inline-actions button{font-size:11px;padding:5px 7px}
+
+/* v0.3.14: Explorer-style context menu and ellipsis */
+.dy-fm-controls{justify-content:flex-end;margin-top:6px}
+.dy-fm .dy-fm-more{min-width:31px;min-height:27px;padding:2px 7px;font-size:19px;line-height:1;letter-spacing:1px;background:#202c3d;border-color:#43536b}
+.dy-fm-menu{position:fixed;z-index:2147483000;box-sizing:border-box;width:180px;max-width:calc(100vw - 16px);padding:5px;background:#202c3e;border:1px solid #7184a2;border-radius:7px;box-shadow:0 10px 28px #0009;display:flex;flex-direction:column;gap:3px}
+.dy-fm .dy-fm-menu button{display:block;text-align:left;width:100%;padding:8px 10px;background:#29374e;border:1px solid #52627e;border-radius:4px;color:#e6edfb;font-size:12px}
+.dy-fm .dy-fm-menu button:hover,.dy-fm .dy-fm-menu button:focus-visible{background:#405779;outline:1px solid #83a5d7}
