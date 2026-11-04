@@ -99,3 +99,33 @@
 .dy-fm-path-panel{background:#252c35;border-color:#4c5665}
 .dy-fm-path-panel input,.dy-fm-path-panel select{background:#303844;border-color:#586577}
 @media(max-width:600px){.dy-fm-grid{padding:8px;gap:8px}}
+
+/* v0.3.20: native BV-NOTE compact cards, readable labels, calmer file canvas */
+.dy-fm-heading{align-items:center;gap:10px}
+.dy-fm-actions{align-items:center;gap:6px}
+.dy-fm .dy-fm-explorer{background:#252f3e;border-color:#4a5b70;color:#d3e0ef;white-space:nowrap}
+.dy-fm .dy-fm-explorer:hover{background:#34475f}
+.dy-fm-search{background:#1b293b;border-color:#3c526d}
+.dy-fm-grid{background:#1c2530;border:1px solid #374657;border-radius:9px;padding:12px;gap:10px;min-height:112px;align-content:start}
+.dy-fm-item{box-sizing:border-box;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;min-width:0;min-height:150px;background:#192637;border:1px solid #3a5068;border-radius:8px;padding:12px 10px 8px;overflow:hidden;isolation:isolate}
+.dy-fm-item:hover{background:#203146;border-color:#6489b5}
+.dy-fm-icon{flex:none;display:flex;justify-content:center;align-items:center;min-height:45px;margin:0 auto 6px}
+.dy-fm-item>strong{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:19px;line-height:1.45;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 6px;color:#e3edf9}
+.dy-fm-item>small{display:block;box-sizing:border-box;width:100%;min-width:0;min-height:25px;line-height:1.35;margin:0 0 5px;padding:5px 6px;background:#25313f;border:1px solid #3d4d60;border-radius:5px;color:#aabdd3;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;direction:ltr}
+.dy-fm-controls{margin-top:auto;min-height:27px;display:flex;align-items:center;justify-content:flex-end}
+.dy-fm-select{left:9px;top:9px}
+.dy-fm-select input{margin:0;width:14px;height:14px}
+.dy-fm-file-svg{width:40px;height:42px;flex:none}
+.dy-fm-inline{width:100%;min-width:0}
+.dy-fm-inline label{min-width:0}
+.dy-fm-inline input{min-width:0}
+.dy-fm-path-panel{background:#202a36;border-color:#465a70}
+@media(min-width:650px){.dy-fm-grid{grid-template-columns:repeat(auto-fill,minmax(142px,1fr))}}
+@media(max-width:600px){.dy-fm-grid{padding:8px;gap:8px}.dy-fm-item{padding:10px 7px 7px;min-height:144px}.dy-fm-actions{width:100%}}
+
+/* v0.3.21: prevent DIARY global label/input styles from distorting Select All */
+#dy-file-manager .dy-fm-crumb .dy-fm-compact-select{display:flex;align-items:center;justify-content:flex-end;gap:8px;min-height:28px;line-height:1.3;flex-wrap:nowrap}
+#dy-file-manager .dy-fm-crumb label.dy-fm-select-all-label{position:static;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start;gap:6px;flex:0 0 auto;width:auto!important;min-width:0;max-width:none;margin:0!important;padding:0!important;border:0!important;background:transparent!important;line-height:1.3!important;font-size:12px!important;font-weight:400!important;color:#bdcde2!important;white-space:nowrap;cursor:pointer;vertical-align:middle}
+#dy-file-manager .dy-fm-crumb label.dy-fm-select-all-label>input[type=checkbox]{position:static!important;display:block!important;box-sizing:border-box;flex:0 0 15px;width:15px!important;height:15px!important;min-width:15px!important;min-height:15px!important;max-width:15px!important;max-height:15px!important;margin:0!important;padding:0!important;transform:none!important;vertical-align:middle;accent-color:#70b3ff;cursor:pointer}
+#dy-file-manager .dy-fm-crumb label.dy-fm-select-all-label>span{position:static!important;display:inline-block!important;flex:0 0 auto;margin:0!important;padding:0!important;line-height:1.3!important;font-size:12px!important;font-weight:400!important;white-space:nowrap;color:#bdcde2}
+#dy-file-manager .dy-fm-compact-select>.dy-fm-total-count,#dy-file-manager .dy-fm-compact-select>.dy-fm-selected-count{margin:0!important;line-height:1.3;font-size:11px;white-space:nowrap}
