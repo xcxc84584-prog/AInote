@@ -71,7 +71,7 @@ function render(){
  const list=q?visibleEntries().filter(x=>[x.name,pathFor(x),x.localPath||'',...(x.tags||[])].join(' ').toLocaleLowerCase().includes(q)):visible;
  const folder=items.find(x=>x.id===viewFolder);
  host.innerHTML=`<section class="dy-fm">
-  <header class="dy-fm-heading"><div><h3>文件管家</h3><small>本地索引 · 不儲存檔案內容 · 雲端僅同步索引資料</small><small class="dy-fm-device">對應裝置：${esc(deviceLabel())} · ${esc(THIS_DEVICE)}</small></div><div class="dy-fm-actions"><button data-fm="path-panel" aria-expanded="${pathPanel}">+Path</button></div></header>
+  <header class="dy-fm-heading"><div><h3>文件管家</h3><small>本地索引 · 不儲存檔案內容 · 雲端僅同步索引資料</small><small class="dy-fm-device">對應裝置：${esc(deviceLabel())} · ${esc(THIS_DEVICE)}</small></div><div class="dy-fm-actions"><button data-fm="path-panel" aria-expanded="${pathPanel}">+Path</button><button type="button" class="dy-fm-explorer" data-fm="browse-native" title="開啟系統檔案選擇器以查找檔案或資料夾（瀏覽器無法取得 Windows 絕對路徑）">▣ 開啟檔案總管</button></div></header>
   ${pathPanel?`<form class="dy-fm-path-panel" id="dy-fm-path-form"><div><strong>+Path · 純路徑索引</strong><small>只儲存路徑文字，不讀取或授權實體檔案；可選 File 或 Fold。</small></div><label>類型<select name="kind"><option value="file">File</option><option value="directory">Fold</option></select></label><label>名稱<input name="name" maxlength="500" required placeholder="例如 main.cpp"></label><label>本地路徑<input name="localPath" maxlength="2000" required placeholder="例如 C:\\Work\\main.cpp"></label><button type="submit">新增索引</button><button type="button" data-fm="path-close">取消</button></form>`:''}
   <p class="dy-fm-cloud" aria-live="polite">${esc(cloudMessage)}</p><label class="dy-fm-search">⌕ <input id="dy-fm-search" type="search" placeholder="搜尋文件名稱、路徑或標籤" value="${esc(query)}" autocomplete="off"></label>
   <div class="dy-fm-crumb"><button data-fm="home">全部索引</button>${folder?' / '+esc(folder.name):''}<div class="dy-fm-compact-select"><label class="dy-fm-select-all-label" title="全選／取消全選目前結果"><input type="checkbox" id="dy-fm-select-all" ${list.length>0&&list.every(e=>selectedIds.has(e.id))?'checked':''} ${list.length===0?'disabled':''} aria-label="全選目前結果"><span>全選</span></label>${list.some(e=>selectedIds.has(e.id))?`<span class="dy-fm-selected-count" role="status">已選 ${list.filter(e=>selectedIds.has(e.id)).length} 項</span><button type="button" class="dy-fm-bulk-delete" data-fm="bulk-remove" title="批量移除已選索引（不刪除實體文件）">移除</button><button type="button" class="dy-fm-clear-selection" data-fm="clear-selection" title="取消所有選取" aria-label="取消所有選取">×</button>`:`<span class="dy-fm-total-count">${list.length} 項</span>`}</div></div>
@@ -202,6 +202,23 @@ document.addEventListener('click',async ev=>{
  if(!active)return;
  const btn=ev.target.closest('#dy-file-manager [data-fm]');if(!btn)return;
  const act=btn.dataset.fm;const entry=items.find(x=>x.id===btn.dataset.id);
+ if(act==='browse-native'){
+  // Browser security prevents launching an arbitrary Explorer window or reading its absolute path.
+  // The OS picker is the closest secure browser-native alternative.
+  try{
+   const kind=$('#dy-fm-path-form select[name="kind"]')?.value||'file';
+   let pickedName='';
+   if(kind==='directory'&&window.showDirectoryPicker){const handle=await window.showDirectoryPicker({mode:'read'});pickedName=handle.name;}
+   else if(window.showOpenFilePicker){const handles=await window.showOpenFilePicker({multiple:false});pickedName=handles[0]?.name||'';}
+   else {cloudMessage='此瀏覽器不支援系統選擇器；請手動填入路徑。';render();return;}
+   if(!pickedName)return;
+   pathPanel=true;render();
+   const field=$('#dy-fm-path-form input[name="name"]');if(field&&!field.value)field.value=pickedName;
+   cloudMessage='已選取「'+pickedName+'」。瀏覽器無法讀取 Windows 絕對路徑，請在 +Path 表單自行填寫。';
+   const status=$('#dy-file-manager .dy-fm-cloud');if(status)status.textContent=cloudMessage;
+  }catch(err){if(err.name!=='AbortError'){cloudMessage='開啟系統選擇器失敗：'+err.message;render();}}
+  return;
+ }
  if(act==='path-panel'){pathPanel=!pathPanel;render();return}
  if(act==='path-close'){pathPanel=false;render();return}
  if(act==='show-more'){renderLimit+=60;render();return}
