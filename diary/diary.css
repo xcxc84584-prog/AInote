@@ -219,3 +219,9 @@ body.diary-active #bv-diary .dy-move-form input[type=number]{width:100%}
 #bv-diary .dy-target-create [data-target-fields][hidden]{display:none}
 #bv-diary .dy-target-create>button{margin-bottom:8px}
 @media(max-width:700px){#bv-diary .dy-target-create [data-target-fields]{grid-template-columns:1fr}#bv-diary .dy-compact-entry .dy-actions{width:100%;justify-content:flex-end}}
+
+/* DPR rest-day: today is red in both calendar views, even when selected. */
+#bv-diary .dy-cal button.dy-today{color:#e03535!important;border:2px solid #e03535!important;font-weight:800!important;box-shadow:inset 0 0 0 1px rgba(224,53,53,.14)}
+#bv-diary .dy-cal button.dy-rest-day:not(.dy-today){background:rgba(80,145,190,.12);border:1px dashed #68a5c7}
+#bv-diary .dy-rest{border-left:3px solid #68a5c7!important}
+#bv-diary .dy-rest .dy-explorer-info strong{color:#78b9db}
