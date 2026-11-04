@@ -37,3 +37,25 @@
 .dy-fm-menu{position:fixed;z-index:2147483000;box-sizing:border-box;width:180px;max-width:calc(100vw - 16px);padding:5px;background:#202c3e;border:1px solid #7184a2;border-radius:7px;box-shadow:0 10px 28px #0009;display:flex;flex-direction:column;gap:3px}
 .dy-fm .dy-fm-menu button{display:block;text-align:left;width:100%;padding:8px 10px;background:#29374e;border:1px solid #52627e;border-radius:4px;color:#e6edfb;font-size:12px}
 .dy-fm .dy-fm-menu button:hover,.dy-fm .dy-fm-menu button:focus-visible{background:#405779;outline:1px solid #83a5d7}
+
+/* v0.3.15: inline +Project chooser */
+.dy-fm-project-chooser{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0;padding:10px;border:1px solid #516a8a;border-radius:8px;background:#1a2a3e}
+.dy-fm-project-chooser span{font-size:12px;color:#bcd4f5;margin-right:auto}
+.dy-fm-project-chooser button{font-size:12px}
+
+/* v0.3.16: progress, multi-select, lazy card batches and +Path editor */
+.dy-fm-progress,.dy-fm-path-panel,.dy-fm-bulk{margin:12px 0;padding:10px;border:1px solid #465f80;border-radius:8px;background:#19283d}
+.dy-fm-progress{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#c9ddf8}
+.dy-fm-progress progress{width:100%;height:12px;accent-color:#6da8f1}
+.dy-fm-path-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));align-items:end;gap:10px}
+.dy-fm-path-panel>div{grid-column:1/-1;display:flex;flex-direction:column;gap:4px}
+.dy-fm-path-panel small{color:#a7bdd7;font-size:11px}
+.dy-fm-path-panel label{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#d0e1f9}
+.dy-fm-path-panel input,.dy-fm-path-panel select{width:100%;box-sizing:border-box;padding:8px;border:1px solid #59789d;border-radius:6px;background:#0f1c2d;color:#e6f2ff}
+.dy-fm-bulk{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;color:#bcd1ef}
+.dy-fm-bulk span{margin-left:auto}
+.dy-fm-bulk input,.dy-fm-select input{accent-color:#70b3ff;cursor:pointer}
+.dy-fm button:disabled{opacity:.45;cursor:not-allowed}
+.dy-fm-item{position:relative}
+.dy-fm-select{position:absolute;left:8px;top:8px;z-index:1}
+.dy-fm-load-more{text-align:center;margin:14px 0}

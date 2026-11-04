@@ -1,17 +1,18 @@
-/* BV DIARY File Manager v0.3.14 - browser-only, metadata and handles local */
+/* BV DIARY File Manager v0.3.16 - browser-only, metadata and handles local */
 (()=>{
 'use strict';
 const DB='bv-diary-file-index-v1',STORE='entries',TAB='files';
-let dbPromise,items=[],query='',viewFolder=null,active=false,busy=false,cloudRevision=null,cloudKnown=false,cloudMessage='尚未載入雲端索引',editingId=null,menuId=null,menuPoint=null;
+let dbPromise,items=[],query='',viewFolder=null,active=false,busy=false,cloudRevision=null,cloudKnown=false,cloudMessage='尚未載入雲端索引',editingId=null,menuId=null,menuPoint=null,projectChooser=false,pathPanel=false,selectedIds=new Set(),renderLimit=60,importProgress=null;
+let visibleObserver=null;
 const DEVICE_KEY='bv-diary-file-device-id-v1';
 function deviceId(){let v=localStorage.getItem(DEVICE_KEY);if(!v){v='device-'+id();localStorage.setItem(DEVICE_KEY,v)}return v}
 const THIS_DEVICE=deviceId();
 const DEVICE_LABEL_KEY='bv-diary-file-device-label-v1';
 function deviceLabel(){return localStorage.getItem(DEVICE_LABEL_KEY)||('此裝置 '+THIS_DEVICE.slice(-8))}
-function own(e){return e.kind==='directory'||e.device===THIS_DEVICE}
-function accessible(e){return e.kind==='directory'||(e.device===THIS_DEVICE&&!!e.handle)}
+function own(e){return e.virtual===true||e.device===THIS_DEVICE}
+function accessible(e){return e.virtual===true||(e.device===THIS_DEVICE&&(!!e.handle||!!e.localPath))}
 function visibleEntries(){return items.filter(e=>accessible(e))}
-function normalizeLegacy(e){if(e.kind==='file'&&e.handle&&e.device!==THIS_DEVICE)return {...e,device:THIS_DEVICE};return e}
+function normalizeLegacy(e){if(e.handle&&e.device!==THIS_DEVICE)return {...e,device:THIS_DEVICE};return e}
 
 const $=(s,r=document)=>r.querySelector(s);
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -20,7 +21,7 @@ function db(){return dbPromise??=new Promise((resolve,reject)=>{let r=indexedDB.
 async function all(){const d=await db();return new Promise((resolve,reject)=>{let r=d.transaction(STORE).objectStore(STORE).getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function put(v){const d=await db();return new Promise((resolve,reject)=>{let t=d.transaction(STORE,'readwrite');t.objectStore(STORE).put(v);t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}
 async function del(k){const d=await db();return new Promise((resolve,reject)=>{let t=d.transaction(STORE,'readwrite');t.objectStore(STORE).delete(k);t.oncomplete=resolve;t.onerror=()=>reject(t.error)})}
-async function reload(){items=(await all()).map(normalizeLegacy);for(const e of items){if(e.kind==='file'&&e.handle&&e.device===THIS_DEVICE){const original=await all();if(original.some(x=>x.id===e.id&&x.device!==THIS_DEVICE))await put(e)}}render()}
+async function reload(){const originals=await all();items=originals.map(normalizeLegacy);for(const e of items){if(e.handle&&e.device===THIS_DEVICE&&originals.find(x=>x.id===e.id)?.device!==THIS_DEVICE)await put(e)}selectedIds=new Set([...selectedIds].filter(k=>items.some(x=>x.id===k)));render()}
 function current(){return document.querySelector('#bv-diary')}
 function tabBar(){return current()?.querySelector('.dy-tabs')}
 function content(){return current()?.querySelector('#dy-content')}
@@ -36,21 +37,26 @@ function ensure(){
 }
 function pathFor(e){return e.relativePath||e.name}
 function render(){
- if(!active)return;let host=$('#dy-file-manager');if(!host)return;
+ if(!active)return;visibleObserver?.disconnect();visibleObserver=null;let host=$('#dy-file-manager');if(!host)return;
  const q=query.trim().toLocaleLowerCase();
  const visible=visibleEntries().filter(x=>(viewFolder?x.parent===viewFolder:!x.parent)&&(!q||[x.name,pathFor(x),x.localPath||'',...(x.tags||[])].join(' ').toLocaleLowerCase().includes(q)));
  const list=q?visibleEntries().filter(x=>[x.name,pathFor(x),x.localPath||'',...(x.tags||[])].join(' ').toLocaleLowerCase().includes(q)):visible;
  const folder=items.find(x=>x.id===viewFolder);
  host.innerHTML=`<section class="dy-fm">
-  <header class="dy-fm-heading"><div><h3>文件管家</h3><small>本地索引 · 不儲存檔案內容 · 雲端僅同步索引資料</small><small class="dy-fm-device">對應裝置：${esc(deviceLabel())} · ${esc(THIS_DEVICE)}</small></div><div class="dy-fm-actions"><button data-fm="add-file">+File</button><button data-fm="add-folder">+Fold</button><button data-fm="cloud-load">Load</button><button data-fm="cloud-save">Save</button></div></header>
+  <header class="dy-fm-heading"><div><h3>文件管家</h3><small>本地索引 · 不儲存檔案內容 · 雲端僅同步索引資料</small><small class="dy-fm-device">對應裝置：${esc(deviceLabel())} · ${esc(THIS_DEVICE)}</small></div><div class="dy-fm-actions"><button data-fm="project" aria-expanded="${projectChooser}">+Project</button><button data-fm="add-folder">+Fold</button><button data-fm="path-panel" aria-expanded="${pathPanel}">+Path</button><button data-fm="cloud-load">Load</button><button data-fm="cloud-save">Save</button></div></header>
+  ${pathPanel?`<form class="dy-fm-path-panel" id="dy-fm-path-form"><div><strong>+Path · 純路徑索引</strong><small>只儲存路徑文字，不讀取或授權實體檔案；可選 File 或 Fold。</small></div><label>類型<select name="kind"><option value="file">File</option><option value="directory">Fold</option></select></label><label>名稱<input name="name" maxlength="500" required placeholder="例如 main.cpp"></label><label>本地路徑<input name="localPath" maxlength="2000" required placeholder="例如 C:\\Work\\main.cpp"></label><button type="submit">新增索引</button><button type="button" data-fm="path-close">取消</button></form>`:''}
+  ${importProgress?`<div class="dy-fm-progress" role="status" aria-live="polite"><span>${esc(importProgress.label)}</span><progress max="${importProgress.total||1}" value="${importProgress.done}"></progress><small>${importProgress.total?Math.floor(importProgress.done/importProgress.total*100)+'%':importProgress.done+' 項'} · ${importProgress.done}/${importProgress.total||'?'} 項</small></div>`:''}
+  ${projectChooser?`<div class="dy-fm-project-chooser"><span>匯入專案</span><button data-fm="project-files">選擇多個文件</button><button data-fm="project-folder">選擇資料夾（含子資料夾）</button><button data-fm="project-close">取消</button></div>`:''}
   <p class="dy-fm-cloud" aria-live="polite">${esc(cloudMessage)}</p><label class="dy-fm-search">⌕ <input id="dy-fm-search" type="search" placeholder="搜尋文件名稱、路徑或標籤" value="${esc(query)}" autocomplete="off"></label>
   <div class="dy-fm-crumb"><button data-fm="home">全部索引</button>${folder?' / '+esc(folder.name):''}<span>${list.length} 項</span></div>
-  <div class="dy-fm-grid">${list.map(e=>`<article class="dy-fm-item" data-id="${esc(e.id)}" tabindex="0" title="${esc(e.localPath||pathFor(e))}"><div class="dy-fm-icon ${e.kind==='directory'?'folder':'file'}">${e.kind==='directory'?'📁':'📄'}</div>${editingId===e.id?`<form class="dy-fm-inline" data-id="${esc(e.id)}"><label>File name<input name="name" maxlength="500" required value="${esc(e.name)}"></label><label>Path（手動備註）<input name="localPath" maxlength="2000" value="${esc(e.localPath||'')}"></label><div class="dy-fm-inline-actions"><button type="submit">儲存</button><button type="button" data-fm="cancel-edit" data-id="${esc(e.id)}">取消</button></div></form>`:`<strong>${esc(e.name)}</strong><small>${esc(e.localPath||pathFor(e))}</small>`}<div class="dy-fm-controls"><button type="button" class="dy-fm-more" data-fm="menu" data-id="${esc(e.id)}" aria-label="${esc(e.name)} 操作選單" aria-haspopup="menu" aria-expanded="${menuId===e.id?'true':'false'}">···</button></div></article>`).join('')||'<p class="dy-fm-empty">尚無索引。按「＋ 文件」或「＋ 資料夾」開始建立。</p>'}</div>
+  <div class="dy-fm-bulk"><label><input type="checkbox" id="dy-fm-select-all" ${list.length>0&&list.every(e=>selectedIds.has(e.id))?'checked':''}> 全選目前結果</label><span>已選 ${list.filter(e=>selectedIds.has(e.id)).length} / ${list.length} 項</span><button data-fm="bulk-remove" ${!list.some(e=>selectedIds.has(e.id))?'disabled':''}>批量移除</button></div>
+  <div class="dy-fm-grid">${list.slice(0,renderLimit).map(e=>`<article class="dy-fm-item" data-id="${esc(e.id)}" tabindex="0" title="${esc(e.localPath||pathFor(e))}"><label class="dy-fm-select" title="選取索引"><input type="checkbox" data-fm-select="${esc(e.id)}" ${selectedIds.has(e.id)?'checked':''} aria-label="選取 ${esc(e.name)}"></label><div class="dy-fm-icon ${e.kind==='directory'?'folder':'file'}">${e.kind==='directory'?'📁':'📄'}</div>${editingId===e.id?`<form class="dy-fm-inline" data-id="${esc(e.id)}"><label>File name<input name="name" maxlength="500" required value="${esc(e.name)}"></label><label>Path（手動備註）<input name="localPath" maxlength="2000" value="${esc(e.localPath||'')}"></label><div class="dy-fm-inline-actions"><button type="submit">儲存</button><button type="button" data-fm="cancel-edit" data-id="${esc(e.id)}">取消</button></div></form>`:`<strong>${esc(e.name)}</strong><small>${esc(e.localPath||pathFor(e))}</small>`}<div class="dy-fm-controls"><button type="button" class="dy-fm-more" data-fm="menu" data-id="${esc(e.id)}" aria-label="${esc(e.name)} 操作選單" aria-haspopup="menu" aria-expanded="${menuId===e.id?'true':'false'}">···</button></div></article>`).join('')||'<p class="dy-fm-empty">尚無索引。按「+Project」選擇多個文件或資料夾。</p>'}</div>${list.length>renderLimit?`<div class="dy-fm-load-more" data-fm-more><button data-fm="show-more">顯示更多（${list.length-renderLimit} 項）</button></div>`:''}
   <p class="dy-fm-foot">雙擊資料夾可在網頁內查看其索引；雙擊文件可在授權後預覽或下載。瀏覽器無法直接開啟 Windows 檔案總管定位。</p>
   <input type="file" id="dy-fm-import" accept=".json,application/json" hidden>
   ${menuId&&items.some(e=>e.id===menuId)?`<div class="dy-fm-menu" role="menu" aria-label="文件操作"><button type="button" role="menuitem" data-fm="edit" data-id="${esc(menuId)}">編輯</button><button type="button" role="menuitem" data-fm="copy-path" data-id="${esc(menuId)}">複製本地路徑</button><button type="button" role="menuitem" data-fm="remove" data-id="${esc(menuId)}">移除</button><button type="button" role="menuitem" data-fm="close-menu">取消</button></div>`:''}
  </section>`;
  positionMenu();
+ const sentinel=$('#dy-file-manager [data-fm-more]');if(sentinel&&'IntersectionObserver' in window){visibleObserver=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)){renderLimit+=60;render()}},{rootMargin:'250px'});visibleObserver.observe(sentinel)}
 }
 function positionMenu(){
  const menu=$('#dy-file-manager .dy-fm-menu');if(!menu||!menuId)return;
@@ -72,6 +78,53 @@ async function copyPath(entry){
  catch(err){cloudMessage='複製失敗：請確認瀏覽器剪貼簿權限（需 localhost 或 HTTPS）';}
  render();
 }
+// A browser cannot disclose an absolute OS path. Directory traversal stores only relative paths.
+// Import is bounded to avoid exceeding the cloud index limit (2000 entries).
+const PROJECT_MAX=1500;
+async function pickProjectFiles(){
+ if(busy)return;
+ if(typeof window.showOpenFilePicker!=='function'){alert('請使用支援 File System Access API 的 Chrome / Edge（HTTPS 或 localhost）。');return}
+ busy=true;projectChooser=false;
+ try{
+  const handles=await window.showOpenFilePicker({multiple:true});
+  if(handles.length>PROJECT_MAX||items.length+handles.length>2000)throw Error('索引數量超出上限，請減少選取數量');
+  let count=0;importProgress={label:'正在加入文件索引',done:0,total:handles.length};render();
+  for(const handle of handles){if(handle.kind!=='file')continue;
+   await put({id:id(),name:handle.name,kind:'file',parent:viewFolder||null,relativePath:handle.name,localPath:'',tags:[],device:THIS_DEVICE,createdAt:new Date().toISOString(),handle});count++;importProgress.done=count;if(count%10===0){render();await new Promise(r=>setTimeout(r,0))}
+  }
+  cloudMessage=`已加入 ${count} 個本機文件（尚未 Save 至雲端）`;
+ }catch(err){if(err.name!=='AbortError'){cloudMessage='選擇文件失敗：'+err.message;alert(cloudMessage)}}
+ finally{busy=false;importProgress=null;await reload()}
+}
+async function pickProjectFolder(){
+ if(busy)return;
+ if(typeof window.showDirectoryPicker!=='function'){alert('請使用支援資料夾選擇的 Chrome / Edge（HTTPS 或 localhost）。');return}
+ busy=true;projectChooser=false;
+ try{
+  const root=await window.showDirectoryPicker({mode:'read'});
+  // Preflight: collect and validate the complete tree before writing any entries.
+  importProgress={label:'正在掃描資料夾',done:0,total:0};render();
+  const pending=[];const stack=[{handle:root,parentToken:null,relativePath:root.name}];
+  while(stack.length){
+   const node=stack.pop();
+   if(pending.length>=PROJECT_MAX||items.length+pending.length>=2000)throw Error('資料夾內容超過索引上限（單次 1500 項、總計 2000 項），本次未匯入');
+   const token=id();pending.push({...node,token});importProgress.done=pending.length;if(pending.length%30===0){render();await new Promise(r=>setTimeout(r,0))}
+   if(node.handle.kind==='directory'){
+    const children=[];
+    for await(const child of node.handle.values())children.push(child);
+    children.sort((a,b)=>a.name.localeCompare(b.name));
+    for(let i=children.length-1;i>=0;i--){const child=children[i];stack.push({handle:child,parentToken:token,relativePath:node.relativePath+'/'+child.name})}
+   }
+  }
+  const tokenToId=new Map(pending.map(x=>[x.token,id()]));importProgress={label:'正在儲存索引',done:0,total:pending.length};render();
+  for(const node of pending){
+   const handle=node.handle;
+   await put({id:tokenToId.get(node.token),name:handle.name,kind:handle.kind,parent:node.parentToken?tokenToId.get(node.parentToken):(viewFolder||null),relativePath:node.relativePath,localPath:'',tags:[],device:THIS_DEVICE,virtual:false,createdAt:new Date().toISOString(),handle});importProgress.done++;if(importProgress.done%20===0){render();await new Promise(r=>setTimeout(r,0))}
+  }
+  cloudMessage=`已匯入資料夾「${root.name}」及 ${pending.length-1} 個子項目（尚未 Save 至雲端）`;
+ }catch(err){if(err.name!=='AbortError'){cloudMessage='匯入資料夾失敗：'+err.message;alert(cloudMessage)}}
+ finally{busy=false;importProgress=null;await reload()}
+}
 async function add(kind){
  if(busy)return;busy=true;
  try{
@@ -82,7 +135,7 @@ async function add(kind){
  finally{busy=false}
 }
 async function access(e){
- if(!e.handle){alert('此索引沒有本機授權。請重新選擇原始文件或資料夾。');return false}
+ if(!e.handle){cloudMessage='這是純路徑索引，無法直接開啟檔案；可使用「複製本地路徑」。';render();return false}
  try{
   let p=await e.handle.queryPermission({mode:'read'});
   if(p!=='granted')p=await e.handle.requestPermission({mode:'read'});
@@ -90,7 +143,7 @@ async function access(e){
  }catch(err){alert('無法取得授權：'+err.message);return false}
 }
 async function open(e){
- if(e.kind==='directory'){viewFolder=e.id;render();return}
+ if(e.kind==='directory'){viewFolder=e.id;renderLimit=60;selectedIds.clear();render();return}
  if(!await access(e))return;
  try{
   const file=await e.handle.getFile();
@@ -98,6 +151,18 @@ async function open(e){
   const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.download=file.name;
   a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
  }catch(err){alert('文件可能已移動或刪除，請重新指定路徑：'+err.message)}
+}
+async function bulkRemove(){
+ const scope=visibleEntries().filter(e=>selectedIds.has(e.id));if(!scope.length)return;
+ const removeIds=new Set(scope.map(e=>e.id));let changed=true;while(changed){changed=false;for(const e of items){if(e.parent&&removeIds.has(e.parent)&&!removeIds.has(e.id)){removeIds.add(e.id);changed=true}}}
+ if(!confirm(`確定批量移除 ${removeIds.size} 筆索引？不會刪除實體文件。選取資料夾時，將一併移除其所有子項目索引。`))return;
+ busy=true;try{for(const key of removeIds)await del(key);selectedIds.clear();cloudMessage=`已移除 ${removeIds.size} 筆本機索引（尚未 Save 至雲端）`;await reload()}finally{busy=false}
+}
+async function savePath(form){
+ const name=String(form.elements.name.value||'').trim(),localPath=String(form.elements.localPath.value||'').trim(),kind=form.elements.kind.value;
+ if(!name||name.length>500||!localPath||localPath.length>2000||!['file','directory'].includes(kind))return;
+ if(items.length>=2000){cloudMessage='索引已達 2000 項上限';render();return}
+ await put({id:id(),name,kind,parent:viewFolder||null,relativePath:name,localPath,tags:[],virtual:false,pathOnly:true,device:THIS_DEVICE,createdAt:new Date().toISOString()});pathPanel=false;cloudMessage='已新增純路徑索引（無檔案存取權限）';await reload();
 }
 async function saveInline(form){
  const e=items.find(x=>x.id===form.dataset.id);if(!e)return;
@@ -142,7 +207,7 @@ async function cloudSave(){if(busy)return;busy=true;cloudMessage='正在檢查�
  const localScope=items.filter(own).map(metadata);
  const remoteScope=remote.entries.filter(own);
  // Never overwrite entries owned by other devices; they remain in the cloud document.
- const otherDevices=remote.entries.filter(e=>e.kind==='file'&&e.device!==THIS_DEVICE);
+ const otherDevices=remote.entries.filter(e=>e.device&&e.device!==THIS_DEVICE);
  const entries=[...otherDevices,...localScope];
  if(localScope.length===0&&remoteScope.length>0){
   if(!confirm(`⚠️ 第一次確認：此裝置的本機索引為空，雲端對應範圍有 ${remoteScope.length} 筆資料。確定準備清空？`))return;
@@ -167,11 +232,19 @@ document.addEventListener('click',async ev=>{
  if(!active)return;
  const btn=ev.target.closest('#dy-file-manager [data-fm]');if(!btn)return;
  const act=btn.dataset.fm;const entry=items.find(x=>x.id===btn.dataset.id);
+ if(act==='path-panel'){pathPanel=!pathPanel;projectChooser=false;render();return}
+ if(act==='path-close'){pathPanel=false;render();return}
+ if(act==='show-more'){renderLimit+=60;render();return}
+ if(act==='bulk-remove'){await bulkRemove();return}
+ if(act==='project'){projectChooser=!projectChooser;menuId=null;render();return}
+ if(act==='project-close'){projectChooser=false;render();return}
+ if(act==='project-files'){await pickProjectFiles();return}
+ if(act==='project-folder'){await pickProjectFolder();return}
  if(act==='menu'&&entry){showMenu(entry.id);return}
  if(act==='close-menu'){menuId=null;menuPoint=null;render();return}
  if(act==='copy-path'&&entry){menuId=null;menuPoint=null;await copyPath(entry);return}
  if(act==='add-file'||act==='add-folder')await add(act==='add-file'?'file':'directory');
- else if(act==='home'){viewFolder=null;render()}
+ else if(act==='home'){viewFolder=null;renderLimit=60;selectedIds.clear();render()}
  else if(act==='edit'&&entry){menuId=null;menuPoint=null;editingId=editingId===entry.id?null:entry.id;render();if(editingId)$('#dy-file-manager .dy-fm-inline input[name=name]')?.focus()}
  else if(act==='cancel-edit'){editingId=null;render()}
  else if(act==='remove'&&entry&&confirm(`移除「${entry.name}」索引？不會刪除實體文件。`)){await del(entry.id);await reload()}
@@ -188,6 +261,7 @@ document.addEventListener('contextmenu',ev=>{
 });
 document.addEventListener('pointerdown',ev=>{
  if(!active)return;
+ if(projectChooser&&!ev.target.closest('#dy-file-manager .dy-fm-project-chooser, #dy-file-manager [data-fm=project]')){projectChooser=false;queueMicrotask(()=>render())}
  if(menuId&&!ev.target.closest('#dy-file-manager .dy-fm-menu, #dy-file-manager .dy-fm-more')){
   menuId=null;menuPoint=null;
   // Do not re-render while a user is clicking an editor control.
@@ -199,12 +273,12 @@ document.addEventListener('pointerdown',ev=>{
 },true);
 document.addEventListener('keydown',ev=>{
  if(ev.key==='Escape'&&active&&(menuId||editingId)){
-  menuId=null;menuPoint=null;editingId=null;render();ev.preventDefault();
+  menuId=null;menuPoint=null;editingId=null;projectChooser=false;render();ev.preventDefault();
  }
 });
-document.addEventListener('submit',async e=>{const form=e.target.closest('#dy-file-manager .dy-fm-inline');if(!form)return;e.preventDefault();await saveInline(form)});
+document.addEventListener('submit',async e=>{if(e.target.id==='dy-fm-path-form'){e.preventDefault();await savePath(e.target);return}const form=e.target.closest('#dy-file-manager .dy-fm-inline');if(!form)return;e.preventDefault();await saveInline(form)});
 document.addEventListener('input',e=>{if(e.target.id==='dy-fm-search'){const pos=e.target.selectionStart;query=e.target.value;render();const field=$('#dy-fm-search');field?.focus();field?.setSelectionRange(pos,pos)}});
-document.addEventListener('change',async e=>{if(e.target.id==='dy-fm-import'&&e.target.files[0])await importIndex(e.target.files[0])});
+document.addEventListener('change',async e=>{if(e.target.matches('#dy-file-manager [data-fm-select]')){if(e.target.checked)selectedIds.add(e.target.dataset.fmSelect);else selectedIds.delete(e.target.dataset.fmSelect);render();return}if(e.target.id==='dy-fm-select-all'){const q=query.trim().toLocaleLowerCase();const scope=visibleEntries().filter(x=>(q?[x.name,pathFor(x),x.localPath||'',...(x.tags||[])].join(' ').toLocaleLowerCase().includes(q):(viewFolder?x.parent===viewFolder:!x.parent)));for(const x of scope){if(e.target.checked)selectedIds.add(x.id);else selectedIds.delete(x.id)}render();return}if(e.target.id==='dy-fm-import'&&e.target.files[0])await importIndex(e.target.files[0])});
 document.addEventListener('dblclick',async e=>{if(!active)return;const el=e.target.closest('#dy-file-manager .dy-fm-item');if(!el||e.target.closest('button,input,form,label'))return;const v=items.find(x=>x.id===el.dataset.id);if(v)await open(v)});
 document.addEventListener('keydown',async e=>{if(e.key!=='Enter'||!active)return;const el=e.target.closest('#dy-file-manager .dy-fm-item');if(el&&!e.target.closest('input,form,button')){const v=items.find(x=>x.id===el.dataset.id);if(v)await open(v)}});
 const observer=new MutationObserver(()=>{const bar=tabBar();if(bar&&!bar.querySelector('[data-tab="files"]'))ensure()});
